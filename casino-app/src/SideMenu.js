@@ -17,6 +17,7 @@ function SideMenu({ open, onClose, user, balance, onGameSelect, onBalanceUpdate 
   const [challenges, setChallenges] = useState([]);
   const [, setDailyClaimed] = useState(false);
   const [dailyMsg, setDailyMsg] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [settings, setSettings] = useState({ animations: true, sounds: false });
   const [newUsername, setNewUsername] = useState('');
   const [oldPassword, setOldPassword] = useState('');
