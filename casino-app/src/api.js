@@ -81,7 +81,8 @@ export const api = {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` }
       }).then(r => r.json()),
-    
+  },
+
     changeUsername: (newUsername) =>
       fetch(`${BASE}/change-username`, {
         method: 'POST',
@@ -94,6 +95,5 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ oldPassword, newPassword })
-      }).then(r => r.json()),
-  }
+       }).then(r => r.json()),
 };
