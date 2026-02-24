@@ -48,7 +48,7 @@ function Dice({ balance, setBalance, addResult }) {
         setBalance(prev => parseFloat((prev + parseFloat(bet) + parseFloat(profit)).toFixed(2)));
         addResult(true, parseFloat(profit));
       } else {
-        addResult(false, parseFloat(bet));
+        addResult(false, parseFloat(bet), 'mines', bet, 1);
       }
       setRolling(false);
     }, 600);

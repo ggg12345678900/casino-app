@@ -78,7 +78,7 @@ const cashOut = (mult = currentMultiplier, rev = revealed) => {
     const winAmount = parseFloat((bet * mult).toFixed(2));
     const profitAmount = parseFloat((winAmount - bet).toFixed(2));
     setBalance(prev => parseFloat((prev + winAmount).toFixed(2)));
-    addResult(true, profitAmount);
+    addResult(true, profitAmount, 'mines', bet, mult);
     setWon(true);
     setGameActive(false);
     setGameOver(true);
