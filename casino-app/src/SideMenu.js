@@ -17,10 +17,37 @@ function SideMenu({ open, onClose, user, balance, onGameSelect, onBalanceUpdate 
   const [challenges, setChallenges] = useState([]);
   const [, setDailyClaimed] = useState(false);
   const [dailyMsg, setDailyMsg] = useState('');
-  const [settings, setSettings] = useState({
-    animations: true,
-    sounds: false,
-  });
+  const [settings, setSettings] = useState({ animations: true, sounds: false });
+  const [newUsername, setNewUsername] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  const handleChangeUsername = async () => {
+    if (!newUsername) return;
+    const res = await api.changeUsername(newUsername);
+    if (res.error) setDailyMsg('❌ ' + res.error);
+    else {
+      setDailyMsg('✅ Benutzername geändert! Bitte neu einloggen.');
+      setNewUsername('');
+      setTimeout(() => {
+        localStorage.removeItem('token');
+        window.location.reload();
+      }, 2000);
+    }
+    setTimeout(() => setDailyMsg(''), 3000);
+  };
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword) return;
+    const res = await api.changePassword(oldPassword, newPassword);
+    if (res.error) setDailyMsg('❌ ' + res.error);
+    else {
+      setDailyMsg('✅ Passwort geändert!');
+      setOldPassword('');
+      setNewPassword('');
+    }
+    setTimeout(() => setDailyMsg(''), 3000);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -227,31 +254,39 @@ function SideMenu({ open, onClose, user, balance, onGameSelect, onBalanceUpdate 
           )}
 
           {/* Settings */}
-          {tab === 'settings' && (
-            <div>
-              <div style={{ color: '#8a9bb0', fontSize: '11px', letterSpacing: '1px', marginBottom: '12px' }}>EINSTELLUNGEN</div>
-              {[
-                { key: 'animations', label: '✨ Animationen', desc: 'Spielanimationen ein/aus' },
-                { key: 'sounds', label: '🔊 Sounds', desc: 'Soundeffekte ein/aus (bald)' },
-              ].map(s => (
-                <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', backgroundColor: '#0f1923', borderRadius: '10px', marginBottom: '8px' }}>
-                  <div>
-                    <div style={{ color: 'white', fontWeight: 'bold', fontSize: '13px' }}>{s.label}</div>
-                    <div style={{ color: '#8a9bb0', fontSize: '11px', marginTop: '2px' }}>{s.desc}</div>
-                  </div>
-                  <div onClick={() => setSettings(prev => ({ ...prev, [s.key]: !prev[s.key] }))}
-                    style={{ width: '40px', height: '22px', backgroundColor: settings[s.key] ? '#00e701' : '#2d4a5a', borderRadius: '11px', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-                    <div style={{ position: 'absolute', top: '3px', left: settings[s.key] ? '20px' : '3px', width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.2s' }} />
-                  </div>
-                </div>
-              ))}
-
-              <div style={{ marginTop: '20px', padding: '14px', backgroundColor: '#0f1923', borderRadius: '10px' }}>
+            {tab === 'settings' && (
+                <div>
+                    <div style={{ color: '#8a9bb0', fontSize: '11px', letterSpacing: '1px', marginBottom: '12px' }}>EINSTELLUNGEN</div> 
+                <div style={{ marginTop: '20px', padding: '14px', backgroundColor: '#0f1923', borderRadius: '10px' }}>
                 <div style={{ color: '#8a9bb0', fontSize: '11px', marginBottom: '8px' }}>ACCOUNT INFO</div>
                 <div style={{ color: 'white', fontSize: '13px' }}>👤 {user?.username}</div>
                 <div style={{ color: '#8a9bb0', fontSize: '12px', marginTop: '4px' }}>
                   {user?.is_admin ? '👑 Administrator' : '🎮 Spieler'}
                 </div>
+              </div>
+
+              {/* Benutzername ändern */}
+              <div style={{ marginTop: '12px', padding: '14px', backgroundColor: '#0f1923', borderRadius: '10px' }}>
+                <div style={{ color: '#8a9bb0', fontSize: '11px', marginBottom: '10px' }}>BENUTZERNAME ÄNDERN</div>
+                <input placeholder="Neuer Benutzername..." value={newUsername} onChange={e => setNewUsername(e.target.value)}
+                  style={{ width: '100%', padding: '8px', backgroundColor: '#1a2c38', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', marginBottom: '8px' }} />
+                <button onClick={handleChangeUsername}
+                  style={{ width: '100%', padding: '8px', backgroundColor: '#00e701', border: 'none', color: '#000', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                  Benutzername ändern
+                </button>
+              </div>
+
+              {/* Passwort ändern */}
+              <div style={{ marginTop: '12px', padding: '14px', backgroundColor: '#0f1923', borderRadius: '10px' }}>
+                <div style={{ color: '#8a9bb0', fontSize: '11px', marginBottom: '10px' }}>PASSWORT ÄNDERN</div>
+                <input type="password" placeholder="Altes Passwort..." value={oldPassword} onChange={e => setOldPassword(e.target.value)}
+                  style={{ width: '100%', padding: '8px', backgroundColor: '#1a2c38', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', marginBottom: '8px' }} />
+                <input type="password" placeholder="Neues Passwort..." value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                  style={{ width: '100%', padding: '8px', backgroundColor: '#1a2c38', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', marginBottom: '8px' }} />
+                <button onClick={handleChangePassword}
+                  style={{ width: '100%', padding: '8px', backgroundColor: '#00e701', border: 'none', color: '#000', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                  Passwort ändern
+                </button>
               </div>
             </div>
           )}

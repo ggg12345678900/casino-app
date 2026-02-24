@@ -241,4 +241,29 @@ app.delete('/api/admin/delete-user/:id', adminAuth, (req, res) => {
     (err) => err ? res.status(500).json({ error: 'Fehler' }) : res.json({ success: true }));
 });
 
+// Benutzername ändern
+app.post('/api/change-username', auth, (req, res) => {
+  const { newUsername } = req.body;
+  if (!newUsername || newUsername.length < 3) 
+    return res.status(400).json({ error: 'Name zu kurz (min. 3)' });
+  db.run(`UPDATE users SET username = ? WHERE id = ?`, [newUsername, req.user.id], (err) => {
+    if (err) return res.status(400).json({ error: 'Benutzername bereits vergeben' });
+    res.json({ success: true });
+  });
+});
+
+// Passwort ändern
+app.post('/api/change-password', auth, (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 4)
+    return res.status(400).json({ error: 'Passwort zu kurz (min. 4)' });
+  db.get(`SELECT password FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    if (!bcrypt.compareSync(oldPassword, user.password))
+      return res.status(400).json({ error: 'Altes Passwort falsch!' });
+    const hash = bcrypt.hashSync(newPassword, 10);
+    db.run(`UPDATE users SET password = ? WHERE id = ?`, [hash, req.user.id], () => {
+      res.json({ success: true });
+    });
+  });
+});
 app.listen(5000, () => console.log('✅ Server läuft auf Port 5000'));
