@@ -232,12 +232,13 @@ function Crash({ balance, setBalance, addResult }) {
     hasPlacedRef.current = true;
   };
 
-  useEffect(() => {
+ useEffect(() => {
     startCountdown();
     return () => {
       clearInterval(intervalRef.current);
       clearInterval(countdownRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const multColor = phase === 'crashed' ? '#ff4444' : cashedOut ? '#f5a623' : '#00e701';

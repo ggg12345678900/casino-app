@@ -15,7 +15,7 @@ function SideMenu({ open, onClose, user, balance, onGameSelect, onBalanceUpdate 
   const [leaderboard, setLeaderboard] = useState([]);
   const [history, setHistory] = useState([]);
   const [challenges, setChallenges] = useState([]);
-  const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [, setDailyClaimed] = useState(false);
   const [dailyMsg, setDailyMsg] = useState('');
   const [settings, setSettings] = useState({
     animations: true,
