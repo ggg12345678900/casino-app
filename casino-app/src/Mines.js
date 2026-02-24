@@ -57,6 +57,7 @@ function Mines({ balance, setBalance, addResult }) {
       setGrid(newGrid);
       setGameOver(true);
       setGameActive(false);
+      addResult(false, parseFloat(bet), 'mines', bet, 1);
     } else {
       const newRevealed = [...revealed, index];
       setRevealed(newRevealed);
