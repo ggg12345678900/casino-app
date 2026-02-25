@@ -178,7 +178,7 @@ function App() {
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user.is_admin === 1 && (
+          {(user.is_admin === 1 || user.is_admin === true) && (
             <button onClick={() => setAdminOpen(true)}
               style={{ padding: '7px 14px', backgroundColor: '#f5a62322', border: '1px solid #f5a623', color: '#f5a623', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
               👑 Admin
