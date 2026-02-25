@@ -150,40 +150,64 @@ app.post('/api/update-stats', auth, async (req, res) => {
     [req.user.id, game || 'unknown', bet || 0, amount, didWin ? 1 : 0, multiplier || 1]
   );
 
-  // Challenge Tracking
+   // Challenge Tracking
+  // bet100 - 100 Einsätze machen
   await pool.query(`
     INSERT INTO challenges (user_id, challenge_id, progress)
     VALUES ($1, 'bet100', 1)
     ON CONFLICT (user_id, challenge_id)
-    DO UPDATE SET progress = challenges.progress + 1,
-    completed = CASE WHEN challenges.progress + 1 >= 100 THEN 1 ELSE 0 END`,
+    DO UPDATE SET 
+      progress = challenges.progress + 1,
+      completed = CASE WHEN challenges.progress + 1 >= 100 THEN 1 ELSE completed END`,
     [req.user.id]
   );
 
   if (didWin) {
+    // win50 - 50 Spiele gewinnen
     await pool.query(`
       INSERT INTO challenges (user_id, challenge_id, progress)
       VALUES ($1, 'win50', 1)
       ON CONFLICT (user_id, challenge_id)
-      DO UPDATE SET progress = challenges.progress + 1,
-      completed = CASE WHEN challenges.progress + 1 >= 50 THEN 1 ELSE 0 END`,
+      DO UPDATE SET
+        progress = challenges.progress + 1,
+        completed = CASE WHEN challenges.progress + 1 >= 50 THEN 1 ELSE completed END`,
       [req.user.id]
     );
 
-    if (multiplier && multiplier >= 10) {
+    // bigwin - 10x Multiplier
+    if (multiplier && parseFloat(multiplier) >= 10) {
       await pool.query(`
-        INSERT INTO challenges (user_id, challenge_id, progress)
-        VALUES ($1, 'bigwin', 1)
+        INSERT INTO challenges (user_id, challenge_id, progress, completed)
+        VALUES ($1, 'bigwin', 1, 1)
         ON CONFLICT (user_id, challenge_id)
         DO UPDATE SET progress = 1, completed = 1`,
         [req.user.id]
       );
     }
+
+    // win5 - 5x hintereinander gewinnen
+    await pool.query(`
+      INSERT INTO challenges (user_id, challenge_id, progress)
+      VALUES ($1, 'win5', 1)
+      ON CONFLICT (user_id, challenge_id)
+      DO UPDATE SET
+        progress = challenges.progress + 1,
+        completed = CASE WHEN challenges.progress + 1 >= 5 THEN 1 ELSE completed END`,
+      [req.user.id]
+    );
+  } else {
+    // win5 zurücksetzen bei Verlust
+    await pool.query(`
+      INSERT INTO challenges (user_id, challenge_id, progress)
+      VALUES ($1, 'win5', 0)
+      ON CONFLICT (user_id, challenge_id)
+      DO UPDATE SET progress = 0`,
+      [req.user.id]
+    );
   }
 
   res.json({ success: true });
-});
-
+})
 // Game history
 app.get('/api/history', auth, async (req, res) => {
   const result = await pool.query(

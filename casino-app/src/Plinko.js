@@ -30,11 +30,11 @@ const BUCKET_COLOR = (mult) => {
 const styleEl = document.createElement('style');
 styleEl.textContent = `
   @keyframes bucketPop {
-    0%   { transform: scaleY(1); }
-    40%  { transform: scaleY(1.35); }
-    100% { transform: scaleY(1); }
+    0%   { transform: scaleY(1) translateY(0); }
+    40%  { transform: scaleY(1.15) translateY(-3px); }
+    100% { transform: scaleY(1) translateY(0); }
   }
-  .bucket-pop { animation: bucketPop 0.3s ease; }
+  .bucket-pop { animation: bucketPop 0.25s ease; transform-origin: bottom; }
 `;
 document.head.appendChild(styleEl);
 

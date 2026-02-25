@@ -45,6 +45,7 @@ function generateCrashPoint() {
 function Crash({ balance, setBalance, addResult }) {
   const [bet, setBet] = useState(10);
   const [autoCashoutVal, setAutoCashoutVal] = useState(2.0);
+  const MIN_AUTOCASHOUT = 1.1;
   const [useAutoCashout, setUseAutoCashout] = useState(false);
   const [phase, setPhase] = useState('waiting'); // waiting | running | crashed
   const [multiplier, setMultiplier] = useState(1.0);
@@ -192,7 +193,7 @@ function Crash({ balance, setBalance, addResult }) {
       }));
 
       // Auto cashout player
-      if (useAutoCashoutRef.current && hasPlacedRef.current && !cashedOutRef.current && newMult >= autoCashoutRef.current) {
+      if (useAutoCashoutRef.current && hasPlacedRef.current && !cashedOutRef.current && autoCashoutRef.current >= MIN_AUTOCASHOUT && newMult >= autoCashoutRef.current) {
         handleCashout(newMult);
       }
 
@@ -275,8 +276,8 @@ function Crash({ balance, setBalance, addResult }) {
             </div>
           </div>
           {useAutoCashout && (
-            <input type="number" value={autoCashoutVal} step="0.1" min="1.1"
-              onChange={e => setAutoCashoutVal(parseFloat(e.target.value))}
+            <input type="number" value={autoCashoutVal} step="0.1" min="1.05"
+              onChange={e => setAutoCashoutVal(Math.max(MIN_AUTOCASHOUT, parseFloat(e.target.value)))}
               style={{ width: '100%', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #00e701', color: 'white', borderRadius: '8px', fontSize: '15px', boxSizing: 'border-box' }} />
           )}
         </div>
