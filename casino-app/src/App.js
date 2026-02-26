@@ -9,6 +9,7 @@ import SideMenu from './SideMenu';
 import { api } from './api';
 import Roulette from './Roulette';
 import Chicken from './Chicken';
+import Lobby from './Lobby';
 
 
 const GAMES = [
@@ -87,7 +88,7 @@ function StatRow({ label, value, color }) {
 function App() {
   const [user, setUser] = useState(null);
   const [balance, setBalanceState] = useState(1000);
-  const [activeGame, setActiveGame] = useState('dice');
+  const [activeGame, setActiveGame] = useState(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -159,6 +160,7 @@ function App() {
 
   const renderGame = () => {
     switch (activeGame) {
+      case null: return <Lobby user={user} balance={balance} stats={stats} onGameSelect={setActiveGame} />;
       case 'dice': return <Dice balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'mines': return <Mines balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'crash': return <Crash balance={balance} setBalance={setBalance} addResult={addResult} />;
@@ -181,6 +183,12 @@ function App() {
             <span style={{ color: '#00e701', fontWeight: 'bold', fontSize: '20px', letterSpacing: '1px' }}>CasinoSim</span>
             <span style={{ color: '#8a9bb0', fontSize: '16px' }}>☰</span>
           </button>
+          {activeGame !== null && (
+            <button onClick={() => setActiveGame(null)}
+              style={{ backgroundColor: 'transparent', border: '1px solid #2d4a5a', color: '#8a9bb0', borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '13px' }}>
+              ← Lobby
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {(user.is_admin === 1 || user.is_admin === true) && (
