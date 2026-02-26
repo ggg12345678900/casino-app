@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <!-- Gold gradient -->
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="30%" style="stop-color:#FFC107"/>
+      <stop offset="60%" style="stop-color:#FFB300"/>
+      <stop offset="100%" style="stop-color:#FF8F00"/>
+    </linearGradient>
+    
+    <!-- Dark background gradient -->
+    <radialGradient id="bg" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0a0a14"/>
+    </radialGradient>
+    
+    <!-- Neon glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Strong glow -->
+    <filter id="strongGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Diamond shape -->
+    <clipPath id="diamondClip">
+      <polygon points="400,80 520,300 400,520 280,300"/>
+    </clipPath>
+    
+    <!-- Card suit patterns -->
+    <filter id="innerShadow">
+      <feOffset dx="0" dy="2"/>
+      <feGaussianBlur stdDeviation="2" result="offset-blur"/>
+      <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse"/>
+      <feFlood flood-color="black" flood-opacity="0.4" result="color"/>
+      <feComposite operator="in" in="color" in2="inverse" result="shadow"/>
+      <feComposite operator="over" in="shadow" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="600" fill="url(#bg)"/>
+  
+  <!-- Subtle radial lines -->
+  <g opacity="0.08">
+    <line x1="400" y1="300" x2="0" y2="0" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="200" y2="0" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="400" y2="0" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="600" y2="0" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="800" y2="0" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="800" y2="200" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="800" y2="400" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="800" y2="600" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="600" y2="600" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="400" y2="600" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="200" y2="600" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="0" y2="600" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="0" y2="400" stroke="#FFD700" stroke-width="1"/>
+    <line x1="400" y1="300" x2="0" y2="200" stroke="#FFD700" stroke-width="1"/>
+  </g>
+  
+  <!-- Outer diamond border -->
+  <polygon points="400,100 510,280 400,460 290,280" fill="none" stroke="url(#gold)" stroke-width="3" filter="url(#glow)" opacity="0.6"/>
+  
+  <!-- Inner diamond -->
+  <polygon points="400,130 490,280 400,430 310,280" fill="none" stroke="url(#gold)" stroke-width="1.5" opacity="0.3"/>
+  
+  <!-- Spade symbol (top) -->
+  <g transform="translate(400, 160)" filter="url(#glow)">
+    <path d="M0,-28 C-4,-24 -18,-10 -18,2 C-18,12 -10,18 0,12 C10,18 18,12 18,2 C18,-10 4,-24 0,-28 Z M-6,12 C-6,12 -8,22 -8,22 L8,22 C8,22 6,12 6,12" fill="url(#gold)" opacity="0.9"/>
+  </g>
+  
+  <!-- Heart symbol (right) -->
+  <g transform="translate(475, 280)" filter="url(#glow)">
+    <path d="M0,8 C0,8 18,-8 18,-16 C18,-24 10,-28 0,-18 C-10,-28 -18,-24 -18,-16 C-18,-8 0,8 0,8 Z" fill="#E53935" opacity="0.9"/>
+  </g>
+  
+  <!-- Club symbol (bottom) -->
+  <g transform="translate(400, 400)" filter="url(#glow)">
+    <circle cx="0" cy="-12" r="10" fill="url(#gold)" opacity="0.9"/>
+    <circle cx="-11" cy="2" r="10" fill="url(#gold)" opacity="0.9"/>
+    <circle cx="11" cy="2" r="10" fill="url(#gold)" opacity="0.9"/>
+    <rect x="-3" y="2" width="6" height="16" fill="url(#gold)" opacity="0.9"/>
+  </g>
+  
+  <!-- Diamond symbol (left) -->
+  <g transform="translate(325, 280)" filter="url(#glow)">
+    <polygon points="0,-20 14,0 0,20 -14,0" fill="#E53935" opacity="0.9"/>
+  </g>
+  
+  <!-- Dice - left -->
+  <g transform="translate(170, 220) rotate(-15)">
+    <rect x="0" y="0" width="60" height="60" rx="10" fill="#1a1a2e" stroke="url(#gold)" stroke-width="2" filter="url(#glow)"/>
+    <circle cx="15" cy="15" r="5" fill="url(#gold)"/>
+    <circle cx="45" cy="15" r="5" fill="url(#gold)"/>
+    <circle cx="15" cy="45" r="5" fill="url(#gold)"/>
+    <circle cx="45" cy="45" r="5" fill="url(#gold)"/>
+    <circle cx="30" cy="30" r="5" fill="url(#gold)"/>
+  </g>
+  
+  <!-- Dice - right -->
+  <g transform="translate(560, 210) rotate(20)">
+    <rect x="0" y="0" width="60" height="60" rx="10" fill="#1a1a2e" stroke="url(#gold)" stroke-width="2" filter="url(#glow)"/>
+    <circle cx="15" cy="15" r="5" fill="#E53935"/>
+    <circle cx="45" cy="45" r="5" fill="#E53935"/>
+    <circle cx="30" cy="30" r="5" fill="#E53935"/>
+  </g>
+  
+  <!-- Poker chips left -->
+  <g transform="translate(130, 380)">
+    <ellipse cx="0" cy="0" rx="30" ry="8" fill="#E53935" stroke="url(#gold)" stroke-width="1.5" opacity="0.8"/>
+    <ellipse cx="0" cy="-6" rx="30" ry="8" fill="#b71c1c" stroke="url(#gold)" stroke-width="1.5" opacity="0.9"/>
+    <ellipse cx="0" cy="-12" rx="30" ry="8" fill="#E53935" stroke="url(#gold)" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Poker chips right -->
+  <g transform="translate(670, 370)">
+    <ellipse cx="0" cy="0" rx="30" ry="8" fill="#1a237e" stroke="url(#gold)" stroke-width="1.5" opacity="0.8"/>
+    <ellipse cx="0" cy="-6" rx="30" ry="8" fill="#0d1554" stroke="url(#gold)" stroke-width="1.5" opacity="0.9"/>
+    <ellipse cx="0" cy="-12" rx="30" ry="8" fill="#1a237e" stroke="url(#gold)" stroke-width="1.5"/>
+    <ellipse cx="0" cy="-18" rx="30" ry="8" fill="#0d1554" stroke="url(#gold)" stroke-width="1.5"/>
+  </g>
+
+  <!-- Stars decoration -->
+  <g fill="url(#gold)" opacity="0.4">
+    <polygon points="100,100 103,110 113,110 105,116 108,126 100,120 92,126 95,116 87,110 97,110" transform="scale(0.6)"/>
+    <polygon points="700,80 703,90 713,90 705,96 708,106 700,100 692,106 695,96 687,90 697,90" transform="scale(0.5)"/>
+    <polygon points="150,500 153,510 163,510 155,516 158,526 150,520 142,526 145,516 137,510 147,510" transform="scale(0.5)"/>
+    <polygon points="680,480 683,490 693,490 685,496 688,506 680,500 672,506 675,496 667,490 677,490" transform="scale(0.4)"/>
+  </g>
+  
+  <!-- Main Title: CASINO -->
+  <text x="400" y="290" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="bold" fill="url(#gold)" filter="url(#strongGlow)" letter-spacing="18">CASINO</text>
+  
+  <!-- Decorative line left -->
+  <line x1="170" y1="310" x2="340" y2="310" stroke="url(#gold)" stroke-width="1.5" filter="url(#glow)" opacity="0.7"/>
+  <circle cx="170" cy="310" r="3" fill="url(#gold)" opacity="0.7"/>
+  
+  <!-- Decorative line right -->
+  <line x1="460" y1="310" x2="630" y2="310" stroke="url(#gold)" stroke-width="1.5" filter="url(#glow)" opacity="0.7"/>
+  <circle cx="630" cy="310" r="3" fill="url(#gold)" opacity="0.7"/>
+  
+  <!-- Subtitle: SIMULATOR -->
+  <text x="400" y="345" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="url(#gold)" letter-spacing="22" opacity="0.85" filter="url(#glow)">SIMULATOR</text>
+  
+  <!-- Tagline -->
+  <text x="400" y="385" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="13" fill="#FFD700" letter-spacing="6" opacity="0.5">PLAY ★ WIN ★ REPEAT</text>
+  
+  <!-- Bottom decorative border -->
+  <line x1="250" y1="500" x2="550" y2="500" stroke="url(#gold)" stroke-width="0.8" opacity="0.3"/>
+  <polygon points="400,490 408,500 400,510 392,500" fill="url(#gold)" opacity="0.4"/>
+</svg>
