@@ -41,6 +41,21 @@ function AdminPanel({ onClose, currentUser }) {
 
   const winrate = (u) => u.total_bets > 0 ? ((u.total_wins / u.total_bets) * 100).toFixed(1) : '0.0';
 
+  const lastSeen = (u) => {
+    if (!u.last_seen) return 'Nie';
+    const d = new Date(u.last_seen);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 2) return '🟢 Gerade online';
+    if (diffMin < 60) return `vor ${diffMin} Min`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `vor ${diffH} Std`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 7) return `vor ${diffD} Tag${diffD > 1 ? 'en' : ''}`;
+    return d.toLocaleDateString('de-DE');
+  };
+
   return (
     <div style={{
       position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)',
@@ -86,6 +101,7 @@ function AdminPanel({ onClose, currentUser }) {
                     {u.is_admin ? '👑 ' : ''}{u.username}
                   </span>
                   <span style={{ color: '#8a9bb0', fontSize: '12px', marginLeft: '8px' }}>seit {new Date(u.created_at).toLocaleDateString('de-DE')}</span>
+                  <span style={{ color: '#8a9bb0', fontSize: '12px', marginLeft: '8px' }}>· {lastSeen(u)}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
                   <span style={{ color: '#00e701' }}>💰 {u.balance.toFixed(2)}€</span>

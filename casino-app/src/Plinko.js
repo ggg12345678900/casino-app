@@ -30,11 +30,12 @@ const BUCKET_COLOR = (mult) => {
 const styleEl = document.createElement('style');
 styleEl.textContent = `
   @keyframes bucketPop {
-    0%   { transform: scaleY(1) translateY(0); }
-    40%  { transform: scaleY(1.15) translateY(-3px); }
-    100% { transform: scaleY(1) translateY(0); }
+    0%   { transform: translateX(-50%) translateY(0)   scaleY(1);    filter: brightness(1); }
+    25%  { transform: translateX(-50%) translateY(4px) scaleY(0.80); filter: brightness(2.2); }
+    65%  { transform: translateX(-50%) translateY(-1px) scaleY(1.05); filter: brightness(1.1); }
+    100% { transform: translateX(-50%) translateY(0)   scaleY(1);    filter: brightness(1); }
   }
-  .bucket-pop { animation: bucketPop 0.25s ease; transform-origin: bottom; }
+  .bucket-pop { animation: bucketPop 0.4s cubic-bezier(0.36,0.07,0.19,0.97); transform-origin: bottom; }
 `;
 document.head.appendChild(styleEl);
 
@@ -52,6 +53,7 @@ function Plinko({ balance, setBalance, addResult }) {
   const [boardSize, setBoardSize] = useState({ width: 400, height: 400 });
 
   const mults = MULTIPLIERS[rows][risk];
+  const transitionMs = rows === 16 ? 70 : rows === 12 ? 85 : 100;
 
   // Measure board size dynamically
   useEffect(() => {
@@ -89,6 +91,7 @@ function Plinko({ balance, setBalance, addResult }) {
 
   const getBallPos = (ball) => {
     if (ball.currentRow === -1) return { x: W / 2, y: TOP_PAD - 10 };
+    if (ball.finished) return { x: getBucketX(ball.finalBucket), y: H - BUCKET_H / 2 };
     const row = ball.currentRow;
     const col = ball.currentCol;
     const pinsInRow = row + 2;
@@ -118,7 +121,8 @@ function Plinko({ balance, setBalance, addResult }) {
     setActiveBalls(prev => [...prev, {
       id, path, currentRow: -1,
       currentCol: Math.floor(rows / 2),
-      finalBucket, bet, mult, winAmount, profitAmount
+      finalBucket, bet, mult, winAmount, profitAmount,
+      finished: false
     }]);
 
     let step = 0;
@@ -132,14 +136,21 @@ function Plinko({ balance, setBalance, addResult }) {
         if (mult >= 1) addResult(true, profitAmount);
         else addResult(false, Math.abs(profitAmount));
 
-        const ref = bucketRefs.current[finalBucket];
-        if (ref) {
-          ref.classList.remove('bucket-pop');
-          void ref.offsetWidth;
-          ref.classList.add('bucket-pop');
-        }
+        // Animate ball into bucket
+        setActiveBalls(prev => prev.map(b => b.id === id ? { ...b, finished: true } : b));
 
-        setTimeout(() => setActiveBalls(prev => prev.filter(b => b.id !== id)), 300);
+        // Bucket pop after ball lands
+        setTimeout(() => {
+          const ref = bucketRefs.current[finalBucket];
+          if (ref) {
+            ref.classList.remove('bucket-pop');
+            void ref.offsetWidth;
+            ref.classList.add('bucket-pop');
+          }
+        }, transitionMs + 40);
+
+        // Remove ball after landing
+        setTimeout(() => setActiveBalls(prev => prev.filter(b => b.id !== id)), transitionMs + 350);
         return;
       }
       setActiveBalls(prev => prev.map(b =>
@@ -260,7 +271,9 @@ function Plinko({ balance, setBalance, addResult }) {
                 borderRadius: '50%',
                 transform: 'translate(-50%, -50%)',
                 boxShadow: '0 0 8px #f5a623aa',
-                transition: `left ${rows === 16 ? 70 : rows === 12 ? 85 : 100}ms ease, top ${rows === 16 ? 70 : rows === 12 ? 85 : 100}ms ease`,
+                transition: ball.finished
+                  ? `left ${transitionMs * 2}ms ease-in, top ${transitionMs * 2}ms ease-in`
+                  : `left ${transitionMs}ms cubic-bezier(0.25,0.46,0.45,0.94), top ${transitionMs}ms cubic-bezier(0.25,0.46,0.45,0.94)`,
                 zIndex: 10,
               }} />
             );

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -5,7 +6,8 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 
 const app = express();
-const SECRET = process.env.JWT_SECRET || 'casino_secret_key_2024';
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET) { console.error('❌ JWT_SECRET fehlt in .env!'); process.exit(1); }
 
 app.use(cors());
 app.use(express.json());
@@ -31,9 +33,13 @@ const initDB = async () => {
       total_lost REAL DEFAULT 0,
       biggest_win REAL DEFAULT 0,
       last_daily TEXT DEFAULT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_seen TIMESTAMP DEFAULT NULL
     )
   `);
+
+  // Spalte für bestehende Datenbanken nachrüsten
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP DEFAULT NULL`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -60,12 +66,12 @@ const initDB = async () => {
     )
   `);
 
-  // Admin erstellen
-  const adminPass = bcrypt.hashSync('admin123', 10);
+  // Admin erstellen / Passwort immer aktuell halten
+  const adminPass = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
   await pool.query(`
     INSERT INTO users (username, password, balance, is_admin)
     VALUES ('admin', $1, 999999, 1)
-    ON CONFLICT (username) DO NOTHING
+    ON CONFLICT (username) DO UPDATE SET password = $1, is_admin = 1
   `, [adminPass]);
 
   console.log('✅ Datenbank bereit!');
@@ -93,6 +99,7 @@ app.post('/api/register', async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Felder fehlen' });
   if (username.length < 3) return res.status(400).json({ error: 'Name zu kurz (min. 3)' });
   if (password.length < 4) return res.status(400).json({ error: 'Passwort zu kurz (min. 4)' });
+  if (username.toLowerCase() === 'admin') return res.status(400).json({ error: 'Dieser Benutzername ist nicht erlaubt' });
   const hash = bcrypt.hashSync(password, 10);
   try {
     const result = await pool.query(
@@ -113,6 +120,7 @@ app.post('/api/login', async (req, res) => {
   const user = result.rows[0];
   if (!user || !bcrypt.compareSync(password, user.password))
     return res.status(400).json({ error: 'Falscher Benutzername oder Passwort' });
+  await pool.query(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = $1`, [user.id]);
   const token = jwt.sign({ id: user.id, username: user.username, is_admin: user.is_admin }, SECRET, { expiresIn: '7d' });
   res.json({ token, username: user.username, balance: user.balance, is_admin: user.is_admin, id: user.id });
 });
@@ -150,15 +158,15 @@ app.post('/api/update-stats', auth, async (req, res) => {
     [req.user.id, game || 'unknown', bet || 0, amount, didWin ? 1 : 0, multiplier || 1]
   );
 
-   // Challenge Tracking
+  // Challenge Tracking
   // bet100 - 100 Einsätze machen
   await pool.query(`
     INSERT INTO challenges (user_id, challenge_id, progress)
     VALUES ($1, 'bet100', 1)
     ON CONFLICT (user_id, challenge_id)
-    DO UPDATE SET 
-      progress = challenges.progress + 1,
-      completed = CASE WHEN challenges.progress + 1 >= 100 THEN 1 ELSE completed END`,
+    DO UPDATE SET
+      progress = CASE WHEN challenges.completed = 0 THEN challenges.progress + 1 ELSE challenges.progress END,
+      completed = CASE WHEN challenges.completed = 0 AND challenges.progress + 1 >= 100 THEN 1 ELSE challenges.completed END`,
     [req.user.id]
   );
 
@@ -169,8 +177,8 @@ app.post('/api/update-stats', auth, async (req, res) => {
       VALUES ($1, 'win50', 1)
       ON CONFLICT (user_id, challenge_id)
       DO UPDATE SET
-        progress = challenges.progress + 1,
-        completed = CASE WHEN challenges.progress + 1 >= 50 THEN 1 ELSE completed END`,
+        progress = CASE WHEN challenges.completed = 0 THEN challenges.progress + 1 ELSE challenges.progress END,
+        completed = CASE WHEN challenges.completed = 0 AND challenges.progress + 1 >= 50 THEN 1 ELSE challenges.completed END`,
       [req.user.id]
     );
 
@@ -180,7 +188,8 @@ app.post('/api/update-stats', auth, async (req, res) => {
         INSERT INTO challenges (user_id, challenge_id, progress, completed)
         VALUES ($1, 'bigwin', 1, 1)
         ON CONFLICT (user_id, challenge_id)
-        DO UPDATE SET progress = 1, completed = 1`,
+        DO UPDATE SET progress = 1, completed = 1
+        WHERE challenges.completed = 0`,
         [req.user.id]
       );
     }
@@ -191,17 +200,17 @@ app.post('/api/update-stats', auth, async (req, res) => {
       VALUES ($1, 'win5', 1)
       ON CONFLICT (user_id, challenge_id)
       DO UPDATE SET
-        progress = challenges.progress + 1,
-        completed = CASE WHEN challenges.progress + 1 >= 5 THEN 1 ELSE completed END`,
+        progress = CASE WHEN challenges.completed = 0 THEN challenges.progress + 1 ELSE challenges.progress END,
+        completed = CASE WHEN challenges.completed = 0 AND challenges.progress + 1 >= 5 THEN 1 ELSE challenges.completed END`,
       [req.user.id]
     );
   } else {
-    // win5 zurücksetzen bei Verlust
+    // win5 zurücksetzen bei Verlust - nur wenn noch nicht abgeschlossen
     await pool.query(`
       INSERT INTO challenges (user_id, challenge_id, progress)
       VALUES ($1, 'win5', 0)
       ON CONFLICT (user_id, challenge_id)
-      DO UPDATE SET progress = 0`,
+      DO UPDATE SET progress = CASE WHEN challenges.completed = 0 THEN 0 ELSE challenges.progress END`,
       [req.user.id]
     );
   }
@@ -314,7 +323,7 @@ app.post('/api/setup-admin', async (req, res) => {
 app.get('/api/admin/users', adminAuth, async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, balance, is_admin, total_bets, total_wins,
-     total_losses, total_won, total_lost, biggest_win, created_at
+     total_losses, total_won, total_lost, biggest_win, created_at, last_seen
      FROM users ORDER BY created_at DESC`
   );
   res.json(result.rows);

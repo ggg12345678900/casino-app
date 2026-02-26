@@ -7,6 +7,8 @@ import Login from './Login';
 import AdminPanel from './AdminPanel';
 import SideMenu from './SideMenu';
 import { api } from './api';
+import Roulette from './Roulette';
+import Chicken from './Chicken';
 
 
 const GAMES = [
@@ -15,6 +17,7 @@ const GAMES = [
   { id: 'crash', name: 'Crash', icon: '🚀' },
   { id: 'plinko', name: 'Plinko', icon: '🎯' },
   { id: 'roulette', name: 'Roulette', icon: '🎡' },
+  { id: 'chicken', name: 'Chicken', icon: '🐔' },
   { id: 'blackjack', name: 'Blackjack', icon: '🃏' },
 ];
 
@@ -111,11 +114,11 @@ function App() {
     });
   };
 
-  const addResult = (didWin, profitAmount) => {
+  const addResult = (didWin, profitAmount, game, bet, multiplier) => {
     setBalanceState(prev => {
       const newBalance = prev;
       if (user) {
-        api.updateStats(didWin, profitAmount, newBalance);
+        api.updateStats(didWin, profitAmount, newBalance, game, bet, multiplier);
       }
       return prev;
     });
@@ -160,6 +163,8 @@ function App() {
       case 'mines': return <Mines balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'crash': return <Crash balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'plinko': return <Plinko balance={balance} setBalance={setBalance} addResult={addResult} />;
+      case 'roulette': return <Roulette balance={balance} setBalance={setBalance} addResult={addResult} />;
+      case 'chicken': return <Chicken balance={balance} setBalance={setBalance} addResult={addResult} />;
       default: return <ComingSoon name={GAMES.find(g => g.id === activeGame)?.name} icon={GAMES.find(g => g.id === activeGame)?.icon} />;
     }
   };

@@ -6,7 +6,8 @@ const GAME_LIST = [
   { id: 'mines', name: 'Mines', icon: '💣', desc: 'Vermeide die Minen und cash out' },
   { id: 'crash', name: 'Crash', icon: '🚀', desc: 'Cash out bevor es crasht' },
   { id: 'plinko', name: 'Plinko', icon: '🎯', desc: 'Lass den Ball fallen und gewinne' },
-  { id: 'roulette', name: 'Roulette', icon: '🎡', desc: 'Kommt bald...' },
+  { id: 'roulette', name: 'Roulette', icon: '🎡', desc: 'Setze auf Zahlen, Farben oder Gruppen' },
+  { id: 'chicken', name: 'Chicken', icon: '🐔', desc: 'Überquere die Straße – hop für hop' },
   { id: 'blackjack', name: 'Blackjack', icon: '🃏', desc: 'Kommt bald...' },
 ];
 
