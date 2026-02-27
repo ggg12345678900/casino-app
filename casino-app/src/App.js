@@ -169,7 +169,7 @@ function App() {
       case 'plinko': return <Plinko balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'roulette': return <Roulette balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'chicken': return <Chicken balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'pump': return <Pump balance={balance} setBalance={setBalance} addResult={addResult} />;
+      case 'pump': return <Pump balance={balance} setBalance={setBalance} addResult={addResult} user={user} setUser={setUser} />;
       default: return <ComingSoon name={GAMES.find(g => g.id === activeGame)?.name} icon={GAMES.find(g => g.id === activeGame)?.icon} />;
     }
   };

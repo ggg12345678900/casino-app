@@ -34,12 +34,14 @@ const initDB = async () => {
       biggest_win REAL DEFAULT 0,
       last_daily TEXT DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      last_seen TIMESTAMP DEFAULT NULL
+      last_seen TIMESTAMP DEFAULT NULL,
+      unlocked_diffs TEXT DEFAULT '["easy"]'
     )
   `);
 
-  // Spalte für bestehende Datenbanken nachrüsten
+  // Spalten für bestehende Datenbanken nachrüsten
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS unlocked_diffs TEXT DEFAULT '["easy"]'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -129,11 +131,32 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/profile', auth, async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, balance, is_admin, total_bets, total_wins, total_losses,
-     total_won, total_lost, biggest_win, last_daily, created_at FROM users WHERE id = $1`,
+     total_won, total_lost, biggest_win, last_daily, created_at, unlocked_diffs FROM users WHERE id = $1`,
     [req.user.id]
   );
   if (!result.rows[0]) return res.status(404).json({ error: 'User nicht gefunden' });
   res.json(result.rows[0]);
+});
+
+// Buy difficulty
+const DIFF_COSTS = { easy: 0, medium: 100, hard: 150, expert: 200 };
+app.post('/api/buy-difficulty', auth, async (req, res) => {
+  const { difficulty } = req.body;
+  if (!DIFF_COSTS.hasOwnProperty(difficulty)) return res.status(400).json({ error: 'Ungültige Schwierigkeit' });
+  const cost = DIFF_COSTS[difficulty];
+  const result = await pool.query(`SELECT balance, unlocked_diffs FROM users WHERE id = $1`, [req.user.id]);
+  const user = result.rows[0];
+  if (!user) return res.status(404).json({ error: 'User nicht gefunden' });
+  const unlocked = JSON.parse(user.unlocked_diffs || '["easy"]');
+  if (unlocked.includes(difficulty)) return res.status(400).json({ error: 'Bereits freigeschaltet' });
+  if (user.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
+  const newUnlocked = [...unlocked, difficulty];
+  const newBalance = parseFloat((user.balance - cost).toFixed(2));
+  await pool.query(
+    `UPDATE users SET balance = $1, unlocked_diffs = $2 WHERE id = $3`,
+    [newBalance, JSON.stringify(newUnlocked), req.user.id]
+  );
+  res.json({ balance: newBalance, unlocked_diffs: JSON.stringify(newUnlocked) });
 });
 
 // Update stats

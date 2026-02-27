@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { api } from './api';
 
 const DIFF = {
-  easy:   { p: 0.96,  maxPumps: 155, maxMult: 24.5,    label: 'Easy',   color: '#4ade80' },
-  medium: { p: 0.882, maxPumps: 74,  maxMult: 2254,    label: 'Medium', color: '#facc15' },
-  hard:   { p: 0.797, maxPumps: 52,  maxMult: 52067,   label: 'Hard',   color: '#f97316' },
-  expert: { p: 0.60,  maxPumps: 30,  maxMult: 3203384, label: 'Expert', color: '#ef4444' },
+  easy:   { p: 0.96,  maxPumps: 155, maxMult: 24.5,    label: 'Easy',   color: '#4ade80', cost: 0   },
+  medium: { p: 0.882, maxPumps: 74,  maxMult: 2254,    label: 'Medium', color: '#facc15', cost: 100 },
+  hard:   { p: 0.797, maxPumps: 52,  maxMult: 52067,   label: 'Hard',   color: '#f97316', cost: 150 },
+  expert: { p: 0.60,  maxPumps: 30,  maxMult: 3203384, label: 'Expert', color: '#ef4444', cost: 200 },
 };
 const getMult = (p, n) => parseFloat((Math.pow(1 / p, n) * 0.98).toFixed(4));
 
@@ -138,7 +139,11 @@ function PopParticles({ color }) {
   );
 }
 
-export default function Pump({ balance, setBalance, addResult }) {
+export default function Pump({ balance, setBalance, addResult, user, setUser }) {
+  const unlockedDiffs = (() => {
+    try { return JSON.parse(user?.unlocked_diffs || '["easy"]'); }
+    catch { return ['easy']; }
+  })();
   const [mode, setMode] = useState('manual');
   const [difficulty, setDifficulty] = useState('medium');
   const [bet, setBet] = useState(10);
@@ -149,6 +154,25 @@ export default function Pump({ balance, setBalance, addResult }) {
   const [balloonAnim, setBalloonAnim] = useState('none');
   const [showParticles, setShowParticles] = useState(false);
   const [result, setResult] = useState(null);
+
+  const [buyingDiff, setBuyingDiff] = useState(null); // welche diff gerade gekauft wird
+  const [buyError, setBuyError]   = useState(null);
+
+  const buyDiff = async (key) => {
+    if (buyingDiff) return;
+    setBuyingDiff(key);
+    setBuyError(null);
+    const res = await api.buyDifficulty(key);
+    if (res.error) {
+      setBuyError(res.error);
+      setBuyingDiff(null);
+    } else {
+      setBalance(res.balance);
+      setUser(prev => ({ ...prev, balance: res.balance, unlocked_diffs: res.unlocked_diffs }));
+      setDifficulty(key);
+      setBuyingDiff(null);
+    }
+  };
 
   const animRef   = useRef(null);
   const autoRef   = useRef(null);
@@ -361,21 +385,53 @@ export default function Pump({ balance, setBalance, addResult }) {
         <div style={{ marginBottom:16 }}>
           <label style={{ fontSize:11, color:'#475569', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', display:'block', marginBottom:6 }}>Schwierigkeit</label>
           <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-            {Object.entries(DIFF).map(([key, d]) => (
-              <button key={key} onClick={() => isIdle && setDifficulty(key)} disabled={!isIdle}
-                style={{
-                  padding:'9px 12px', borderRadius:8, border:`1px solid ${difficulty===key ? d.color : '#2d4a5a'}`,
-                  background: difficulty===key ? `${d.color}18` : '#0f1923',
-                  color: difficulty===key ? d.color : '#64748b',
-                  fontWeight:700, fontSize:13, cursor: isIdle ? 'pointer' : 'not-allowed',
-                  transition:'all 0.15s', textAlign:'left',
-                  display:'flex', justifyContent:'space-between', alignItems:'center',
-                }}>
-                <span>{d.label}</span>
-                <span style={{ fontSize:11, opacity:0.7 }}>{(d.p*100).toFixed(0)}% · max {d.maxMult >= 1000 ? `${(d.maxMult/1000).toFixed(0)}K` : d.maxMult}×</span>
-              </button>
-            ))}
+            {Object.entries(DIFF).map(([key, d]) => {
+              const isUnlocked = unlockedDiffs.includes(key);
+              const isSelected = difficulty === key;
+              const isBuying   = buyingDiff === key;
+              return (
+                <div key={key}>
+                  <button
+                    onClick={() => {
+                      if (!isIdle) return;
+                      if (isUnlocked) setDifficulty(key);
+                      else buyDiff(key);
+                    }}
+                    disabled={!isIdle || isBuying}
+                    style={{
+                      width:'100%', padding:'9px 12px', borderRadius:8,
+                      border:`1px solid ${isSelected ? d.color : isUnlocked ? '#2d4a5a' : '#1e3040'}`,
+                      background: isSelected ? `${d.color}18` : isUnlocked ? '#0f1923' : '#111e28',
+                      color: isSelected ? d.color : isUnlocked ? '#64748b' : '#334155',
+                      fontWeight:700, fontSize:13,
+                      cursor: isIdle ? 'pointer' : 'not-allowed',
+                      transition:'all 0.15s', textAlign:'left',
+                      display:'flex', justifyContent:'space-between', alignItems:'center',
+                    }}>
+                    <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      {!isUnlocked && <span style={{ fontSize:14 }}>🔒</span>}
+                      {d.label}
+                    </span>
+                    <span style={{ fontSize:11, opacity:0.7 }}>
+                      {isUnlocked
+                        ? `${(d.p*100).toFixed(0)}% · max ${d.maxMult >= 1000 ? `${(d.maxMult/1000).toFixed(0)}K` : d.maxMult}×`
+                        : isBuying ? '...' : `${d.cost}€ kaufen`
+                      }
+                    </span>
+                  </button>
+                  {/* Kaufen-Bestätigung (inline) */}
+                  {!isUnlocked && isIdle && !isBuying && (
+                    <div style={{ fontSize:11, color:'#475569', textAlign:'center', marginTop:2 }}>
+                      Klicken um freizuschalten
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+          {buyError && (
+            <div style={{ color:'#ef4444', fontSize:12, marginTop:6, textAlign:'center' }}>{buyError}</div>
+          )}
         </div>
 
         {/* Live info */}

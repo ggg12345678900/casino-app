@@ -96,4 +96,11 @@ export const api = {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ oldPassword, newPassword })
        }).then(r => r.json()),
+
+  buyDifficulty: (difficulty) =>
+    fetch(`${BASE}/buy-difficulty`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ difficulty })
+    }).then(r => r.json()),
 };
