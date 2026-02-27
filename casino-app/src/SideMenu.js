@@ -8,6 +8,7 @@ const GAME_LIST = [
   { id: 'plinko', name: 'Plinko', icon: '🎯', desc: 'Lass den Ball fallen und gewinne' },
   { id: 'roulette', name: 'Roulette', icon: '🎡', desc: 'Setze auf Zahlen, Farben oder Gruppen' },
   { id: 'chicken', name: 'Chicken', icon: '🐔', desc: 'Überquere die Straße – hop für hop' },
+  { id: 'pump', name: 'Pump', icon: '🎈', desc: 'Pumpe den Ballon – cash out rechtzeitig' },
   { id: 'blackjack', name: 'Blackjack', icon: '🃏', desc: 'Kommt bald...' },
 ];
 

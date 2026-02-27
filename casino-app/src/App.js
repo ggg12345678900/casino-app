@@ -9,6 +9,7 @@ import SideMenu from './SideMenu';
 import { api } from './api';
 import Roulette from './Roulette';
 import Chicken from './Chicken';
+import Pump from './Pump';
 import Lobby from './Lobby';
 
 
@@ -19,6 +20,7 @@ const GAMES = [
   { id: 'plinko', name: 'Plinko', icon: '🎯' },
   { id: 'roulette', name: 'Roulette', icon: '🎡' },
   { id: 'chicken', name: 'Chicken', icon: '🐔' },
+  { id: 'pump', name: 'Pump', icon: '🎈' },
   { id: 'blackjack', name: 'Blackjack', icon: '🃏' },
 ];
 
@@ -167,6 +169,7 @@ function App() {
       case 'plinko': return <Plinko balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'roulette': return <Roulette balance={balance} setBalance={setBalance} addResult={addResult} />;
       case 'chicken': return <Chicken balance={balance} setBalance={setBalance} addResult={addResult} />;
+      case 'pump': return <Pump balance={balance} setBalance={setBalance} addResult={addResult} />;
       default: return <ComingSoon name={GAMES.find(g => g.id === activeGame)?.name} icon={GAMES.find(g => g.id === activeGame)?.icon} />;
     }
   };

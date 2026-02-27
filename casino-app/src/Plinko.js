@@ -48,12 +48,32 @@ function Plinko({ balance, setBalance, addResult }) {
   const [activeBalls, setActiveBalls] = useState([]);
   const [history, setHistory] = useState([]);
   const [lastResult, setLastResult] = useState(null);
+  const [ballCount, setBallCount] = useState(1);
+  const [ballsLeft, setBallsLeft] = useState(0);
   const boardRef = useRef(null);
   const bucketRefs = useRef([]);
   const [boardSize, setBoardSize] = useState({ width: 400, height: 400 });
+  const balanceRef = useRef(balance);
+  useEffect(() => { balanceRef.current = balance; }, [balance]);
 
   const mults = MULTIPLIERS[rows][risk];
   const transitionMs = rows === 16 ? 70 : rows === 12 ? 85 : 100;
+
+  // Auto-drop queue: when ballsLeft > 0, drop next ball after delay
+  useEffect(() => {
+    if (ballsLeft <= 0) return;
+    const delay = rows === 16 ? 900 : rows === 12 ? 1000 : 1100;
+    const t = setTimeout(() => {
+      if (bet > 0 && bet <= balanceRef.current) {
+        dropBall();
+        setBallsLeft(l => l - 1);
+      } else {
+        setBallsLeft(0);
+      }
+    }, delay);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ballsLeft]);
 
   // Measure board size dynamically
   useEffect(() => {
@@ -207,6 +227,20 @@ function Plinko({ balance, setBalance, addResult }) {
           </div>
         </div>
 
+        {/* Ball Count */}
+        <div>
+          <label style={{ color: '#8a9bb0', fontSize: '12px', display: 'block', marginBottom: '6px' }}>ANZAHL BÄLLE</label>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+            {[1, 3, 5, 10, 25].map(n => (
+              <button key={n} onClick={() => { if (ballsLeft === 0) setBallCount(n); }}
+                disabled={ballsLeft > 0}
+                style={{ flex: 1, minWidth: '30px', padding: '6px 4px', backgroundColor: ballCount === n ? '#00e701' : '#0f1923', border: '1px solid #2d4a5a', color: ballCount === n ? '#000' : '#8a9bb0', borderRadius: '6px', cursor: ballsLeft > 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {lastResult && (
           <div style={{ padding: '10px', backgroundColor: lastResult.mult >= 1 ? '#00e70122' : '#ff444422', border: `1px solid ${lastResult.mult >= 1 ? '#00e701' : '#ff4444'}`, borderRadius: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '20px', fontWeight: 'bold', color: lastResult.mult >= 1 ? '#00e701' : '#ff4444' }}>{lastResult.mult}x</div>
@@ -216,10 +250,26 @@ function Plinko({ balance, setBalance, addResult }) {
           </div>
         )}
 
-        <button onClick={dropBall} disabled={bet > balance || bet <= 0}
-          style={{ padding: '12px', backgroundColor: '#00e701', border: 'none', color: '#000', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold', marginTop: 'auto' }}>
-          🎯 Drop Ball
-        </button>
+        {/* Drop button + countdown */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {ballsLeft > 0 && (
+            <div style={{ textAlign: 'center', background: '#0f1923', border: '1px solid #00e70144', borderRadius: '8px', padding: '8px' }}>
+              <div style={{ color: '#00e701', fontWeight: 'bold', fontSize: '20px' }}>{ballsLeft}</div>
+              <div style={{ color: '#8a9bb0', fontSize: '11px' }}>Bälle verbleibend</div>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (ballsLeft > 0) { setBallsLeft(0); return; }
+              if (bet > balance || bet <= 0) return;
+              dropBall();
+              if (ballCount > 1) setBallsLeft(ballCount - 1);
+            }}
+            disabled={(bet > balance || bet <= 0) && ballsLeft === 0}
+            style={{ padding: '12px', backgroundColor: ballsLeft > 0 ? '#ef4444' : '#00e701', border: 'none', color: ballsLeft > 0 ? '#fff' : '#000', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>
+            {ballsLeft > 0 ? '⏹ Stopp' : ballCount > 1 ? `🎯 Drop ${ballCount} Bälle` : '🎯 Drop Ball'}
+          </button>
+        </div>
 
         {history.length > 0 && (
           <div>

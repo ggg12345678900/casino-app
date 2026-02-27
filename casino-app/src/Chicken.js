@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const VIEWPORT_H = 480;
@@ -294,6 +294,13 @@ export default function Chicken({ balance, setBalance, addResult }) {
     setMessage('');
   }, []);
 
+  // Auto-reset to idle after 2.5s when game ends
+  useEffect(() => {
+    if (phase !== 'dead' && phase !== 'won') return;
+    const t = setTimeout(() => reset(), 2500);
+    return () => clearTimeout(t);
+  }, [phase, reset]);
+
   // ── Build road ────────────────────────────────────────────────────────────
   const laneEls = [];
   laneEls.push(<FinishZone key="finish" reached={currentLane >= diff.lanes && phase === 'won'} />);
@@ -469,9 +476,9 @@ export default function Chicken({ balance, setBalance, addResult }) {
         )}
 
         {(phase === 'dead' || phase === 'won') && (
-          <button onClick={reset} style={{ ...mBtn, background: '#5b21b6', color: '#fff' }}>
-            🔄 Nochmal spielen
-          </button>
+          <div style={{ textAlign: 'center', color: '#475569', fontSize: 12, padding: '8px 0' }}>
+            Wird zurückgesetzt...
+          </div>
         )}
       </div>
     </div>

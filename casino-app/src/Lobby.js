@@ -7,10 +7,11 @@ const GAMES = [
   { id: 'mines',    name: 'Mines',    icon: '💣', desc: 'Vermeide die Minen',            color: '#ef4444', gradient: 'linear-gradient(135deg, #5f1e1e 0%, #1a2c38 100%)' },
   { id: 'plinko',   name: 'Plinko',   icon: '🎯', desc: 'Lass den Ball fallen',          color: '#8b5cf6', gradient: 'linear-gradient(135deg, #3a1e5f 0%, #1a2c38 100%)' },
   { id: 'roulette', name: 'Roulette', icon: '🎡', desc: 'Zahlen, Farben, Chancen',      color: '#ec4899', gradient: 'linear-gradient(135deg, #5f1e3a 0%, #1a2c38 100%)' },
-  { id: 'chicken',  name: 'Chicken',  icon: '🐔', desc: 'Überquere die Straße',          color: '#4ade80', gradient: 'linear-gradient(135deg, #1e5f2a 0%, #1a2c38 100%)', isNew: true },
+  { id: 'chicken',  name: 'Chicken',  icon: '🐔', desc: 'Überquere die Straße',          color: '#4ade80', gradient: 'linear-gradient(135deg, #1e5f2a 0%, #1a2c38 100%)' },
+  { id: 'pump',     name: 'Pump',     icon: '🎈', desc: 'Pump den Ballon – cash out!',    color: '#06b6d4', gradient: 'linear-gradient(135deg, #0e3a4f 0%, #1a2c38 100%)', isNew: true },
 ];
 
-const FEATURED_ID = 'chicken';
+const FEATURED_ID = 'pump';
 
 export default function Lobby({ user, balance, stats, onGameSelect }) {
   const [leaderboard, setLeaderboard] = useState([]);
