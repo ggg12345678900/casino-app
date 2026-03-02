@@ -172,7 +172,8 @@ function RouletteWheel({ size, rotation, spinning, duration, ballVisible, ballOf
   );
 }
 
-function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const [phase, setPhase] = useState('betting');
   const [showOverlay, setShowOverlay] = useState(false);
   const [rotation, setRotation] = useState(0);

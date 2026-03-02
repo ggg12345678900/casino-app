@@ -43,7 +43,8 @@ function generateCrashPoint() {
   return parseFloat((Math.random() * 50 + 10).toFixed(2));
 }
 
-function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const [bet, setBet] = useState(10);
   const [autoCashoutVal, setAutoCashoutVal] = useState(2.0);
   const MIN_AUTOCASHOUT = 1.1;

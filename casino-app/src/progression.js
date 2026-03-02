@@ -32,6 +32,54 @@ export const prestigeCost  = (count) => Math.round(50000 * Math.pow(10, count));
 export const prestigeMult  = (count) => Math.pow(2, count);
 export const PRESTIGE_GAMES_REQ = 3; // need at least 3 games to prestige
 
+// ─── Globale Upgrades ─────────────────────────────────────────────────────────
+export const GLOBAL_UPGRADES = [
+  {
+    id: 'global_mult',
+    icon: '💎',
+    name: 'Globaler Bonus',
+    desc: '+3% Gewinn auf alle Spiele',
+    color: '#a78bfa',
+    maxLevel: 5,
+    costs: [5000, 25000, 150000, 1000000, 8000000],
+    getValue: (lvl) => (1 + lvl * 0.03).toFixed(2) + 'x',
+  },
+  {
+    id: 'start_balance',
+    icon: '🏦',
+    name: 'Start-Balance',
+    desc: 'Mehr Startgeld nach Prestige',
+    color: '#34d399',
+    maxLevel: 5,
+    costs: [2000, 15000, 100000, 750000, 5000000],
+    getValue: (lvl) => [1000, 2000, 5000, 10000, 25000, 50000][lvl] + '€',
+  },
+  {
+    id: 'auto_speed',
+    icon: '⚡',
+    name: 'Auto-Speed',
+    desc: 'Schnellere Auto-Runden',
+    color: '#fbbf24',
+    maxLevel: 5,
+    costs: [3000, 20000, 120000, 800000, 6000000],
+    getValue: (lvl) => [700, 600, 500, 400, 300, 200][lvl] + 'ms',
+  },
+  {
+    id: 'daily_bonus',
+    icon: '🎁',
+    name: 'Daily Reward',
+    desc: 'Höheres tägliches Guthaben',
+    color: '#f97316',
+    maxLevel: 5,
+    costs: [1000, 8000, 60000, 500000, 4000000],
+    getValue: (lvl) => [100, 200, 500, 1000, 2500, 5000][lvl] + '€',
+  },
+];
+
+export const GLOBAL_START_BALANCE = [1000, 2000, 5000, 10000, 25000, 50000];
+export const GLOBAL_AUTO_SPEED    = [700, 600, 500, 400, 300, 200]; // ms
+export const GLOBAL_DAILY_BONUS   = [100, 200, 500, 1000, 2500, 5000];
+
 // Helper: format large numbers
 export const fmt = (n) => {
   if (n >= 1e9)  return (n/1e9).toFixed(n >= 1e10 ? 0 : 1)  + 'B';

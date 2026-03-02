@@ -51,6 +51,7 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS winrate_levels TEXT DEFAULT '{}'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS prestige_count INTEGER DEFAULT 0`);
   await pool.query(`UPDATE users SET prestige_count = 0 WHERE prestige_count IS NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS global_upgrade_levels TEXT DEFAULT '{}'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -141,7 +142,8 @@ app.get('/api/profile', auth, async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, balance, is_admin, total_bets, total_wins, total_losses,
      total_won, total_lost, biggest_win, last_daily, created_at, unlocked_diffs,
-     unlocked_games, max_bet_levels, winrate_levels, COALESCE(prestige_count, 0) AS prestige_count FROM users WHERE id = $1`,
+     unlocked_games, max_bet_levels, winrate_levels, COALESCE(prestige_count, 0) AS prestige_count,
+     COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id = $1`,
     [req.user.id]
   );
   if (!result.rows[0]) return res.status(404).json({ error: 'User nicht gefunden' });
@@ -253,10 +255,13 @@ app.post('/api/upgrade-winrate', auth, async (req, res) => {
   res.json({ balance: newBalance, winrate_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
 });
 
+const GLOBAL_START_BALANCE = [1000, 2000, 5000, 10000, 25000, 50000];
+const GLOBAL_DAILY_BONUS   = [100, 200, 500, 1000, 2500, 5000];
+
 // Prestige
 app.post('/api/prestige', auth, async (req, res) => {
   const r = await pool.query(
-    `SELECT balance, unlocked_games, prestige_count FROM users WHERE id=$1`, [req.user.id]
+    `SELECT balance, unlocked_games, prestige_count, COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id=$1`, [req.user.id]
   );
   const u = r.rows[0];
   const unlocked = JSON.parse(u.unlocked_games || '["dice"]');
@@ -264,16 +269,19 @@ app.post('/api/prestige', auth, async (req, res) => {
   const cost = prestigeCostFn(u.prestige_count);
   if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
   const newPrestige = u.prestige_count + 1;
+  const gLevels = JSON.parse(u.global_upgrade_levels || '{}');
+  const startBalLevel = gLevels['start_balance'] || 0;
+  const startBal = GLOBAL_START_BALANCE[startBalLevel];
   await pool.query(`
     UPDATE users SET
-      balance = 1000,
+      balance = $1,
       unlocked_games = '["dice"]',
       max_bet_levels = '{}',
       winrate_levels = '{}',
-      prestige_count = $1
-    WHERE id = $2
-  `, [newPrestige, req.user.id]);
-  res.json({ prestige_count: newPrestige, balance: 1000, unlocked_games: '["dice"]', max_bet_levels: '{}', winrate_levels: '{}' });
+      prestige_count = $2
+    WHERE id = $3
+  `, [startBal, newPrestige, req.user.id]);
+  res.json({ prestige_count: newPrestige, balance: startBal, unlocked_games: '["dice"]', max_bet_levels: '{}', winrate_levels: '{}' });
 });
 
 // Update stats
@@ -369,14 +377,50 @@ app.get('/api/history', auth, async (req, res) => {
 // Daily bonus
 app.post('/api/daily', auth, async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
-  const result = await pool.query(`SELECT last_daily, balance FROM users WHERE id = $1`, [req.user.id]);
+  const result = await pool.query(
+    `SELECT last_daily, balance, COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id = $1`,
+    [req.user.id]
+  );
   const user = result.rows[0];
   if (user.last_daily === today)
     return res.status(400).json({ error: 'Heute bereits abgeholt!' });
-  const bonus = 100;
+  const gLevels = JSON.parse(user.global_upgrade_levels || '{}');
+  const dailyLevel = gLevels['daily_bonus'] || 0;
+  const bonus = GLOBAL_DAILY_BONUS[dailyLevel];
   await pool.query(`UPDATE users SET balance = balance + $1, last_daily = $2 WHERE id = $3`,
     [bonus, today, req.user.id]);
   res.json({ success: true, bonus, newBalance: user.balance + bonus });
+});
+
+// Globale Upgrades
+const GLOBAL_UPGRADE_DEFS = {
+  global_mult:   { maxLevel: 5, costs: [5000, 25000, 150000, 1000000, 8000000] },
+  start_balance: { maxLevel: 5, costs: [2000, 15000, 100000, 750000, 5000000] },
+  auto_speed:    { maxLevel: 5, costs: [3000, 20000, 120000, 800000, 6000000] },
+  daily_bonus:   { maxLevel: 5, costs: [1000, 8000, 60000, 500000, 4000000] },
+};
+
+app.post('/api/upgrade-global', auth, async (req, res) => {
+  const { upgradeId } = req.body;
+  const def = GLOBAL_UPGRADE_DEFS[upgradeId];
+  if (!def) return res.status(400).json({ error: 'Unbekanntes Upgrade' });
+  const r = await pool.query(
+    `SELECT balance, COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id=$1`,
+    [req.user.id]
+  );
+  const u = r.rows[0];
+  const levels = JSON.parse(u.global_upgrade_levels || '{}');
+  const currentLevel = levels[upgradeId] || 0;
+  if (currentLevel >= def.maxLevel) return res.status(400).json({ error: 'Bereits auf Maximum' });
+  const cost = def.costs[currentLevel];
+  if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
+  levels[upgradeId] = currentLevel + 1;
+  const newBalance = parseFloat((u.balance - cost).toFixed(2));
+  await pool.query(
+    `UPDATE users SET balance=$1, global_upgrade_levels=$2 WHERE id=$3`,
+    [newBalance, JSON.stringify(levels), req.user.id]
+  );
+  res.json({ balance: newBalance, global_upgrade_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
 });
 
 // Leaderboard

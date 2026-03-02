@@ -205,7 +205,8 @@ function FinishZone({ reached }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function Chicken({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+export default function Chicken({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const [phase, setPhase] = useState('idle');     // idle | playing | hopping | dead | won
   const [bet, setBet] = useState(10);
   const [difficulty, setDifficulty] = useState('medium');

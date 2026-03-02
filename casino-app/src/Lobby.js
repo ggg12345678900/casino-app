@@ -3,6 +3,7 @@ import { api } from './api';
 import {
   GAME_ORDER, GAMES_META,
   prestigeCost, prestigeMult, PRESTIGE_GAMES_REQ, fmt,
+  GLOBAL_UPGRADES,
 } from './progression';
 
 const GAME_DESCS = {
@@ -32,9 +33,11 @@ export default function Lobby({ user, balance, stats, onGameSelect, progression 
 
   const {
     unlockedGames = ['dice'],
+    globalLevels = {},
     prestigeCount = 0,
     onUnlockGame,
     onPrestige,
+    onUpgradeGlobal,
   } = progression || {};
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export default function Lobby({ user, balance, stats, onGameSelect, progression 
     const res = await api.prestige();
     setLoading(null);
     if (res.error) { alert(res.error); return; }
-    onPrestige(res.prestige_count);
+    onPrestige(res.prestige_count, res.balance);
   };
 
   return (
@@ -140,6 +143,76 @@ export default function Lobby({ user, balance, stats, onGameSelect, progression 
             {loading === 'prestige' ? '...' : `⭐ Prestige! (Reset + ${prestigeMult(prestigeCount + 1)}x Multiplikator)`}
           </button>
         )}
+      </div>
+
+      {/* ── Globale Upgrades ─────────────────────────────────────── */}
+      <div style={{ padding: '16px 24px 0' }}>
+        <div style={{ color: '#475569', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+          Globale Upgrades
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          {GLOBAL_UPGRADES.map(upg => {
+            const level = globalLevels[upg.id] || 0;
+            const maxed = level >= upg.maxLevel;
+            const cost = maxed ? null : upg.costs[level];
+            const canAfford = !maxed && balance >= cost;
+            return (
+              <div key={upg.id} style={{
+                background: '#1a2c38', border: `1px solid ${maxed ? upg.color + '66' : '#2d4a5a'}`,
+                borderRadius: 12, padding: '14px', display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ fontSize: 20 }}>{upg.icon}</span>
+                    <span style={{ fontWeight: 'bold', fontSize: 13, color: '#f1f5f9' }}>{upg.name}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: maxed ? upg.color : '#475569', fontWeight: 'bold' }}>
+                    {level}/{upg.maxLevel}
+                  </span>
+                </div>
+                <div style={{ color: '#64748b', fontSize: 11 }}>{upg.desc}</div>
+                {/* Level-Bar */}
+                <div style={{ display: 'flex', gap: 3, margin: '2px 0' }}>
+                  {Array.from({ length: upg.maxLevel }).map((_, i) => (
+                    <div key={i} style={{
+                      flex: 1, height: 4, borderRadius: 2,
+                      background: i < level ? upg.color : '#2d4a5a',
+                    }} />
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: upg.color, fontSize: 12, fontWeight: 'bold' }}>
+                    {upg.getValue(level)}
+                    {!maxed && <span style={{ color: '#64748b', fontWeight: 'normal' }}> → {upg.getValue(level + 1)}</span>}
+                  </span>
+                  {maxed ? (
+                    <span style={{ fontSize: 11, color: upg.color }}>MAX</span>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (!canAfford || loading === 'global_' + upg.id) return;
+                        setLoading('global_' + upg.id);
+                        const res = await api.upgradeGlobal(upg.id);
+                        setLoading(null);
+                        if (res.error) { alert(res.error); return; }
+                        onUpgradeGlobal(res.balance, JSON.parse(res.global_upgrade_levels));
+                      }}
+                      disabled={!canAfford || loading === 'global_' + upg.id}
+                      style={{
+                        padding: '4px 10px', fontSize: 11, fontWeight: 'bold', borderRadius: 6,
+                        border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
+                        background: canAfford ? upg.color : '#2d4a5a',
+                        color: canAfford ? '#0f1923' : '#475569',
+                        opacity: loading === 'global_' + upg.id ? 0.6 : 1,
+                      }}>
+                      {loading === 'global_' + upg.id ? '...' : `${fmt(cost)}€`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Featured Banner ─────────────────────────────────────── */}

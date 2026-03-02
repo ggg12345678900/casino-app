@@ -130,4 +130,11 @@ export const api = {
       method: 'POST',
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(r => r.json()),
+
+  upgradeGlobal: (upgradeId) =>
+    fetch(`${BASE}/upgrade-global`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ upgradeId })
+    }).then(r => r.json()),
 };

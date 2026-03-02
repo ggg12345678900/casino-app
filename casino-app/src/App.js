@@ -11,7 +11,7 @@ import Roulette from './Roulette';
 import Chicken from './Chicken';
 import Pump from './Pump';
 import Lobby from './Lobby';
-import { MAX_BET_VALUES, WINRATE_BONUS_PER_LEVEL, prestigeMult } from './progression';
+import { MAX_BET_VALUES, WINRATE_BONUS_PER_LEVEL, prestigeMult, GLOBAL_AUTO_SPEED } from './progression';
 
 
 const GAMES = [
@@ -93,10 +93,12 @@ function parseProgression(data) {
   let unlockedGames = ['dice'];
   let maxBetLevels = {};
   let winrateLevels = {};
+  let globalLevels = {};
   try { unlockedGames = JSON.parse(data.unlocked_games || '["dice"]'); } catch {}
   try { maxBetLevels = JSON.parse(data.max_bet_levels || '{}'); } catch {}
   try { winrateLevels = JSON.parse(data.winrate_levels || '{}'); } catch {}
-  return { unlockedGames, maxBetLevels, winrateLevels, prestigeCount: data.prestige_count || 0 };
+  try { globalLevels = JSON.parse(data.global_upgrade_levels || '{}'); } catch {}
+  return { unlockedGames, maxBetLevels, winrateLevels, globalLevels, prestigeCount: data.prestige_count || 0 };
 }
 
 function App() {
@@ -112,6 +114,7 @@ function App() {
   const [unlockedGames, setUnlockedGames] = useState(['dice']);
   const [maxBetLevels, setMaxBetLevels] = useState({});   // { dice: 2, mines: 0, ... }
   const [winrateLevels, setWinrateLevels] = useState({}); // { dice: 1, ... }
+  const [globalLevels, setGlobalLevels] = useState({});   // { global_mult: 2, ... }
   const [prestigeCount, setPrestigeCount] = useState(0);
 
   useEffect(() => {
@@ -125,6 +128,7 @@ function App() {
           setUnlockedGames(prog.unlockedGames);
           setMaxBetLevels(prog.maxBetLevels);
           setWinrateLevels(prog.winrateLevels);
+          setGlobalLevels(prog.globalLevels);
           setPrestigeCount(prog.prestigeCount);
         } else {
           localStorage.removeItem('token');
@@ -156,12 +160,17 @@ function App() {
     setWinrateLevels(newLevels);
   }, []);
 
-  const handlePrestige = useCallback((newPrestigeCount) => {
+  const handleUpgradeGlobal = useCallback((newBalance, newLevels) => {
+    setBalanceState(newBalance);
+    setGlobalLevels(newLevels);
+  }, []);
+
+  const handlePrestige = useCallback((newPrestigeCount, newBalance) => {
     setPrestigeCount(newPrestigeCount);
     setUnlockedGames(['dice']);
     setMaxBetLevels({});
     setWinrateLevels({});
-    setBalanceState(1000);
+    setBalanceState(newBalance ?? 1000);
     setActiveGame(null);
   }, []);
 
@@ -170,16 +179,20 @@ function App() {
     const mbLevel = maxBetLevels[gameId] || 0;
     const wrLevel = winrateLevels[gameId] || 0;
     const pMult = prestigeMult(prestigeCount);
+    const globalMult = 1 + (globalLevels['global_mult'] || 0) * 0.03;
+    const autoSpeed = GLOBAL_AUTO_SPEED[globalLevels['auto_speed'] || 0];
     return {
       maxBet: MAX_BET_VALUES[mbLevel],
       winBonus: wrLevel * WINRATE_BONUS_PER_LEVEL,
       prestigeMult: pMult,
+      globalMult,
+      autoSpeed,
       maxBetLevels,
       winrateLevels,
       onUpgradeMaxbet: handleUpgradeMaxbet,
       onUpgradeWinrate: handleUpgradeWinrate,
     };
-  }, [maxBetLevels, winrateLevels, prestigeCount, handleUpgradeMaxbet, handleUpgradeWinrate]);
+  }, [maxBetLevels, winrateLevels, globalLevels, prestigeCount, handleUpgradeMaxbet, handleUpgradeWinrate]);
 
   const addResult = (didWin, profitAmount, game, bet, multiplier) => {
     setBalanceState(prev => {
@@ -214,6 +227,7 @@ function App() {
     setUnlockedGames(prog.unlockedGames);
     setMaxBetLevels(prog.maxBetLevels);
     setWinrateLevels(prog.winrateLevels);
+    setGlobalLevels(prog.globalLevels);
     setPrestigeCount(prog.prestigeCount);
   };
 
@@ -225,6 +239,7 @@ function App() {
     setUnlockedGames(['dice']);
     setMaxBetLevels({});
     setWinrateLevels({});
+    setGlobalLevels({});
     setPrestigeCount(0);
   };
 
@@ -238,10 +253,12 @@ function App() {
       unlockedGames,
       maxBetLevels,
       winrateLevels,
+      globalLevels,
       prestigeCount,
       onUnlockGame: handleUnlockGame,
       onUpgradeMaxbet: handleUpgradeMaxbet,
       onUpgradeWinrate: handleUpgradeWinrate,
+      onUpgradeGlobal: handleUpgradeGlobal,
       onPrestige: handlePrestige,
     };
     switch (activeGame) {

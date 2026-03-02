@@ -140,7 +140,8 @@ function PopParticles({ color }) {
   );
 }
 
-export default function Pump({ balance, setBalance, addResult, user, setUser, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+export default function Pump({ balance, setBalance, addResult, user, setUser, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, autoSpeed = 700, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const unlockedDiffs = (() => {
     try { return JSON.parse(user?.unlocked_diffs || '["easy"]'); }
     catch { return ['easy']; }
@@ -252,7 +253,7 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
       } else {
         doAutoPump();
       }
-    }, 700);
+    }, autoSpeed);
     return () => clearTimeout(autoRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, phase, pumps, currentMult]);

@@ -42,7 +42,8 @@ document.head.appendChild(styleEl);
 
 let nextId = 0;
 
-function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const [bet, setBet] = useState(10);
   const [rows, setRows] = useState(12);
   const [risk, setRisk] = useState('medium');

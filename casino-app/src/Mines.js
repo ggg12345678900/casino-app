@@ -3,7 +3,8 @@ import UpgradePanel from './UpgradePanel';
 
 const GRID_SIZE = 25;
 
-function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const [bet, setBet] = useState(10);
   const [mineCount, setMineCount] = useState(3);
   const [gameActive, setGameActive] = useState(false);

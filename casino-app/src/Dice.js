@@ -17,7 +17,8 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
+  pMult = pMult * globalMult;
   const [bet, setBet] = useState(10);
   const [slider, setSlider] = useState(50.5);
   const [mode, setMode] = useState('over');
