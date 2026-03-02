@@ -278,7 +278,7 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
         setMessage(`💥 Erwischt! ${cappedBet.toFixed(2)}€ verloren.`);
       }
     }, 440);
-  }, [phase, currentLane, diff, cappedBet, winBonus, pMult, setBalance, addResult]);
+  }, [phase, currentLane, diff, cappedBet, winBonus, pMult, wMult, setBalance, addResult]);
 
   const cashout = useCallback(() => {
     if (!isPlaying || currentLane === 0) return;
@@ -288,7 +288,7 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
     setChickenAnim('win');
     setPhase('won');
     setMessage(`💰 Cashout bei ${currentMult}x! Gewinn: +${(win - cappedBet).toFixed(2)}€`);
-  }, [isPlaying, currentLane, cappedBet, currentMult, pMult, setBalance, addResult]);
+  }, [isPlaying, currentLane, cappedBet, currentMult, pMult, wMult, setBalance, addResult]);
 
   const reset = useCallback(() => {
     setPhase('idle');
