@@ -175,6 +175,12 @@ const cashOut = (mult = currentMultiplier, rev = revealed) => {
           </div>
         )}
 
+        {pMult > 1 && (
+          <div style={{ color: '#f59e0b', fontSize: '12px', textAlign: 'center', background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '5px' }}>
+            ⭐ Prestige {pMult}x aktiv
+          </div>
+        )}
+
         {bet > maxBet && (
           <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>Max Einsatz: {maxBet}€</div>
         )}

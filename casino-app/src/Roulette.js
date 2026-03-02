@@ -398,6 +398,12 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
           </button>
         </div>
 
+        {pMult > 1 && (
+          <div style={{ color: '#f59e0b', fontSize: '12px', textAlign: 'center', background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '5px', marginBottom: 8 }}>
+            ⭐ Prestige {pMult}x aktiv
+          </div>
+        )}
+
         {onUpgradeMaxbet && (
           <UpgradePanel
             gameId="roulette"

@@ -97,6 +97,12 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
           <div style={{ padding: '10px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', color: '#00e701', fontSize: '16px' }}>+{profit}</div>
         </div>
 
+        {pMult > 1 && (
+          <div style={{ color: '#f59e0b', fontSize: '12px', textAlign: 'center', background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '5px' }}>
+            ⭐ Prestige {pMult}x aktiv
+          </div>
+        )}
+
         {bet > maxBet && (
           <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>
             Max Einsatz: {maxBet}€ (Upgrade nötig)
@@ -185,7 +191,7 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ color: '#8a9bb0', fontSize: '12px', marginBottom: '4px' }}>MULTIPLIKATOR</div>
-                <input readOnly value={multiplier} style={{ width: '100px', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', textAlign: 'center', fontSize: '15px' }} />
+                <input readOnly value={(parseFloat(multiplier) * pMult).toFixed(4)} style={{ width: '100px', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', textAlign: 'center', fontSize: '15px' }} />
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ color: '#8a9bb0', fontSize: '12px', marginBottom: '4px' }}>ROLL {mode === 'over' ? 'OVER' : 'UNDER'}</div>
@@ -196,7 +202,7 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ color: '#8a9bb0', fontSize: '12px', marginBottom: '4px' }}>GEWINNCHANCE</div>
-                <input readOnly value={winChance} style={{ width: '100px', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', textAlign: 'center', fontSize: '15px' }} />
+                <input readOnly value={effectiveWinChance} style={{ width: '100px', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', textAlign: 'center', fontSize: '15px' }} />
               </div>
             </div>
           </div>

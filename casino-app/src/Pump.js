@@ -502,6 +502,12 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
           </div>
         )}
 
+        {pMult > 1 && (
+          <div style={{ color:'#f59e0b', fontSize:12, textAlign:'center', background:'#f59e0b18', border:'1px solid #f59e0b44', borderRadius:6, padding:5 }}>
+            ⭐ Prestige {pMult}x aktiv
+          </div>
+        )}
+
         {bet > maxBet && (
           <div style={{ color:'#f59e0b', fontSize:11, textAlign:'center', marginTop:6 }}>
             Max Einsatz: {maxBet}€ (Upgrade nötig)
