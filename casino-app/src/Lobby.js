@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { api } from './api';
 import {
   GAME_ORDER, GAMES_META,
-  MAX_BET_VALUES, maxBetCosts, winrateCosts,
   prestigeCost, prestigeMult, PRESTIGE_GAMES_REQ, fmt,
 } from './progression';
 
@@ -33,12 +32,8 @@ export default function Lobby({ user, balance, stats, onGameSelect, progression 
 
   const {
     unlockedGames = ['dice'],
-    maxBetLevels = {},
-    winrateLevels = {},
     prestigeCount = 0,
     onUnlockGame,
-    onUpgradeMaxbet,
-    onUpgradeWinrate,
     onPrestige,
   } = progression || {};
 

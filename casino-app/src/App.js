@@ -11,7 +11,7 @@ import Roulette from './Roulette';
 import Chicken from './Chicken';
 import Pump from './Pump';
 import Lobby from './Lobby';
-import { GAMES_META, MAX_BET_VALUES, maxBetCosts, winrateCosts, WINRATE_BONUS_PER_LEVEL, prestigeMult } from './progression';
+import { MAX_BET_VALUES, WINRATE_BONUS_PER_LEVEL, prestigeMult } from './progression';
 
 
 const GAMES = [
