@@ -206,7 +206,7 @@ function FinishZone({ reached }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Chicken({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
-  pMult = pMult * globalMult;
+  const ePMult = pMult * globalMult;
   const [phase, setPhase] = useState('idle');     // idle | playing | hopping | dead | won
   const [bet, setBet] = useState(10);
   const [difficulty, setDifficulty] = useState('medium');
@@ -262,9 +262,9 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
 
         if (nextLane >= diff.lanes) {
           const mult = getMult(nextLane, diff.p);
-          const win = parseFloat((cappedBet * mult * pMult * wMult).toFixed(2));
+          const win = parseFloat((cappedBet * mult * ePMult * wMult).toFixed(2));
           setBalance(prev => parseFloat((prev + win).toFixed(2)));
-          addResult(true, parseFloat((win - cappedBet).toFixed(2)), 'chicken', cappedBet, mult * pMult * wMult);
+          addResult(true, parseFloat((win - cappedBet).toFixed(2)), 'chicken', cappedBet, mult * ePMult * wMult);
           setChickenAnim('win');
           setPhase('won');
           setMessage(`🏆 Alle ${diff.lanes} Lanes geschafft! Gewinn: +${(win - cappedBet).toFixed(2)}€`);
@@ -279,17 +279,17 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
         setMessage(`💥 Erwischt! ${cappedBet.toFixed(2)}€ verloren.`);
       }
     }, 440);
-  }, [phase, currentLane, diff, cappedBet, winBonus, pMult, wMult, setBalance, addResult]);
+  }, [phase, currentLane, diff, cappedBet, winBonus, ePMult, wMult, setBalance, addResult]);
 
   const cashout = useCallback(() => {
     if (!isPlaying || currentLane === 0) return;
-    const win = parseFloat((cappedBet * currentMult * pMult * wMult).toFixed(2));
+    const win = parseFloat((cappedBet * currentMult * ePMult * wMult).toFixed(2));
     setBalance(prev => parseFloat((prev + win).toFixed(2)));
-    addResult(true, parseFloat((win - cappedBet).toFixed(2)), 'chicken', cappedBet, currentMult * pMult * wMult);
+    addResult(true, parseFloat((win - cappedBet).toFixed(2)), 'chicken', cappedBet, currentMult * ePMult * wMult);
     setChickenAnim('win');
     setPhase('won');
     setMessage(`💰 Cashout bei ${currentMult}x! Gewinn: +${(win - cappedBet).toFixed(2)}€`);
-  }, [isPlaying, currentLane, cappedBet, currentMult, pMult, wMult, setBalance, addResult]);
+  }, [isPlaying, currentLane, cappedBet, currentMult, ePMult, wMult, setBalance, addResult]);
 
   const reset = useCallback(() => {
     setPhase('idle');
@@ -349,7 +349,7 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
             <span style={{ color: '#475569' }}>Lane {currentLane} / {diff.lanes}</span>
             {currentLane > 0 && (
               <span style={{ color: '#4ade80', fontWeight: 'bold' }}>
-                {currentMult}x → {(cappedBet * currentMult * pMult * wMult).toFixed(2)}€
+                {currentMult}x → {(cappedBet * currentMult * ePMult * wMult).toFixed(2)}€
               </span>
             )}
           </div>
@@ -443,7 +443,7 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
             </div>
 
             <div style={{ background: '#0d1520', border: '1px solid #1a2535', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (ePMult > 1 || winBonus > 0) ? 4 : 0 }}>
                 <span style={{ color: '#475569' }}>Spiel-Mult</span>
                 <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>steigt/Lane</span>
               </div>
@@ -453,16 +453,16 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
                   <span style={{ color: '#34d399', fontWeight: 'bold' }}>×{wMult.toFixed(2)}</span>
                 </div>
               )}
-              {pMult > 1 && (
+              {ePMult > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ color: '#475569' }}>⭐ Prestige</span>
-                  <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
+                  <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{ePMult}</span>
                 </div>
               )}
-              {(pMult > 1 || winBonus > 0) && (
+              {(ePMult > 1 || winBonus > 0) && (
                 <div style={{ borderTop: '1px solid #1a2535', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#475569' }}>Auszahlung ×</span>
-                  <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{(pMult * wMult).toFixed(2)}x Bonus</span>
+                  <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{(ePMult * wMult).toFixed(2)}x Bonus</span>
                 </div>
               )}
             </div>
@@ -502,7 +502,7 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
                 color: isPlaying && currentLane > 0 ? '#fbbf24' : '#475569',
               }}
             >
-              💰 {currentLane > 0 ? `Cashout (${(cappedBet * currentMult * pMult * wMult).toFixed(2)}€)` : 'Cashout'}
+              💰 {currentLane > 0 ? `Cashout (${(cappedBet * currentMult * ePMult * wMult).toFixed(2)}€)` : 'Cashout'}
             </button>
             <button
               onClick={hop}

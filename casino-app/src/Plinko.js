@@ -43,7 +43,7 @@ document.head.appendChild(styleEl);
 let nextId = 0;
 
 function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
-  pMult = pMult * globalMult;
+  const ePMult = pMult * globalMult;
   const [bet, setBet] = useState(10);
   const [rows, setRows] = useState(12);
   const [risk, setRisk] = useState('medium');
@@ -140,7 +140,7 @@ function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pre
 
     const finalBucket = col;
     const mult = mults[finalBucket];
-    const winAmount = parseFloat((cappedBet * mult * pMult * wMult).toFixed(2));
+    const winAmount = parseFloat((cappedBet * mult * ePMult * wMult).toFixed(2));
     const profitAmount = parseFloat((winAmount - cappedBet).toFixed(2));
     const id = nextId++;
 
@@ -159,8 +159,8 @@ function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pre
         setBalance(p => parseFloat((p + winAmount).toFixed(2)));
         setLastResult({ mult, winAmount, profitAmount });
         setHistory(h => [{ mult }, ...h].slice(0, 10));
-        if (mult >= 1) addResult(true, profitAmount, 'plinko', cappedBet, mult * pMult * wMult);
-        else addResult(false, Math.abs(profitAmount), 'plinko', cappedBet, mult * pMult * wMult);
+        if (mult >= 1) addResult(true, profitAmount, 'plinko', cappedBet, mult * ePMult * wMult);
+        else addResult(false, Math.abs(profitAmount), 'plinko', cappedBet, mult * ePMult * wMult);
 
         // Animate ball into bucket
         setActiveBalls(prev => prev.map(b => b.id === id ? { ...b, finished: true } : b));
@@ -265,7 +265,7 @@ function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pre
             </div>
           )}
           <div style={{ background: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (ePMult > 1 || winBonus > 0) ? 4 : 0 }}>
               <span style={{ color: '#8a9bb0' }}>Bucket-Mult</span>
               <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>je Landung</span>
             </div>
@@ -275,16 +275,16 @@ function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pre
                 <span style={{ color: '#34d399', fontWeight: 'bold' }}>×{wMult.toFixed(2)}</span>
               </div>
             )}
-            {pMult > 1 && (
+            {ePMult > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ color: '#8a9bb0' }}>⭐ Prestige</span>
-                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
+                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{ePMult}</span>
               </div>
             )}
-            {(pMult > 1 || winBonus > 0) && (
+            {(ePMult > 1 || winBonus > 0) && (
               <div style={{ borderTop: '1px solid #2d4a5a', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#8a9bb0' }}>Auszahlung ×</span>
-                <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(pMult * wMult).toFixed(2)}x Bonus</span>
+                <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(ePMult * wMult).toFixed(2)}x Bonus</span>
               </div>
             )}
           </div>

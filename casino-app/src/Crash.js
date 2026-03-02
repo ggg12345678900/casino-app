@@ -44,7 +44,7 @@ function generateCrashPoint() {
 }
 
 function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
-  pMult = pMult * globalMult;
+  const ePMult = pMult * globalMult;
   const [bet, setBet] = useState(10);
   const [autoCashoutVal, setAutoCashoutVal] = useState(2.0);
   const MIN_AUTOCASHOUT = 1.1;
@@ -77,9 +77,9 @@ function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pres
 
   const cappedBet = Math.min(bet, maxBet);
   const wMult = parseFloat((1 + winBonus).toFixed(4));
-  const pMultRef = useRef(pMult);
+  const pMultRef = useRef(ePMult);
   const wMultRef = useRef(wMult);
-  useEffect(() => { pMultRef.current = pMult; }, [pMult]);
+  useEffect(() => { pMultRef.current = ePMult; }, [ePMult]);
   useEffect(() => { wMultRef.current = wMult; }, [wMult]);
   const cappedBetRef = useRef(cappedBet);
   useEffect(() => { cappedBetRef.current = Math.min(betRef.current, maxBet); }, [bet, maxBet]);
@@ -303,7 +303,7 @@ function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pres
         </div>
 
         <div style={{ background: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (ePMult > 1 || winBonus > 0) ? 4 : 0 }}>
             <span style={{ color: '#8a9bb0' }}>Spiel-Mult</span>
             <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>steigt live</span>
           </div>
@@ -313,16 +313,16 @@ function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pres
               <span style={{ color: '#34d399', fontWeight: 'bold' }}>×{wMult.toFixed(2)}</span>
             </div>
           )}
-          {pMult > 1 && (
+          {ePMult > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ color: '#8a9bb0' }}>⭐ Prestige</span>
-              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
+              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{ePMult}</span>
             </div>
           )}
-          {(pMult > 1 || winBonus > 0) && (
+          {(ePMult > 1 || winBonus > 0) && (
             <div style={{ borderTop: '1px solid #2d4a5a', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#8a9bb0' }}>Auszahlung ×</span>
-              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(pMult * wMult).toFixed(2)}x Bonus</span>
+              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(ePMult * wMult).toFixed(2)}x Bonus</span>
             </div>
           )}
         </div>

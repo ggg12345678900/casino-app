@@ -141,7 +141,7 @@ function PopParticles({ color }) {
 }
 
 export default function Pump({ balance, setBalance, addResult, user, setUser, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, autoSpeed = 700, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
-  pMult = pMult * globalMult;
+  const ePMult = pMult * globalMult;
   const unlockedDiffs = (() => {
     try { return JSON.parse(user?.unlocked_diffs || '["easy"]'); }
     catch { return ['easy']; }
@@ -201,17 +201,17 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
 
   const cappedBet = Math.min(bet, maxBet);
   const wMult = parseFloat((1 + winBonus).toFixed(4));
-  const pMultRef  = useRef(pMult);
+  const pMultRef  = useRef(ePMult);
   const wMultRef  = useRef(wMult);
   const cappedBetRef = useRef(cappedBet);
-  useEffect(() => { pMultRef.current = pMult; }, [pMult]);
+  useEffect(() => { pMultRef.current = ePMult; }, [ePMult]);
   useEffect(() => { wMultRef.current = wMult; }, [wMult]);
   useEffect(() => { cappedBetRef.current = cappedBet; }, [cappedBet]);
 
   const diff = DIFF[difficulty];
   const balloonSize = Math.min(pumps / diff.maxPumps, 1);
   const balloonColor = phase === 'popped' ? '#374151' : diff.color;
-  const winNow  = parseFloat((cappedBet * currentMult * pMult * wMult).toFixed(2));
+  const winNow  = parseFloat((cappedBet * currentMult * ePMult * wMult).toFixed(2));
   const profNow = parseFloat((winNow - cappedBet).toFixed(2));
 
   const isIdle    = phase === 'idle';
@@ -509,7 +509,7 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
         )}
 
         <div style={{ background:'#0f1923', border:'1px solid #2d4a5a', borderRadius:8, padding:'8px 10px', fontSize:12 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom: (ePMult > 1 || winBonus > 0) ? 4 : 0 }}>
             <span style={{ color:'#475569' }}>Spiel-Mult</span>
             <span style={{ color:'#f8fafc', fontWeight:'bold' }}>steigt/Pump</span>
           </div>
@@ -519,16 +519,16 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
               <span style={{ color:'#34d399', fontWeight:'bold' }}>×{wMult.toFixed(2)}</span>
             </div>
           )}
-          {pMult > 1 && (
+          {ePMult > 1 && (
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
               <span style={{ color:'#475569' }}>⭐ Prestige</span>
-              <span style={{ color:'#f59e0b', fontWeight:'bold' }}>×{pMult}</span>
+              <span style={{ color:'#f59e0b', fontWeight:'bold' }}>×{ePMult}</span>
             </div>
           )}
-          {(pMult > 1 || winBonus > 0) && (
+          {(ePMult > 1 || winBonus > 0) && (
             <div style={{ borderTop:'1px solid #2d4a5a', paddingTop:4, display:'flex', justifyContent:'space-between' }}>
               <span style={{ color:'#475569' }}>Auszahlung ×</span>
-              <span style={{ color:'#06b6d4', fontWeight:'bold' }}>{(pMult * wMult).toFixed(2)}x Bonus</span>
+              <span style={{ color:'#06b6d4', fontWeight:'bold' }}>{(ePMult * wMult).toFixed(2)}x Bonus</span>
             </div>
           )}
         </div>
