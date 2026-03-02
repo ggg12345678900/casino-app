@@ -50,6 +50,7 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_bet_levels TEXT DEFAULT '{}'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS winrate_levels TEXT DEFAULT '{}'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS prestige_count INTEGER DEFAULT 0`);
+  await pool.query(`UPDATE users SET prestige_count = 0 WHERE prestige_count IS NULL`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -140,7 +141,7 @@ app.get('/api/profile', auth, async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, balance, is_admin, total_bets, total_wins, total_losses,
      total_won, total_lost, biggest_win, last_daily, created_at, unlocked_diffs,
-     unlocked_games, max_bet_levels, winrate_levels, prestige_count FROM users WHERE id = $1`,
+     unlocked_games, max_bet_levels, winrate_levels, COALESCE(prestige_count, 0) AS prestige_count FROM users WHERE id = $1`,
     [req.user.id]
   );
   if (!result.rows[0]) return res.status(404).json({ error: 'User nicht gefunden' });
@@ -179,11 +180,11 @@ const GAMES_META = {
   pump:     { cost: 100000000,  prestigeReq: 2 },
 };
 const MAX_BET_VALUES = [50, 200, 1000, 5000, 25000, 100000];
-const MB_BASE = [1000, 8000, 60000, 400000, 3000000];
-const MB_MULT = { dice:1, mines:3, plinko:8, crash:40, roulette:150, chicken:600, pump:2500 };
+const MB_BASE = [200, 1000, 5000, 25000, 150000];
+const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
 const maxBetCosts = (g) => MB_BASE.map(c => Math.round(c * (MB_MULT[g]||1)));
-const WR_BASE = [500, 3000, 15000, 80000, 400000];
-const WR_MULT = { dice:1, mines:4, plinko:12, crash:60, roulette:250, chicken:1000, pump:4000 };
+const WR_BASE = [100, 500, 2500, 12000, 60000];
+const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
 const winrateCosts = (g) => WR_BASE.map(c => Math.round(c * (WR_MULT[g]||1)));
 const prestigeCostFn = (count) => Math.round(50000 * Math.pow(10, count));
 

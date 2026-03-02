@@ -81,12 +81,12 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
         <div>
           <label style={{ color: '#8a9bb0', fontSize: '12px', display: 'block', marginBottom: '6px' }}>EINSATZ</label>
           <div style={{ position: 'relative' }}>
-            <input type="number" value={bet} onChange={e => setBet(parseFloat(e.target.value))}
+            <input type="number" value={bet} onChange={e => setBet(Math.min(parseFloat(e.target.value) || 0, maxBet))}
               style={{ width: '100%', padding: '10px', paddingRight: '60px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }} />
             <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '4px' }}>
               <button onClick={() => setBet(prev => parseFloat((prev / 2).toFixed(2)))}
                 style={{ backgroundColor: '#2d4a5a', border: 'none', color: '#8a9bb0', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', fontSize: '12px' }}>½</button>
-              <button onClick={() => setBet(prev => parseFloat((prev * 2).toFixed(2)))}
+              <button onClick={() => setBet(prev => Math.min(parseFloat((prev * 2).toFixed(2)), maxBet))}
                 style={{ backgroundColor: '#2d4a5a', border: 'none', color: '#8a9bb0', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', fontSize: '12px' }}>2x</button>
             </div>
           </div>

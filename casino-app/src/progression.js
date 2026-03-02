@@ -17,14 +17,14 @@ export const GAMES_META = {
 export const MAX_BET_VALUES = [50, 200, 1000, 5000, 25000, 100000];
 
 // Max bet upgrade costs per game (cost to go from level N to N+1, 5 upgrades)
-const MB_BASE = [1000, 8000, 60000, 400000, 3000000];
-const MB_MULT = { dice:1, mines:3, plinko:8, crash:40, roulette:150, chicken:600, pump:2500 };
+const MB_BASE = [200, 1000, 5000, 25000, 150000];
+const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
 export const maxBetCosts = (game) => MB_BASE.map(c => Math.round(c * MB_MULT[game]));
 
 // Win rate upgrade costs per game (5 levels, +4% per level)
 export const WINRATE_BONUS_PER_LEVEL = 0.04; // +4% per upgrade
-const WR_BASE = [500, 3000, 15000, 80000, 400000];
-const WR_MULT = { dice:1, mines:4, plinko:12, crash:60, roulette:250, chicken:1000, pump:4000 };
+const WR_BASE = [100, 500, 2500, 12000, 60000];
+const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
 export const winrateCosts = (game) => WR_BASE.map(c => Math.round(c * WR_MULT[game]));
 
 // Prestige

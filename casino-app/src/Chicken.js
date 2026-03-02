@@ -413,10 +413,10 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
               <button onClick={() => setBet(b => Math.max(1, parseFloat((b / 2).toFixed(2))))} style={sBtn}>½</button>
               <input
                 type="number" min="1" value={bet}
-                onChange={e => setBet(Math.max(1, Number(e.target.value)))}
+                onChange={e => setBet(Math.min(Math.max(1, Number(e.target.value)), maxBet))}
                 style={{ flex: 1, background: '#06090f', border: '1px solid #1a2535', borderRadius: 8, color: '#f8fafc', padding: '9px 12px', fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}
               />
-              <button onClick={() => setBet(b => Math.min(balance, parseFloat((b * 2).toFixed(2))))} style={sBtn}>2×</button>
+              <button onClick={() => setBet(b => Math.min(balance, maxBet, parseFloat((b * 2).toFixed(2))))} style={sBtn}>2×</button>
             </div>
 
             {/* Difficulty row */}
