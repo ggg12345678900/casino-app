@@ -103,4 +103,31 @@ export const api = {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
       body: JSON.stringify({ difficulty })
     }).then(r => r.json()),
+
+  unlockGame: (game) =>
+    fetch(`${BASE}/unlock-game`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ game })
+    }).then(r => r.json()),
+
+  upgradeMaxbet: (game) =>
+    fetch(`${BASE}/upgrade-maxbet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ game })
+    }).then(r => r.json()),
+
+  upgradeWinrate: (game) =>
+    fetch(`${BASE}/upgrade-winrate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ game })
+    }).then(r => r.json()),
+
+  prestige: () =>
+    fetch(`${BASE}/prestige`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    }).then(r => r.json()),
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Dice from './Dice';
 import Mines from './Mines';
 import Crash from './Crash';
@@ -11,6 +11,7 @@ import Roulette from './Roulette';
 import Chicken from './Chicken';
 import Pump from './Pump';
 import Lobby from './Lobby';
+import { GAMES_META, MAX_BET_VALUES, maxBetCosts, winrateCosts, WINRATE_BONUS_PER_LEVEL, prestigeMult } from './progression';
 
 
 const GAMES = [
@@ -87,6 +88,17 @@ function StatRow({ label, value, color }) {
   );
 }
 
+// Parse progression fields from profile data
+function parseProgression(data) {
+  let unlockedGames = ['dice'];
+  let maxBetLevels = {};
+  let winrateLevels = {};
+  try { unlockedGames = JSON.parse(data.unlocked_games || '["dice"]'); } catch {}
+  try { maxBetLevels = JSON.parse(data.max_bet_levels || '{}'); } catch {}
+  try { winrateLevels = JSON.parse(data.winrate_levels || '{}'); } catch {}
+  return { unlockedGames, maxBetLevels, winrateLevels, prestigeCount: data.prestige_count || 0 };
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [balance, setBalanceState] = useState(1000);
@@ -95,7 +107,13 @@ function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [stats, setStats] = useState({ totalBets: 0, wins: 0, losses: 0, totalWon: 0, totalLost: 0, biggestWin: 0, history: [0] });
-  
+
+  // Idle game progression state
+  const [unlockedGames, setUnlockedGames] = useState(['dice']);
+  const [maxBetLevels, setMaxBetLevels] = useState({});   // { dice: 2, mines: 0, ... }
+  const [winrateLevels, setWinrateLevels] = useState({}); // { dice: 1, ... }
+  const [prestigeCount, setPrestigeCount] = useState(0);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -103,6 +121,11 @@ function App() {
         if (!data.error) {
           setUser(data);
           setBalanceState(data.balance);
+          const prog = parseProgression(data);
+          setUnlockedGames(prog.unlockedGames);
+          setMaxBetLevels(prog.maxBetLevels);
+          setWinrateLevels(prog.winrateLevels);
+          setPrestigeCount(prog.prestigeCount);
         } else {
           localStorage.removeItem('token');
         }
@@ -116,6 +139,47 @@ function App() {
       return newBalance;
     });
   };
+
+  // Progression helpers – called after successful API responses
+  const handleUnlockGame = useCallback((game, newBalance, newUnlocked) => {
+    setBalanceState(newBalance);
+    setUnlockedGames(newUnlocked);
+  }, []);
+
+  const handleUpgradeMaxbet = useCallback((game, newBalance, newLevels) => {
+    setBalanceState(newBalance);
+    setMaxBetLevels(newLevels);
+  }, []);
+
+  const handleUpgradeWinrate = useCallback((game, newBalance, newLevels) => {
+    setBalanceState(newBalance);
+    setWinrateLevels(newLevels);
+  }, []);
+
+  const handlePrestige = useCallback((newPrestigeCount) => {
+    setPrestigeCount(newPrestigeCount);
+    setUnlockedGames(['dice']);
+    setMaxBetLevels({});
+    setWinrateLevels({});
+    setBalanceState(1000);
+    setActiveGame(null);
+  }, []);
+
+  // Derived per-game props
+  const getGameProps = useCallback((gameId) => {
+    const mbLevel = maxBetLevels[gameId] || 0;
+    const wrLevel = winrateLevels[gameId] || 0;
+    const pMult = prestigeMult(prestigeCount);
+    return {
+      maxBet: MAX_BET_VALUES[mbLevel],
+      winBonus: wrLevel * WINRATE_BONUS_PER_LEVEL,
+      prestigeMult: pMult,
+      maxBetLevels,
+      winrateLevels,
+      onUpgradeMaxbet: handleUpgradeMaxbet,
+      onUpgradeWinrate: handleUpgradeWinrate,
+    };
+  }, [maxBetLevels, winrateLevels, prestigeCount, handleUpgradeMaxbet, handleUpgradeWinrate]);
 
   const addResult = (didWin, profitAmount, game, bet, multiplier) => {
     setBalanceState(prev => {
@@ -146,6 +210,11 @@ function App() {
   const handleLogin = (data) => {
     setUser(data);
     setBalanceState(data.balance);
+    const prog = parseProgression(data);
+    setUnlockedGames(prog.unlockedGames);
+    setMaxBetLevels(prog.maxBetLevels);
+    setWinrateLevels(prog.winrateLevels);
+    setPrestigeCount(prog.prestigeCount);
   };
 
   const handleLogout = () => {
@@ -153,6 +222,10 @@ function App() {
     setUser(null);
     setBalanceState(1000);
     setStats({ totalBets: 0, wins: 0, losses: 0, totalWon: 0, totalLost: 0, biggestWin: 0, history: [0] });
+    setUnlockedGames(['dice']);
+    setMaxBetLevels({});
+    setWinrateLevels({});
+    setPrestigeCount(0);
   };
 
   if (!user) return <Login onLogin={handleLogin} />;
@@ -161,15 +234,25 @@ function App() {
   const winrate = stats.totalBets > 0 ? ((stats.wins / stats.totalBets) * 100).toFixed(1) : '0.0';
 
   const renderGame = () => {
+    const progression = {
+      unlockedGames,
+      maxBetLevels,
+      winrateLevels,
+      prestigeCount,
+      onUnlockGame: handleUnlockGame,
+      onUpgradeMaxbet: handleUpgradeMaxbet,
+      onUpgradeWinrate: handleUpgradeWinrate,
+      onPrestige: handlePrestige,
+    };
     switch (activeGame) {
-      case null: return <Lobby user={user} balance={balance} stats={stats} onGameSelect={setActiveGame} />;
-      case 'dice': return <Dice balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'mines': return <Mines balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'crash': return <Crash balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'plinko': return <Plinko balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'roulette': return <Roulette balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'chicken': return <Chicken balance={balance} setBalance={setBalance} addResult={addResult} />;
-      case 'pump': return <Pump balance={balance} setBalance={setBalance} addResult={addResult} user={user} setUser={setUser} />;
+      case null: return <Lobby user={user} balance={balance} stats={stats} onGameSelect={setActiveGame} progression={progression} />;
+      case 'dice': return <Dice balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('dice')} />;
+      case 'mines': return <Mines balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('mines')} />;
+      case 'crash': return <Crash balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('crash')} />;
+      case 'plinko': return <Plinko balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('plinko')} />;
+      case 'roulette': return <Roulette balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('roulette')} />;
+      case 'chicken': return <Chicken balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('chicken')} />;
+      case 'pump': return <Pump balance={balance} setBalance={setBalance} addResult={addResult} user={user} setUser={setUser} {...getGameProps('pump')} />;
       default: return <ComingSoon name={GAMES.find(g => g.id === activeGame)?.name} icon={GAMES.find(g => g.id === activeGame)?.icon} />;
     }
   };

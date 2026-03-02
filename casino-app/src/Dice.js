@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import UpgradePanel from './UpgradePanel';
 
 const style = document.createElement('style');
 style.textContent = `
@@ -16,7 +17,7 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-function Dice({ balance, setBalance, addResult }) {
+function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const [bet, setBet] = useState(10);
   const [slider, setSlider] = useState(50.5);
   const [mode, setMode] = useState('over');
@@ -26,29 +27,37 @@ function Dice({ balance, setBalance, addResult }) {
   const [history, setHistory] = useState([]);
 
   const winChance = mode === 'over' ? (100 - slider).toFixed(2) : slider.toFixed(2);
-  const multiplier = (99 / parseFloat(winChance)).toFixed(4);
-  const profit = (bet * multiplier - bet).toFixed(2);
+  // winBonus increases effective win chance (capped at 95%)
+  const effectiveWinChance = Math.min(parseFloat(winChance) + winBonus * 100, 95).toFixed(2);
+  const multiplier = (99 / parseFloat(effectiveWinChance)).toFixed(4);
+  const rawProfit = bet * multiplier - bet;
+  const profit = (rawProfit * pMult).toFixed(2);
+  const cappedBet = Math.min(bet, maxBet);
 
   const roll = () => {
-    if (bet > balance || bet <= 0) return;
-    setBalance(prev => parseFloat((prev - bet).toFixed(2)));
+    if (cappedBet > balance || cappedBet <= 0) return;
+    setBalance(prev => parseFloat((prev - cappedBet).toFixed(2)));
     setRolling(true);
     setResult(null);
     setWon(null);
 
     setTimeout(() => {
       const num = parseFloat((Math.random() * 100).toFixed(2));
-      const didWin = mode === 'over' ? num > slider : num < slider;
+      // Apply winBonus: shift the threshold to give player better odds
+      const adjustedSlider = mode === 'over'
+        ? Math.max(2, slider - winBonus * 100)
+        : Math.min(98, slider + winBonus * 100);
+      const didWin = mode === 'over' ? num > adjustedSlider : num < adjustedSlider;
 
       setResult(num);
       setWon(didWin);
-      setHistory(prev => [{ num, didWin, bet, profit: parseFloat(profit) }, ...prev].slice(0, 10));
+      setHistory(prev => [{ num, didWin, bet: cappedBet, profit: parseFloat(profit) }, ...prev].slice(0, 10));
 
       if (didWin) {
-        setBalance(prev => parseFloat((prev + parseFloat(bet) + parseFloat(profit)).toFixed(2)));
-        addResult(true, parseFloat(profit));
+        setBalance(prev => parseFloat((prev + cappedBet + parseFloat(profit)).toFixed(2)));
+        addResult(true, parseFloat(profit), 'dice', cappedBet, parseFloat(multiplier));
       } else {
-        addResult(false, parseFloat(bet), 'mines', bet, 1);
+        addResult(false, cappedBet, 'dice', cappedBet, 1);
       }
       setRolling(false);
     }, 600);
@@ -88,10 +97,27 @@ function Dice({ balance, setBalance, addResult }) {
           <div style={{ padding: '10px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', color: '#00e701', fontSize: '16px' }}>+{profit}</div>
         </div>
 
-        <button onClick={roll} disabled={rolling || bet > balance || bet <= 0}
+        {bet > maxBet && (
+          <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>
+            Max Einsatz: {maxBet}€ (Upgrade nötig)
+          </div>
+        )}
+
+        <button onClick={roll} disabled={rolling || cappedBet > balance || cappedBet <= 0}
           style={{ padding: '14px', backgroundColor: rolling ? '#555' : '#00e701', border: 'none', color: rolling ? '#aaa' : '#000', borderRadius: '8px', cursor: rolling ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold', marginTop: 'auto' }}>
           {rolling ? '⏳ Rolling...' : '🎲 Roll Dice'}
         </button>
+
+        {onUpgradeMaxbet && (
+          <UpgradePanel
+            gameId="dice"
+            balance={balance}
+            maxBetLevels={maxBetLevels}
+            winrateLevels={winrateLevels}
+            onUpgradeMaxbet={onUpgradeMaxbet}
+            onUpgradeWinrate={onUpgradeWinrate}
+          />
+        )}
       </div>
 
       {/* Right Panel */}

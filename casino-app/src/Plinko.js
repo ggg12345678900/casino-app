@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import UpgradePanel from './UpgradePanel';
 
 const MULTIPLIERS = {
   8: {
@@ -41,7 +42,7 @@ document.head.appendChild(styleEl);
 
 let nextId = 0;
 
-function Plinko({ balance, setBalance, addResult }) {
+function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const [bet, setBet] = useState(10);
   const [rows, setRows] = useState(12);
   const [risk, setRisk] = useState('medium');
@@ -55,6 +56,7 @@ function Plinko({ balance, setBalance, addResult }) {
   const [boardSize, setBoardSize] = useState({ width: 400, height: 400 });
   const balanceRef = useRef(balance);
   useEffect(() => { balanceRef.current = balance; }, [balance]);
+  const cappedBet = Math.min(bet, maxBet);
 
   const mults = MULTIPLIERS[rows][risk];
   const transitionMs = rows === 16 ? 70 : rows === 12 ? 85 : 100;
@@ -64,7 +66,7 @@ function Plinko({ balance, setBalance, addResult }) {
     if (ballsLeft <= 0) return;
     const delay = rows === 16 ? 900 : rows === 12 ? 1000 : 1100;
     const t = setTimeout(() => {
-      if (bet > 0 && bet <= balanceRef.current) {
+      if (cappedBet > 0 && cappedBet <= balanceRef.current) {
         dropBall();
         setBallsLeft(l => l - 1);
       } else {
@@ -122,26 +124,28 @@ function Plinko({ balance, setBalance, addResult }) {
   };
 
   const dropBall = () => {
-    if (bet > balance || bet <= 0) return;
-    setBalance(prev => parseFloat((prev - bet).toFixed(2)));
+    if (cappedBet > balance || cappedBet <= 0) return;
+    setBalance(prev => parseFloat((prev - cappedBet).toFixed(2)));
 
     const path = [];
     let col = 0;
     for (let r = 0; r < rows; r++) {
-      if (Math.random() < 0.5) col++;
+      // winBonus nudges ball toward center (higher multiplier buckets at edges)
+      const goRight = Math.random() < (0.5 - winBonus * 0.1);
+      if (goRight) col++;
       path.push(col);
     }
 
     const finalBucket = col;
     const mult = mults[finalBucket];
-    const winAmount = parseFloat((bet * mult).toFixed(2));
-    const profitAmount = parseFloat((winAmount - bet).toFixed(2));
+    const winAmount = parseFloat((cappedBet * mult * pMult).toFixed(2));
+    const profitAmount = parseFloat((winAmount - cappedBet).toFixed(2));
     const id = nextId++;
 
     setActiveBalls(prev => [...prev, {
       id, path, currentRow: -1,
       currentCol: Math.floor(rows / 2),
-      finalBucket, bet, mult, winAmount, profitAmount,
+      finalBucket, bet: cappedBet, mult, winAmount, profitAmount,
       finished: false
     }]);
 
@@ -153,8 +157,8 @@ function Plinko({ balance, setBalance, addResult }) {
         setBalance(p => parseFloat((p + winAmount).toFixed(2)));
         setLastResult({ mult, winAmount, profitAmount });
         setHistory(h => [{ mult }, ...h].slice(0, 10));
-        if (mult >= 1) addResult(true, profitAmount);
-        else addResult(false, Math.abs(profitAmount));
+        if (mult >= 1) addResult(true, profitAmount, 'plinko', cappedBet, mult);
+        else addResult(false, Math.abs(profitAmount), 'plinko', cappedBet, mult);
 
         // Animate ball into bucket
         setActiveBalls(prev => prev.map(b => b.id === id ? { ...b, finished: true } : b));
@@ -258,17 +262,31 @@ function Plinko({ balance, setBalance, addResult }) {
               <div style={{ color: '#8a9bb0', fontSize: '11px' }}>Bälle verbleibend</div>
             </div>
           )}
-          <button
+          {bet > maxBet && (
+          <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>Max Einsatz: {maxBet}€</div>
+        )}
+        <button
             onClick={() => {
               if (ballsLeft > 0) { setBallsLeft(0); return; }
-              if (bet > balance || bet <= 0) return;
+              if (cappedBet > balance || cappedBet <= 0) return;
               dropBall();
               if (ballCount > 1) setBallsLeft(ballCount - 1);
             }}
-            disabled={(bet > balance || bet <= 0) && ballsLeft === 0}
+            disabled={(cappedBet > balance || cappedBet <= 0) && ballsLeft === 0}
             style={{ padding: '12px', backgroundColor: ballsLeft > 0 ? '#ef4444' : '#00e701', border: 'none', color: ballsLeft > 0 ? '#fff' : '#000', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>
             {ballsLeft > 0 ? '⏹ Stopp' : ballCount > 1 ? `🎯 Drop ${ballCount} Bälle` : '🎯 Drop Ball'}
           </button>
+
+        {onUpgradeMaxbet && (
+          <UpgradePanel
+            gameId="plinko"
+            balance={balance}
+            maxBetLevels={maxBetLevels}
+            winrateLevels={winrateLevels}
+            onUpgradeMaxbet={onUpgradeMaxbet}
+            onUpgradeWinrate={onUpgradeWinrate}
+          />
+        )}
         </div>
 
         {history.length > 0 && (

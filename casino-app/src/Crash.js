@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import UpgradePanel from './UpgradePanel';
 
 const styleEl = document.createElement('style');
 styleEl.textContent = `
@@ -42,7 +43,7 @@ function generateCrashPoint() {
   return parseFloat((Math.random() * 50 + 10).toFixed(2));
 }
 
-function Crash({ balance, setBalance, addResult }) {
+function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const [bet, setBet] = useState(10);
   const [autoCashoutVal, setAutoCashoutVal] = useState(2.0);
   const MIN_AUTOCASHOUT = 1.1;
@@ -72,6 +73,12 @@ function Crash({ balance, setBalance, addResult }) {
   useEffect(() => { useAutoCashoutRef.current = useAutoCashout; }, [useAutoCashout]);
   useEffect(() => { hasPlacedRef.current = hasPlaced; }, [hasPlaced]);
   useEffect(() => { cashedOutRef.current = cashedOut; }, [cashedOut]);
+
+  const cappedBet = Math.min(bet, maxBet);
+  const pMultRef = useRef(pMult);
+  useEffect(() => { pMultRef.current = pMult; }, [pMult]);
+  const cappedBetRef = useRef(cappedBet);
+  useEffect(() => { cappedBetRef.current = Math.min(betRef.current, maxBet); }, [bet, maxBet]);
 
   const canvasRef = useRef(null);
 
@@ -197,20 +204,26 @@ function Crash({ balance, setBalance, addResult }) {
         handleCashout(newMult);
       }
 
-      // Crash
+      // Crash – winBonus gives a small chance to survive a crash
       if (newMult >= crashRef.current) {
-        clearInterval(intervalRef.current);
-        setPhase('crashed');
+        const survived = winBonus > 0 && Math.random() < winBonus * 0.5;
+        if (survived) {
+          // extend crash point slightly
+          crashRef.current = parseFloat((newMult + Math.random() * 0.5 + 0.2).toFixed(2));
+        } else {
+          clearInterval(intervalRef.current);
+          setPhase('crashed');
 
-        // Player lost if not cashed out
-        if (hasPlacedRef.current && !cashedOutRef.current) {
-          addResult(false, betRef.current);
+          // Player lost if not cashed out
+          if (hasPlacedRef.current && !cashedOutRef.current) {
+            addResult(false, cappedBetRef.current, 'crash', cappedBetRef.current, 1);
+          }
+
+          setHistory(prev => [{ mult: crashRef.current }, ...prev].slice(0, 20));
+
+          // Start next round after 3s
+          setTimeout(startCountdown, 3000);
         }
-
-        setHistory(prev => [{ mult: crashRef.current }, ...prev].slice(0, 20));
-
-        // Start next round after 3s
-        setTimeout(startCountdown, 3000);
       }
     }, 60);
   };
@@ -220,15 +233,16 @@ function Crash({ balance, setBalance, addResult }) {
     cashedOutRef.current = true;
     setCashedOut(true);
     setCashoutMult(currentMult);
-    const winAmount = parseFloat((betRef.current * currentMult).toFixed(2));
-    const profit = parseFloat((winAmount - betRef.current).toFixed(2));
+    const cb = cappedBetRef.current;
+    const winAmount = parseFloat((cb * currentMult * pMultRef.current).toFixed(2));
+    const profit = parseFloat((winAmount - cb).toFixed(2));
     setBalance(prev => parseFloat((prev + winAmount).toFixed(2)));
-    addResult(true, profit);
+    addResult(true, profit, 'crash', cb, currentMult);
   };
 
   const placeBet = () => {
-    if (phase !== 'waiting' || hasPlaced || bet > balance || bet <= 0) return;
-    setBalance(prev => parseFloat((prev - bet).toFixed(2)));
+    if (phase !== 'waiting' || hasPlaced || cappedBet > balance || cappedBet <= 0) return;
+    setBalance(prev => parseFloat((prev - cappedBet).toFixed(2)));
     setHasPlaced(true);
     hasPlacedRef.current = true;
   };
@@ -282,9 +296,13 @@ function Crash({ balance, setBalance, addResult }) {
           )}
         </div>
 
+        {bet > maxBet && (
+          <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>Max Einsatz: {maxBet}€</div>
+        )}
+
         {/* Bet / Cashout Button */}
         {phase === 'waiting' && !hasPlaced && (
-          <button onClick={placeBet} disabled={bet > balance || bet <= 0}
+          <button onClick={placeBet} disabled={cappedBet > balance || cappedBet <= 0}
             style={{ padding: '14px', backgroundColor: '#00e701', border: 'none', color: '#000', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>
             🚀 Einsatz setzen
           </button>
@@ -315,6 +333,17 @@ function Crash({ balance, setBalance, addResult }) {
           <div style={{ padding: '14px', backgroundColor: '#ff444433', border: '1px solid #ff4444', borderRadius: '8px', textAlign: 'center', color: '#ff4444', fontWeight: 'bold' }}>
             💥 Crashed @ {crashPoint}x
           </div>
+        )}
+
+        {onUpgradeMaxbet && (
+          <UpgradePanel
+            gameId="crash"
+            balance={balance}
+            maxBetLevels={maxBetLevels}
+            winrateLevels={winrateLevels}
+            onUpgradeMaxbet={onUpgradeMaxbet}
+            onUpgradeWinrate={onUpgradeWinrate}
+          />
         )}
 
         {/* History */}

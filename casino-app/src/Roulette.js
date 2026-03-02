@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import UpgradePanel from './UpgradePanel';
 
 const NUMBERS = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
@@ -171,7 +172,7 @@ function RouletteWheel({ size, rotation, spinning, duration, ballVisible, ballOf
   );
 }
 
-function Roulette({ balance, setBalance, addResult }) {
+function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const [phase, setPhase] = useState('betting');
   const [showOverlay, setShowOverlay] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -188,14 +189,19 @@ function Roulette({ balance, setBalance, addResult }) {
   const ballOffsetRef = useRef(0);
 
   const totalBet = Object.values(bets).reduce((a, b) => a + b, 0);
+  const cappedTotalBet = Math.min(totalBet, maxBet);
 
   const spin = () => {
-    if (phase !== 'betting' || totalBet <= 0 || totalBet > balance) return;
-    setBalance(prev => parseFloat((prev - totalBet).toFixed(2)));
+    if (phase !== 'betting' || cappedTotalBet <= 0 || cappedTotalBet > balance) return;
+    setBalance(prev => parseFloat((prev - cappedTotalBet).toFixed(2)));
     setShowOverlay(true);
     setBallVisible(true);
 
-    const winIndex = Math.floor(Math.random() * NUMBERS.length);
+    // winBonus: reroll once if result is 0 (house pocket)
+    let winIndex = Math.floor(Math.random() * NUMBERS.length);
+    if (winBonus > 0 && NUMBERS[winIndex] === 0 && Math.random() < winBonus * 2) {
+      winIndex = Math.floor(Math.random() * (NUMBERS.length - 1)) + 1;
+    }
     const winNum = NUMBERS[winIndex];
 
     // Ball lands at random angle, wheel rotates so winning slice ends up exactly there
@@ -222,20 +228,22 @@ function Roulette({ balance, setBalance, addResult }) {
       setHistory(prev => [winNum, ...prev].slice(0, 20));
 
       let totalWin = 0;
+      const betRatio = cappedTotalBet / (totalBet || 1);
       Object.entries(bets).forEach(([key, amount]) => {
-        if (checkWin(key, winNum)) totalWin += amount * getMultiplier(key);
+        if (checkWin(key, winNum)) totalWin += amount * betRatio * getMultiplier(key) * pMult;
       });
+      totalWin = parseFloat(totalWin.toFixed(2));
 
       setWinAmt(totalWin);
 
       if (totalWin > 0) {
         setBalance(prev => parseFloat((prev + totalWin).toFixed(2)));
-        const profit = totalWin - totalBet;
+        const profit = totalWin - cappedTotalBet;
         setMessage(`+${totalWin.toFixed(2)}€`);
-        addResult(true, profit, 'roulette', totalBet, parseFloat((totalWin / totalBet).toFixed(2)));
+        addResult(true, profit, 'roulette', cappedTotalBet, parseFloat((totalWin / cappedTotalBet).toFixed(2)));
       } else {
-        setMessage(`-${totalBet.toFixed(2)}€`);
-        addResult(false, totalBet, 'roulette', totalBet, 0);
+        setMessage(`-${cappedTotalBet.toFixed(2)}€`);
+        addResult(false, cappedTotalBet, 'roulette', cappedTotalBet, 0);
       }
     }, duration + 200);
   };
@@ -377,18 +385,29 @@ function Roulette({ balance, setBalance, addResult }) {
             style={{ flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid #ff4444', color: '#ff4444', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
             🗑️ Clear
           </button>
-          <button onClick={spin} disabled={phase !== 'betting' || totalBet <= 0 || totalBet > balance}
+          <button onClick={spin} disabled={phase !== 'betting' || cappedTotalBet <= 0 || cappedTotalBet > balance}
             style={{
               flex: 2, padding: '12px',
-              backgroundColor: phase !== 'betting' || totalBet <= 0 ? '#333' : '#00e701',
+              backgroundColor: phase !== 'betting' || cappedTotalBet <= 0 ? '#333' : '#00e701',
               border: 'none',
-              color: phase !== 'betting' || totalBet <= 0 ? '#666' : '#000',
-              borderRadius: '8px', cursor: phase !== 'betting' || totalBet <= 0 ? 'not-allowed' : 'pointer',
+              color: phase !== 'betting' || cappedTotalBet <= 0 ? '#666' : '#000',
+              borderRadius: '8px', cursor: phase !== 'betting' || cappedTotalBet <= 0 ? 'not-allowed' : 'pointer',
               fontWeight: 'bold', fontSize: '15px'
             }}>
-            🎡 Drehen ({totalBet}€)
+            🎡 Drehen ({cappedTotalBet}€)
           </button>
         </div>
+
+        {onUpgradeMaxbet && (
+          <UpgradePanel
+            gameId="roulette"
+            balance={balance}
+            maxBetLevels={maxBetLevels}
+            winrateLevels={winrateLevels}
+            onUpgradeMaxbet={onUpgradeMaxbet}
+            onUpgradeWinrate={onUpgradeWinrate}
+          />
+        )}
       </div>
 
       {/* BIG WHEEL OVERLAY */}

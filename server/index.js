@@ -35,13 +35,21 @@ const initDB = async () => {
       last_daily TEXT DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       last_seen TIMESTAMP DEFAULT NULL,
-      unlocked_diffs TEXT DEFAULT '["easy"]'
+      unlocked_diffs TEXT DEFAULT '["easy"]',
+      unlocked_games TEXT DEFAULT '["dice"]',
+      max_bet_levels TEXT DEFAULT '{}',
+      winrate_levels TEXT DEFAULT '{}',
+      prestige_count INTEGER DEFAULT 0
     )
   `);
 
   // Spalten für bestehende Datenbanken nachrüsten
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP DEFAULT NULL`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS unlocked_diffs TEXT DEFAULT '["easy"]'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS unlocked_games TEXT DEFAULT '["dice"]'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_bet_levels TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS winrate_levels TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS prestige_count INTEGER DEFAULT 0`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -131,7 +139,8 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/profile', auth, async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, balance, is_admin, total_bets, total_wins, total_losses,
-     total_won, total_lost, biggest_win, last_daily, created_at, unlocked_diffs FROM users WHERE id = $1`,
+     total_won, total_lost, biggest_win, last_daily, created_at, unlocked_diffs,
+     unlocked_games, max_bet_levels, winrate_levels, prestige_count FROM users WHERE id = $1`,
     [req.user.id]
   );
   if (!result.rows[0]) return res.status(404).json({ error: 'User nicht gefunden' });
@@ -157,6 +166,113 @@ app.post('/api/buy-difficulty', auth, async (req, res) => {
     [newBalance, JSON.stringify(newUnlocked), req.user.id]
   );
   res.json({ balance: newBalance, unlocked_diffs: JSON.stringify(newUnlocked) });
+});
+
+// ─── Progression constants (mirrored from progression.js) ────────────────────
+const GAMES_META = {
+  dice:     { cost: 0,          prestigeReq: 0 },
+  mines:    { cost: 1000,       prestigeReq: 0 },
+  plinko:   { cost: 10000,      prestigeReq: 0 },
+  crash:    { cost: 100000,     prestigeReq: 1 },
+  roulette: { cost: 1000000,    prestigeReq: 1 },
+  chicken:  { cost: 10000000,   prestigeReq: 2 },
+  pump:     { cost: 100000000,  prestigeReq: 2 },
+};
+const MAX_BET_VALUES = [50, 200, 1000, 5000, 25000, 100000];
+const MB_BASE = [1000, 8000, 60000, 400000, 3000000];
+const MB_MULT = { dice:1, mines:3, plinko:8, crash:40, roulette:150, chicken:600, pump:2500 };
+const maxBetCosts = (g) => MB_BASE.map(c => Math.round(c * (MB_MULT[g]||1)));
+const WR_BASE = [500, 3000, 15000, 80000, 400000];
+const WR_MULT = { dice:1, mines:4, plinko:12, crash:60, roulette:250, chicken:1000, pump:4000 };
+const winrateCosts = (g) => WR_BASE.map(c => Math.round(c * (WR_MULT[g]||1)));
+const prestigeCostFn = (count) => Math.round(50000 * Math.pow(10, count));
+
+// Unlock game
+app.post('/api/unlock-game', auth, async (req, res) => {
+  const { game } = req.body;
+  if (!GAMES_META[game]) return res.status(400).json({ error: 'Unbekanntes Spiel' });
+  const meta = GAMES_META[game];
+  const r = await pool.query(
+    `SELECT balance, unlocked_games, prestige_count FROM users WHERE id = $1`, [req.user.id]
+  );
+  const u = r.rows[0];
+  if (!u) return res.status(404).json({ error: 'User nicht gefunden' });
+  const unlocked = JSON.parse(u.unlocked_games || '["dice"]');
+  if (unlocked.includes(game)) return res.status(400).json({ error: 'Bereits freigeschaltet' });
+  if (u.prestige_count < meta.prestigeReq)
+    return res.status(400).json({ error: `Benötigt ${meta.prestigeReq} Prestige(s)` });
+  if (u.balance < meta.cost)
+    return res.status(400).json({ error: 'Nicht genug Guthaben' });
+  const newUnlocked = [...unlocked, game];
+  const newBalance  = parseFloat((u.balance - meta.cost).toFixed(2));
+  await pool.query(
+    `UPDATE users SET balance=$1, unlocked_games=$2 WHERE id=$3`,
+    [newBalance, JSON.stringify(newUnlocked), req.user.id]
+  );
+  res.json({ balance: newBalance, unlocked_games: JSON.stringify(newUnlocked) });
+});
+
+// Upgrade max bet
+app.post('/api/upgrade-maxbet', auth, async (req, res) => {
+  const { game } = req.body;
+  if (!GAMES_META[game]) return res.status(400).json({ error: 'Unbekanntes Spiel' });
+  const r = await pool.query(`SELECT balance, max_bet_levels FROM users WHERE id=$1`, [req.user.id]);
+  const u = r.rows[0];
+  const levels = JSON.parse(u.max_bet_levels || '{}');
+  const currentLevel = levels[game] || 0;
+  if (currentLevel >= 5) return res.status(400).json({ error: 'Bereits auf Maximum' });
+  const cost = maxBetCosts(game)[currentLevel];
+  if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
+  levels[game] = currentLevel + 1;
+  const newBalance = parseFloat((u.balance - cost).toFixed(2));
+  await pool.query(
+    `UPDATE users SET balance=$1, max_bet_levels=$2 WHERE id=$3`,
+    [newBalance, JSON.stringify(levels), req.user.id]
+  );
+  res.json({ balance: newBalance, max_bet_levels: JSON.stringify(levels), newLevel: currentLevel + 1, newMaxBet: MAX_BET_VALUES[currentLevel + 1] });
+});
+
+// Upgrade win rate
+app.post('/api/upgrade-winrate', auth, async (req, res) => {
+  const { game } = req.body;
+  if (!GAMES_META[game]) return res.status(400).json({ error: 'Unbekanntes Spiel' });
+  const r = await pool.query(`SELECT balance, winrate_levels FROM users WHERE id=$1`, [req.user.id]);
+  const u = r.rows[0];
+  const levels = JSON.parse(u.winrate_levels || '{}');
+  const currentLevel = levels[game] || 0;
+  if (currentLevel >= 5) return res.status(400).json({ error: 'Bereits auf Maximum' });
+  const cost = winrateCosts(game)[currentLevel];
+  if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
+  levels[game] = currentLevel + 1;
+  const newBalance = parseFloat((u.balance - cost).toFixed(2));
+  await pool.query(
+    `UPDATE users SET balance=$1, winrate_levels=$2 WHERE id=$3`,
+    [newBalance, JSON.stringify(levels), req.user.id]
+  );
+  res.json({ balance: newBalance, winrate_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
+});
+
+// Prestige
+app.post('/api/prestige', auth, async (req, res) => {
+  const r = await pool.query(
+    `SELECT balance, unlocked_games, prestige_count FROM users WHERE id=$1`, [req.user.id]
+  );
+  const u = r.rows[0];
+  const unlocked = JSON.parse(u.unlocked_games || '["dice"]');
+  if (unlocked.length < 3) return res.status(400).json({ error: 'Mindestens 3 Spiele nötig' });
+  const cost = prestigeCostFn(u.prestige_count);
+  if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
+  const newPrestige = u.prestige_count + 1;
+  await pool.query(`
+    UPDATE users SET
+      balance = 1000,
+      unlocked_games = '["dice"]',
+      max_bet_levels = '{}',
+      winrate_levels = '{}',
+      prestige_count = $1
+    WHERE id = $2
+  `, [newPrestige, req.user.id]);
+  res.json({ prestige_count: newPrestige, balance: 1000, unlocked_games: '["dice"]', max_bet_levels: '{}', winrate_levels: '{}' });
 });
 
 // Update stats

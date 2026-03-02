@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from './api';
+import UpgradePanel from './UpgradePanel';
 
 const DIFF = {
   easy:   { p: 0.96,  maxPumps: 155, maxMult: 24.5,    label: 'Easy',   color: '#4ade80', cost: 0   },
@@ -139,7 +140,7 @@ function PopParticles({ color }) {
   );
 }
 
-export default function Pump({ balance, setBalance, addResult, user, setUser }) {
+export default function Pump({ balance, setBalance, addResult, user, setUser, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const unlockedDiffs = (() => {
     try { return JSON.parse(user?.unlocked_diffs || '["easy"]'); }
     catch { return ['easy']; }
@@ -197,11 +198,17 @@ export default function Pump({ balance, setBalance, addResult, user, setUser }) 
 
   useEffect(() => () => { clearTimeout(animRef.current); clearTimeout(autoRef.current); }, []);
 
+  const cappedBet = Math.min(bet, maxBet);
+  const pMultRef  = useRef(pMult);
+  const cappedBetRef = useRef(cappedBet);
+  useEffect(() => { pMultRef.current = pMult; }, [pMult]);
+  useEffect(() => { cappedBetRef.current = cappedBet; }, [cappedBet]);
+
   const diff = DIFF[difficulty];
   const balloonSize = Math.min(pumps / diff.maxPumps, 1);
   const balloonColor = phase === 'popped' ? '#374151' : diff.color;
-  const winNow  = parseFloat((bet * currentMult).toFixed(2));
-  const profNow = parseFloat((winNow - bet).toFixed(2));
+  const winNow  = parseFloat((cappedBet * currentMult * pMult).toFixed(2));
+  const profNow = parseFloat((winNow - cappedBet).toFixed(2));
 
   const isIdle    = phase === 'idle';
   const isPlaying = phase === 'playing';
@@ -250,7 +257,7 @@ export default function Pump({ balance, setBalance, addResult, user, setUser }) 
   // ─── Core game actions (using refs so auto-loop can call them safely) ───────
 
   const doStart = () => {
-    const b = betRef.current;
+    const b = cappedBetRef.current;
     const bal = balRef.current;
     if (b <= 0 || b > bal) return;
     setBalance(prev => prev - b);
@@ -265,30 +272,34 @@ export default function Pump({ balance, setBalance, addResult, user, setUser }) 
     const d = DIFF[diffRef.current];
     const newN = pumpsRef.current + 1;
     const mult = getMult(d.p, newN);
+    const cb = cappedBetRef.current;
+    const pm = pMultRef.current;
 
     setBalloonAnim('inflate');
     clearTimeout(animRef.current);
     animRef.current = setTimeout(() => setBalloonAnim('none'), 380);
 
-    if (Math.random() > d.p) {
+    // winBonus: improve survival chance (capped at 0.99)
+    const effectiveP = Math.min(d.p + winBonus * 0.5, 0.99);
+    if (Math.random() > effectiveP) {
       setTimeout(() => {
         setBalloonAnim('pop'); setShowParticles(true);
         setPhase('popped'); phaseRef.current = 'popped';
-        setResult({ win: false, amount: betRef.current, pumps: newN });
-        addResult(false, betRef.current, 'Pump', betRef.current, 0);
+        setResult({ win: false, amount: cb, pumps: newN });
+        addResult(false, cb, 'Pump', cb, 0);
         setTimeout(() => setShowParticles(false), 900);
       }, 120);
     } else {
       setPumps(newN); pumpsRef.current = newN;
       setCurrentMult(mult); multRef.current = mult;
       if (newN >= d.maxPumps) {
-        const win = parseFloat((betRef.current * mult).toFixed(2));
+        const win = parseFloat((cb * mult * pm).toFixed(2));
         setTimeout(() => {
           setBalloonAnim('cashout');
           setPhase('cashedout'); phaseRef.current = 'cashedout';
           setBalance(prev => prev + win);
-          setResult({ win: true, amount: win - betRef.current, pumps: newN });
-          addResult(true, win - betRef.current, 'Pump', betRef.current, mult);
+          setResult({ win: true, amount: win - cb, pumps: newN });
+          addResult(true, win - cb, 'Pump', cb, mult);
         }, 180);
       }
     }
@@ -297,12 +308,14 @@ export default function Pump({ balance, setBalance, addResult, user, setUser }) 
   const doAutoCashout = () => {
     if (phaseRef.current !== 'playing' || pumpsRef.current === 0) return;
     const mult = multRef.current;
-    const win = parseFloat((betRef.current * mult).toFixed(2));
+    const cb = cappedBetRef.current;
+    const pm = pMultRef.current;
+    const win = parseFloat((cb * mult * pm).toFixed(2));
     setBalloonAnim('cashout');
     setPhase('cashedout'); phaseRef.current = 'cashedout';
     setBalance(prev => prev + win);
-    setResult({ win: true, amount: win - betRef.current, pumps: pumpsRef.current });
-    addResult(true, win - betRef.current, 'Pump', betRef.current, mult);
+    setResult({ win: true, amount: win - cb, pumps: pumpsRef.current });
+    addResult(true, win - cb, 'Pump', cb, mult);
   };
 
   // Manual versions (same logic but using state values directly)
@@ -487,6 +500,23 @@ export default function Pump({ balance, setBalance, addResult, user, setUser }) 
           <div style={{ textAlign:'center', color:'#475569', fontSize:12 }}>
             Wird zurückgesetzt...
           </div>
+        )}
+
+        {bet > maxBet && (
+          <div style={{ color:'#f59e0b', fontSize:11, textAlign:'center', marginTop:6 }}>
+            Max Einsatz: {maxBet}€ (Upgrade nötig)
+          </div>
+        )}
+
+        {onUpgradeMaxbet && (
+          <UpgradePanel
+            gameId="pump"
+            balance={balance}
+            maxBetLevels={maxBetLevels}
+            winrateLevels={winrateLevels}
+            onUpgradeMaxbet={onUpgradeMaxbet}
+            onUpgradeWinrate={onUpgradeWinrate}
+          />
         )}
       </div>
 

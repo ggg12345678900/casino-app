@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import UpgradePanel from './UpgradePanel';
 
 const GRID_SIZE = 25;
 
-function Mines({ balance, setBalance, addResult }) {
+function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const [bet, setBet] = useState(10);
   const [mineCount, setMineCount] = useState(3);
   const [gameActive, setGameActive] = useState(false);
@@ -14,6 +15,7 @@ function Mines({ balance, setBalance, addResult }) {
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
 
   const safeCount = GRID_SIZE - mineCount;
+  const cappedBet = Math.min(bet, maxBet);
 
   const calcMultiplier = (revealedCount) => {
     let mult = 1;
@@ -23,11 +25,11 @@ function Mines({ balance, setBalance, addResult }) {
     return parseFloat((0.99 / mult).toFixed(4));
   };
 
-  const profit = ((bet * currentMultiplier) - bet).toFixed(2);
+  const profit = ((cappedBet * currentMultiplier * pMult) - cappedBet).toFixed(2);
 
   const startGame = () => {
-    if (bet > balance || bet <= 0) return;
-    setBalance(prev => parseFloat((prev - bet).toFixed(2)));
+    if (cappedBet > balance || cappedBet <= 0) return;
+    setBalance(prev => parseFloat((prev - cappedBet).toFixed(2)));
 
     // Place mines randomly
     const minePositions = [];
@@ -49,7 +51,20 @@ function Mines({ balance, setBalance, addResult }) {
     if (!gameActive || revealed.includes(index) || gameOver) return;
 
     if (mines.includes(index)) {
-      // Hit a mine!
+      // Hit a mine! winBonus reduces effective mine count in probability check
+      const safeHit = winBonus > 0 && Math.random() < winBonus;
+      if (safeHit) {
+        // winBonus saved us – treat as safe cell
+        const newRevealed = [...revealed, index];
+        setRevealed(newRevealed);
+        const newGrid2 = Array(GRID_SIZE).fill(null);
+        newRevealed.forEach(r => newGrid2[r] = 'gem');
+        setGrid(newGrid2);
+        const newMult2 = calcMultiplier(newRevealed.length);
+        setCurrentMultiplier(newMult2);
+        if (newRevealed.length === safeCount) cashOut(newMult2, newRevealed);
+        return;
+      }
       const newGrid = Array(GRID_SIZE).fill(null);
       mines.forEach(m => newGrid[m] = 'mine');
       revealed.forEach(r => newGrid[r] = 'gem');
@@ -57,7 +72,7 @@ function Mines({ balance, setBalance, addResult }) {
       setGrid(newGrid);
       setGameOver(true);
       setGameActive(false);
-      addResult(false, parseFloat(bet), 'mines', bet, 1);
+      addResult(false, cappedBet, 'mines', cappedBet, 1);
     } else {
       const newRevealed = [...revealed, index];
       setRevealed(newRevealed);
@@ -76,10 +91,10 @@ function Mines({ balance, setBalance, addResult }) {
 
 const cashOut = (mult = currentMultiplier, rev = revealed) => {
     if (!gameActive || rev.length === 0) return;
-    const winAmount = parseFloat((bet * mult).toFixed(2));
-    const profitAmount = parseFloat((winAmount - bet).toFixed(2));
+    const winAmount = parseFloat((cappedBet * mult * pMult).toFixed(2));
+    const profitAmount = parseFloat((winAmount - cappedBet).toFixed(2));
     setBalance(prev => parseFloat((prev + winAmount).toFixed(2)));
-    addResult(true, profitAmount, 'mines', bet, mult);
+    addResult(true, profitAmount, 'mines', cappedBet, mult);
     setWon(true);
     setGameActive(false);
     setGameOver(true);
@@ -160,24 +175,39 @@ const cashOut = (mult = currentMultiplier, rev = revealed) => {
           </div>
         )}
 
+        {bet > maxBet && (
+          <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>Max Einsatz: {maxBet}€</div>
+        )}
+
         {/* Button */}
         {!gameActive ? (
-          <button onClick={startGame} disabled={bet > balance || bet <= 0}
+          <button onClick={startGame} disabled={cappedBet > balance || cappedBet <= 0}
             style={{ padding: '14px', backgroundColor: '#00e701', border: 'none', color: '#000', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
             💣 Spiel starten
           </button>
         ) : (
           <button onClick={() => cashOut()} disabled={revealed.length === 0}
             style={{ padding: '14px', backgroundColor: revealed.length > 0 ? '#f5a623' : '#555', border: 'none', color: '#000', borderRadius: '8px', cursor: revealed.length > 0 ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 'bold' }}>
-            💰 Cash Out ({(bet * currentMultiplier).toFixed(2)})
+            💰 Cash Out ({(cappedBet * currentMultiplier * pMult).toFixed(2)})
           </button>
         )}
 
         {/* Result Message */}
         {gameOver && (
           <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold', color: won ? '#00e701' : '#ff4444', padding: '10px', backgroundColor: won ? '#00e70122' : '#ff444422', borderRadius: '8px' }}>
-            {won ? `🎉 +${(bet * currentMultiplier - bet).toFixed(2)} €!` : '💥 Mine getroffen!'}
+            {won ? `🎉 +${(cappedBet * currentMultiplier * pMult - cappedBet).toFixed(2)} €!` : '💥 Mine getroffen!'}
           </div>
+        )}
+
+        {onUpgradeMaxbet && (
+          <UpgradePanel
+            gameId="mines"
+            balance={balance}
+            maxBetLevels={maxBetLevels}
+            winrateLevels={winrateLevels}
+            onUpgradeMaxbet={onUpgradeMaxbet}
+            onUpgradeWinrate={onUpgradeWinrate}
+          />
         )}
       </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import UpgradePanel from './UpgradePanel';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const VIEWPORT_H = 480;
@@ -204,7 +205,7 @@ function FinishZone({ reached }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function Chicken({ balance, setBalance, addResult }) {
+export default function Chicken({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const [phase, setPhase] = useState('idle');     // idle | playing | hopping | dead | won
   const [bet, setBet] = useState(10);
   const [difficulty, setDifficulty] = useState('medium');
@@ -217,6 +218,7 @@ export default function Chicken({ balance, setBalance, addResult }) {
   const diff = DIFF[difficulty];
   const isPlaying = phase === 'playing';
   const currentMult = currentLane > 0 ? getMult(currentLane, diff.p) : 1;
+  const cappedBet = Math.min(bet, maxBet);
 
   // ── Road scroll math ─────────────────────────────────────────────────────
   // Road renders top→bottom: [FinishZone, Lane N, Lane N-1, ..., Lane 1, StartZone]
@@ -228,22 +230,24 @@ export default function Chicken({ balance, setBalance, addResult }) {
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const startGame = useCallback(() => {
-    if (bet > balance || bet <= 0) return;
-    setBalance(prev => parseFloat((prev - bet).toFixed(2)));
+    if (cappedBet > balance || cappedBet <= 0) return;
+    setBalance(prev => parseFloat((prev - cappedBet).toFixed(2)));
     setPhase('playing');
     setCurrentLane(0);
     setLaneResults([]);
     setShowEggOn(null);
     setChickenAnim('idle');
     setMessage('');
-  }, [bet, balance, setBalance]);
+  }, [cappedBet, balance, setBalance]);
 
   const hop = useCallback(() => {
     if (phase !== 'playing') return;
     setPhase('hopping');
     setChickenAnim('hop');
 
-    const survived = Math.random() < diff.p;
+    // winBonus improves survival probability per lane
+    const effectiveP = Math.min(diff.p + winBonus * 0.5, 0.97);
+    const survived = Math.random() < effectiveP;
     const nextLane = currentLane + 1;
 
     setTimeout(() => {
@@ -256,34 +260,34 @@ export default function Chicken({ balance, setBalance, addResult }) {
 
         if (nextLane >= diff.lanes) {
           const mult = getMult(nextLane, diff.p);
-          const win = parseFloat((bet * mult).toFixed(2));
+          const win = parseFloat((cappedBet * mult * pMult).toFixed(2));
           setBalance(prev => parseFloat((prev + win).toFixed(2)));
-          addResult(true, parseFloat((win - bet).toFixed(2)), 'Chicken', bet, mult);
+          addResult(true, parseFloat((win - cappedBet).toFixed(2)), 'chicken', cappedBet, mult);
           setChickenAnim('win');
           setPhase('won');
-          setMessage(`🏆 Alle ${diff.lanes} Lanes geschafft! Gewinn: +${(win - bet).toFixed(2)}€`);
+          setMessage(`🏆 Alle ${diff.lanes} Lanes geschafft! Gewinn: +${(win - cappedBet).toFixed(2)}€`);
         } else {
           setPhase('playing');
         }
       } else {
         setLaneResults(prev => [...prev, false]);
         setChickenAnim('crash');
-        addResult(false, bet, 'Chicken', bet, 0);
+        addResult(false, cappedBet, 'chicken', cappedBet, 0);
         setPhase('dead');
-        setMessage(`💥 Erwischt! ${bet.toFixed(2)}€ verloren.`);
+        setMessage(`💥 Erwischt! ${cappedBet.toFixed(2)}€ verloren.`);
       }
     }, 440);
-  }, [phase, currentLane, diff, bet, setBalance, addResult]);
+  }, [phase, currentLane, diff, cappedBet, winBonus, pMult, setBalance, addResult]);
 
   const cashout = useCallback(() => {
     if (!isPlaying || currentLane === 0) return;
-    const win = parseFloat((bet * currentMult).toFixed(2));
+    const win = parseFloat((cappedBet * currentMult * pMult).toFixed(2));
     setBalance(prev => parseFloat((prev + win).toFixed(2)));
-    addResult(true, parseFloat((win - bet).toFixed(2)), 'Chicken', bet, currentMult);
+    addResult(true, parseFloat((win - cappedBet).toFixed(2)), 'chicken', cappedBet, currentMult);
     setChickenAnim('win');
     setPhase('won');
-    setMessage(`💰 Cashout bei ${currentMult}x! Gewinn: +${(win - bet).toFixed(2)}€`);
-  }, [isPlaying, currentLane, bet, currentMult, setBalance, addResult]);
+    setMessage(`💰 Cashout bei ${currentMult}x! Gewinn: +${(win - cappedBet).toFixed(2)}€`);
+  }, [isPlaying, currentLane, cappedBet, currentMult, pMult, setBalance, addResult]);
 
   const reset = useCallback(() => {
     setPhase('idle');
@@ -343,7 +347,7 @@ export default function Chicken({ balance, setBalance, addResult }) {
             <span style={{ color: '#475569' }}>Lane {currentLane} / {diff.lanes}</span>
             {currentLane > 0 && (
               <span style={{ color: '#4ade80', fontWeight: 'bold' }}>
-                {currentMult}x → {(bet * currentMult).toFixed(2)}€
+                {currentMult}x → {(cappedBet * currentMult * pMult).toFixed(2)}€
               </span>
             )}
           </div>
@@ -436,13 +440,27 @@ export default function Chicken({ balance, setBalance, addResult }) {
               {diff.lanes} Lanes · {(diff.p * 100).toFixed(0)}% Überlebenschance pro Hop · Max {getMult(diff.lanes, diff.p)}x
             </div>
 
+            {bet > maxBet && (
+              <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>Max Einsatz: {maxBet}€</div>
+            )}
             <button
               onClick={startGame}
-              disabled={bet > balance || bet <= 0}
-              style={{ ...mBtn, background: bet > balance ? '#1a2535' : '#15803d', color: bet > balance ? '#475569' : '#fff' }}
+              disabled={cappedBet > balance || cappedBet <= 0}
+              style={{ ...mBtn, background: cappedBet > balance ? '#1a2535' : '#15803d', color: cappedBet > balance ? '#475569' : '#fff' }}
             >
-              🐔 Spielen — {bet.toFixed(2)}€
+              🐔 Spielen — {cappedBet.toFixed(2)}€
             </button>
+
+            {onUpgradeMaxbet && (
+              <UpgradePanel
+                gameId="chicken"
+                balance={balance}
+                maxBetLevels={maxBetLevels}
+                winrateLevels={winrateLevels}
+                onUpgradeMaxbet={onUpgradeMaxbet}
+                onUpgradeWinrate={onUpgradeWinrate}
+              />
+            )}
           </>
         )}
 
@@ -457,7 +475,7 @@ export default function Chicken({ balance, setBalance, addResult }) {
                 color: isPlaying && currentLane > 0 ? '#fbbf24' : '#475569',
               }}
             >
-              💰 {currentLane > 0 ? `Cashout (${(bet * currentMult).toFixed(2)}€)` : 'Cashout'}
+              💰 {currentLane > 0 ? `Cashout (${(cappedBet * currentMult * pMult).toFixed(2)}€)` : 'Cashout'}
             </button>
             <button
               onClick={hop}
