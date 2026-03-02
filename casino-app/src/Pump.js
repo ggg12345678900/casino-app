@@ -199,15 +199,18 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
   useEffect(() => () => { clearTimeout(animRef.current); clearTimeout(autoRef.current); }, []);
 
   const cappedBet = Math.min(bet, maxBet);
+  const wMult = parseFloat((1 + winBonus).toFixed(4));
   const pMultRef  = useRef(pMult);
+  const wMultRef  = useRef(wMult);
   const cappedBetRef = useRef(cappedBet);
   useEffect(() => { pMultRef.current = pMult; }, [pMult]);
+  useEffect(() => { wMultRef.current = wMult; }, [wMult]);
   useEffect(() => { cappedBetRef.current = cappedBet; }, [cappedBet]);
 
   const diff = DIFF[difficulty];
   const balloonSize = Math.min(pumps / diff.maxPumps, 1);
   const balloonColor = phase === 'popped' ? '#374151' : diff.color;
-  const winNow  = parseFloat((cappedBet * currentMult * pMult).toFixed(2));
+  const winNow  = parseFloat((cappedBet * currentMult * pMult * wMult).toFixed(2));
   const profNow = parseFloat((winNow - cappedBet).toFixed(2));
 
   const isIdle    = phase === 'idle';
@@ -274,6 +277,7 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
     const mult = getMult(d.p, newN);
     const cb = cappedBetRef.current;
     const pm = pMultRef.current;
+    const wm = wMultRef.current;
 
     setBalloonAnim('inflate');
     clearTimeout(animRef.current);
@@ -293,13 +297,13 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
       setPumps(newN); pumpsRef.current = newN;
       setCurrentMult(mult); multRef.current = mult;
       if (newN >= d.maxPumps) {
-        const win = parseFloat((cb * mult * pm).toFixed(2));
+        const win = parseFloat((cb * mult * pm * wm).toFixed(2));
         setTimeout(() => {
           setBalloonAnim('cashout');
           setPhase('cashedout'); phaseRef.current = 'cashedout';
           setBalance(prev => prev + win);
           setResult({ win: true, amount: win - cb, pumps: newN });
-          addResult(true, win - cb, 'Pump', cb, mult);
+          addResult(true, win - cb, 'Pump', cb, mult * pm * wm);
         }, 180);
       }
     }
@@ -310,12 +314,13 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
     const mult = multRef.current;
     const cb = cappedBetRef.current;
     const pm = pMultRef.current;
-    const win = parseFloat((cb * mult * pm).toFixed(2));
+    const wm = wMultRef.current;
+    const win = parseFloat((cb * mult * pm * wm).toFixed(2));
     setBalloonAnim('cashout');
     setPhase('cashedout'); phaseRef.current = 'cashedout';
     setBalance(prev => prev + win);
     setResult({ win: true, amount: win - cb, pumps: pumpsRef.current });
-    addResult(true, win - cb, 'Pump', cb, mult);
+    addResult(true, win - cb, 'Pump', cb, mult * pm * wm);
   };
 
   // Manual versions (same logic but using state values directly)
@@ -503,20 +508,28 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
         )}
 
         <div style={{ background:'#0f1923', border:'1px solid #2d4a5a', borderRadius:8, padding:'8px 10px', fontSize:12 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
             <span style={{ color:'#475569' }}>Spiel-Mult</span>
             <span style={{ color:'#f8fafc', fontWeight:'bold' }}>steigt/Pump</span>
           </div>
-          {pMult > 1 && <>
+          {winBonus > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+              <span style={{ color:'#475569' }}>💰 Bonus</span>
+              <span style={{ color:'#34d399', fontWeight:'bold' }}>×{wMult.toFixed(2)}</span>
+            </div>
+          )}
+          {pMult > 1 && (
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
               <span style={{ color:'#475569' }}>⭐ Prestige</span>
               <span style={{ color:'#f59e0b', fontWeight:'bold' }}>×{pMult}</span>
             </div>
+          )}
+          {(pMult > 1 || winBonus > 0) && (
             <div style={{ borderTop:'1px solid #2d4a5a', paddingTop:4, display:'flex', justifyContent:'space-between' }}>
               <span style={{ color:'#475569' }}>Auszahlung ×</span>
-              <span style={{ color:'#06b6d4', fontWeight:'bold' }}>{pMult}x Bonus</span>
+              <span style={{ color:'#06b6d4', fontWeight:'bold' }}>{(pMult * wMult).toFixed(2)}x Bonus</span>
             </div>
-          </>}
+          )}
         </div>
 
         {bet > maxBet && (

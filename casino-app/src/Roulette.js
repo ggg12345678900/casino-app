@@ -190,6 +190,7 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
 
   const totalBet = Object.values(bets).reduce((a, b) => a + b, 0);
   const cappedTotalBet = Math.min(totalBet, maxBet);
+  const wMult = parseFloat((1 + winBonus).toFixed(4));
 
   const spin = () => {
     if (phase !== 'betting' || cappedTotalBet <= 0 || cappedTotalBet > balance) return;
@@ -230,7 +231,7 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
       let totalWin = 0;
       const betRatio = cappedTotalBet / (totalBet || 1);
       Object.entries(bets).forEach(([key, amount]) => {
-        if (checkWin(key, winNum)) totalWin += amount * betRatio * getMultiplier(key) * pMult;
+        if (checkWin(key, winNum)) totalWin += amount * betRatio * getMultiplier(key) * pMult * wMult;
       });
       totalWin = parseFloat(totalWin.toFixed(2));
 
@@ -399,20 +400,28 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
         </div>
 
         <div style={{ background: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
             <span style={{ color: '#8a9bb0' }}>Wett-Mult</span>
             <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>je Wette</span>
           </div>
-          {pMult > 1 && <>
+          {winBonus > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: '#8a9bb0' }}>💰 Bonus</span>
+              <span style={{ color: '#34d399', fontWeight: 'bold' }}>×{wMult.toFixed(2)}</span>
+            </div>
+          )}
+          {pMult > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ color: '#8a9bb0' }}>⭐ Prestige</span>
               <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
             </div>
+          )}
+          {(pMult > 1 || winBonus > 0) && (
             <div style={{ borderTop: '1px solid #2d4a5a', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#8a9bb0' }}>Auszahlung ×</span>
-              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{pMult}x Bonus</span>
+              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(pMult * wMult).toFixed(2)}x Bonus</span>
             </div>
-          </>}
+          )}
         </div>
 
         {onUpgradeMaxbet && (

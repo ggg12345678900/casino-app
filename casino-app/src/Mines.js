@@ -16,6 +16,7 @@ function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pres
 
   const safeCount = GRID_SIZE - mineCount;
   const cappedBet = Math.min(bet, maxBet);
+  const wMult = parseFloat((1 + winBonus).toFixed(4));
 
   const calcMultiplier = (revealedCount) => {
     let mult = 1;
@@ -25,7 +26,7 @@ function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pres
     return parseFloat((0.99 / mult).toFixed(4));
   };
 
-  const profit = ((cappedBet * currentMultiplier * pMult) - cappedBet).toFixed(2);
+  const profit = ((cappedBet * currentMultiplier * pMult * wMult) - cappedBet).toFixed(2);
 
   const startGame = () => {
     if (cappedBet > balance || cappedBet <= 0) return;
@@ -91,10 +92,10 @@ function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, pres
 
 const cashOut = (mult = currentMultiplier, rev = revealed) => {
     if (!gameActive || rev.length === 0) return;
-    const winAmount = parseFloat((cappedBet * mult * pMult).toFixed(2));
+    const winAmount = parseFloat((cappedBet * mult * pMult * wMult).toFixed(2));
     const profitAmount = parseFloat((winAmount - cappedBet).toFixed(2));
     setBalance(prev => parseFloat((prev + winAmount).toFixed(2)));
-    addResult(true, profitAmount, 'mines', cappedBet, mult);
+    addResult(true, profitAmount, 'mines', cappedBet, mult * pMult * wMult);
     setWon(true);
     setGameActive(false);
     setGameOver(true);
@@ -159,20 +160,28 @@ const cashOut = (mult = currentMultiplier, rev = revealed) => {
 
         {/* Multiplier */}
         <div style={{ background: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
             <span style={{ color: '#8a9bb0' }}>Spiel-Mult</span>
             <span style={{ color: '#00e701', fontWeight: 'bold', fontSize: '14px' }}>{currentMultiplier}x</span>
           </div>
-          {pMult > 1 && <>
+          {winBonus > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: '#8a9bb0' }}>💰 Bonus</span>
+              <span style={{ color: '#34d399', fontWeight: 'bold' }}>×{wMult.toFixed(2)}</span>
+            </div>
+          )}
+          {pMult > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ color: '#8a9bb0' }}>⭐ Prestige</span>
               <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
             </div>
+          )}
+          {(pMult > 1 || winBonus > 0) && (
             <div style={{ borderTop: '1px solid #2d4a5a', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#8a9bb0' }}>Gesamt</span>
-              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(currentMultiplier * pMult).toFixed(4)}x</span>
+              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(currentMultiplier * pMult * wMult).toFixed(4)}x</span>
             </div>
-          </>}
+          )}
         </div>
 
         {/* Profit */}
@@ -198,14 +207,14 @@ const cashOut = (mult = currentMultiplier, rev = revealed) => {
         ) : (
           <button onClick={() => cashOut()} disabled={revealed.length === 0}
             style={{ padding: '14px', backgroundColor: revealed.length > 0 ? '#f5a623' : '#555', border: 'none', color: '#000', borderRadius: '8px', cursor: revealed.length > 0 ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 'bold' }}>
-            💰 Cash Out ({(cappedBet * currentMultiplier * pMult).toFixed(2)})
+            💰 Cash Out ({(cappedBet * currentMultiplier * pMult * wMult).toFixed(2)})
           </button>
         )}
 
         {/* Result Message */}
         {gameOver && (
           <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold', color: won ? '#00e701' : '#ff4444', padding: '10px', backgroundColor: won ? '#00e70122' : '#ff444422', borderRadius: '8px' }}>
-            {won ? `🎉 +${(cappedBet * currentMultiplier * pMult - cappedBet).toFixed(2)} €!` : '💥 Mine getroffen!'}
+            {won ? `🎉 +${(cappedBet * currentMultiplier * pMult * wMult - cappedBet).toFixed(2)} €!` : '💥 Mine getroffen!'}
           </div>
         )}
 

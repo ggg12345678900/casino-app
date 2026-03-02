@@ -30,8 +30,9 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
   // winBonus increases effective win chance (capped at 95%)
   const effectiveWinChance = Math.min(parseFloat(winChance) + winBonus * 100, 95).toFixed(2);
   const multiplier = (99 / parseFloat(effectiveWinChance)).toFixed(4);
+  const wMult = parseFloat((1 + winBonus).toFixed(4));
   const rawProfit = bet * multiplier - bet;
-  const profit = (rawProfit * pMult).toFixed(2);
+  const profit = (rawProfit * pMult * wMult).toFixed(2);
   const cappedBet = Math.min(bet, maxBet);
 
   const roll = () => {
@@ -55,7 +56,7 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
 
       if (didWin) {
         setBalance(prev => parseFloat((prev + cappedBet + parseFloat(profit)).toFixed(2)));
-        addResult(true, parseFloat(profit), 'dice', cappedBet, parseFloat(multiplier));
+        addResult(true, parseFloat(profit), 'dice', cappedBet, parseFloat(multiplier) * pMult * wMult);
       } else {
         addResult(false, cappedBet, 'dice', cappedBet, 1);
       }
@@ -98,20 +99,28 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
         </div>
 
         <div style={{ background: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (pMult > 1 || winBonus > 0) ? 4 : 0 }}>
             <span style={{ color: '#8a9bb0' }}>Spiel-Mult</span>
             <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>{multiplier}x</span>
           </div>
-          {pMult > 1 && <>
+          {winBonus > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: '#8a9bb0' }}>💰 Bonus</span>
+              <span style={{ color: '#34d399', fontWeight: 'bold' }}>×{wMult.toFixed(2)}</span>
+            </div>
+          )}
+          {pMult > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ color: '#8a9bb0' }}>⭐ Prestige</span>
               <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
             </div>
+          )}
+          {(pMult > 1 || winBonus > 0) && (
             <div style={{ borderTop: '1px solid #2d4a5a', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#8a9bb0' }}>Gesamt</span>
-              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(parseFloat(multiplier) * pMult).toFixed(4)}x</span>
+              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(parseFloat(multiplier) * pMult * wMult).toFixed(4)}x</span>
             </div>
-          </>}
+          )}
         </div>
 
         {bet > maxBet && (
@@ -202,7 +211,7 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ color: '#8a9bb0', fontSize: '12px', marginBottom: '4px' }}>MULTIPLIKATOR</div>
-                <input readOnly value={(parseFloat(multiplier) * pMult).toFixed(4)} style={{ width: '100px', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', textAlign: 'center', fontSize: '15px' }} />
+                <input readOnly value={(parseFloat(multiplier) * pMult * wMult).toFixed(4)} style={{ width: '100px', padding: '8px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', color: 'white', borderRadius: '8px', textAlign: 'center', fontSize: '15px' }} />
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ color: '#8a9bb0', fontSize: '12px', marginBottom: '4px' }}>ROLL {mode === 'over' ? 'OVER' : 'UNDER'}</div>
