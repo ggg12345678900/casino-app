@@ -288,15 +288,22 @@ export default function Lobby({ user, balance, stats, onGameSelect, progression 
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
                 </span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: 14, color: u.username === user?.username ? '#4ade80' : '#f8fafc' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: 14, color: u.username === user?.username ? '#4ade80' : '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {u.username}
-                    {u.username === user?.username && <span style={{ color: '#64748b', fontWeight: 'normal', fontSize: 11, marginLeft: 6 }}>(du)</span>}
+                    {u.prestige_count > 0 && (
+                      <span style={{ fontSize: 11, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: 4, padding: '1px 5px' }}>
+                        ⭐{u.prestige_count}
+                      </span>
+                    )}
+                    {u.username === user?.username && <span style={{ color: '#64748b', fontWeight: 'normal', fontSize: 11 }}>(du)</span>}
                   </div>
-                  <div style={{ color: '#475569', fontSize: 11 }}>{u.total_bets} Spiele</div>
+                  <div style={{ color: '#475569', fontSize: 11 }}>{u.total_bets} Spiele · 🏆 {fmt(u.biggest_win)}€</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ color: '#4ade80', fontWeight: 'bold' }}>{u.balance.toFixed(0)}€</div>
-                  <div style={{ color: '#f59e0b', fontSize: 11 }}>🏆 {u.biggest_win.toFixed(0)}€</div>
+                  <div style={{ color: '#4ade80', fontWeight: 'bold', fontSize: 15 }}>{fmt(u.balance)}€</div>
+                  {u.prestige_count > 0 && (
+                    <div style={{ color: '#f59e0b', fontSize: 11 }}>×{Math.pow(2, u.prestige_count)} Mult</div>
+                  )}
                 </div>
               </div>
             ))}

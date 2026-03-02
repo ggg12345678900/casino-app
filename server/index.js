@@ -382,8 +382,9 @@ app.post('/api/daily', auth, async (req, res) => {
 // Leaderboard
 app.get('/api/leaderboard', auth, async (req, res) => {
   const result = await pool.query(
-    `SELECT username, balance, total_bets, total_wins, total_losses, total_won, biggest_win
-     FROM users WHERE is_admin = 0 ORDER BY balance DESC LIMIT 20`
+    `SELECT username, balance, total_bets, total_wins, total_losses, total_won, biggest_win,
+     COALESCE(prestige_count, 0) AS prestige_count
+     FROM users WHERE is_admin = 0 ORDER BY prestige_count DESC, balance DESC LIMIT 20`
   );
   res.json(result.rows);
 });

@@ -502,11 +502,22 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
           </div>
         )}
 
-        {pMult > 1 && (
-          <div style={{ color:'#f59e0b', fontSize:12, textAlign:'center', background:'#f59e0b18', border:'1px solid #f59e0b44', borderRadius:6, padding:5 }}>
-            ⭐ Prestige {pMult}x aktiv
+        <div style={{ background:'#0f1923', border:'1px solid #2d4a5a', borderRadius:8, padding:'8px 10px', fontSize:12 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+            <span style={{ color:'#475569' }}>Spiel-Mult</span>
+            <span style={{ color:'#f8fafc', fontWeight:'bold' }}>steigt/Pump</span>
           </div>
-        )}
+          {pMult > 1 && <>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+              <span style={{ color:'#475569' }}>⭐ Prestige</span>
+              <span style={{ color:'#f59e0b', fontWeight:'bold' }}>×{pMult}</span>
+            </div>
+            <div style={{ borderTop:'1px solid #2d4a5a', paddingTop:4, display:'flex', justifyContent:'space-between' }}>
+              <span style={{ color:'#475569' }}>Auszahlung ×</span>
+              <span style={{ color:'#06b6d4', fontWeight:'bold' }}>{pMult}x Bonus</span>
+            </div>
+          </>}
+        </div>
 
         {bet > maxBet && (
           <div style={{ color:'#f59e0b', fontSize:11, textAlign:'center', marginTop:6 }}>

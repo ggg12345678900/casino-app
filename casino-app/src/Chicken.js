@@ -440,11 +440,22 @@ export default function Chicken({ balance, setBalance, addResult, maxBet = 50, w
               {diff.lanes} Lanes · {(diff.p * 100).toFixed(0)}% Überlebenschance pro Hop · Max {getMult(diff.lanes, diff.p)}x
             </div>
 
-            {pMult > 1 && (
-              <div style={{ color: '#f59e0b', fontSize: '12px', textAlign: 'center', background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '5px' }}>
-                ⭐ Prestige {pMult}x aktiv
+            <div style={{ background: '#0d1520', border: '1px solid #1a2535', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+                <span style={{ color: '#475569' }}>Spiel-Mult</span>
+                <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>steigt/Lane</span>
               </div>
-            )}
+              {pMult > 1 && <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: '#475569' }}>⭐ Prestige</span>
+                  <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
+                </div>
+                <div style={{ borderTop: '1px solid #1a2535', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569' }}>Auszahlung ×</span>
+                  <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{pMult}x Bonus</span>
+                </div>
+              </>}
+            </div>
 
             {bet > maxBet && (
               <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>Max Einsatz: {maxBet}€</div>

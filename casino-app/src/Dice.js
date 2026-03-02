@@ -97,11 +97,22 @@ function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prest
           <div style={{ padding: '10px', backgroundColor: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', color: '#00e701', fontSize: '16px' }}>+{profit}</div>
         </div>
 
-        {pMult > 1 && (
-          <div style={{ color: '#f59e0b', fontSize: '12px', textAlign: 'center', background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '5px' }}>
-            ⭐ Prestige {pMult}x aktiv
+        <div style={{ background: '#0f1923', border: '1px solid #2d4a5a', borderRadius: '8px', padding: '8px 10px', fontSize: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pMult > 1 ? 4 : 0 }}>
+            <span style={{ color: '#8a9bb0' }}>Spiel-Mult</span>
+            <span style={{ color: '#f8fafc', fontWeight: 'bold' }}>{multiplier}x</span>
           </div>
-        )}
+          {pMult > 1 && <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: '#8a9bb0' }}>⭐ Prestige</span>
+              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>×{pMult}</span>
+            </div>
+            <div style={{ borderTop: '1px solid #2d4a5a', paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#8a9bb0' }}>Gesamt</span>
+              <span style={{ color: '#00e701', fontWeight: 'bold' }}>{(parseFloat(multiplier) * pMult).toFixed(4)}x</span>
+            </div>
+          </>}
+        </div>
 
         {bet > maxBet && (
           <div style={{ color: '#f59e0b', fontSize: '11px', textAlign: 'center' }}>
