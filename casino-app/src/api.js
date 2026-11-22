@@ -131,6 +131,24 @@ export const api = {
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(r => r.json()),
 
+  getSave: () =>
+    fetch(`${BASE}/save`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(r => r.json()),
+
+  putSave: (save, keepalive = false, reset = false) =>
+    fetch(`${BASE}/save`, {
+      method: 'POST',
+      keepalive,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ save, reset })
+    }).then(r => r.json()),
+
+  mogulLeaderboard: () =>
+    fetch(`${BASE}/mogul-leaderboard`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(r => r.json()),
+
   idle: () =>
     fetch(`${BASE}/idle`, {
       headers: { Authorization: `Bearer ${getToken()}` }

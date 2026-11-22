@@ -34,9 +34,9 @@ function Login({ onLogin }) {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '48px' }}>🎰</div>
-          <div style={{ color: '#00e701', fontWeight: 'bold', fontSize: '28px', letterSpacing: '2px' }}>CasinoSim</div>
-          <div style={{ color: '#8a9bb0', fontSize: '14px', marginTop: '4px' }}>Spielgeld Casino — Kein Echtgeld</div>
+          <div style={{ fontSize: '48px' }}>🎩</div>
+          <div style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '28px', letterSpacing: '2px' }}>Casino-Mogul</div>
+          <div style={{ color: '#8a9bb0', fontSize: '14px', marginTop: '4px' }}>Vom Penner zum Casino-Mogul · Nur Spielgeld</div>
         </div>
 
         {/* Card */}

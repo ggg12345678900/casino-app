@@ -1,0 +1,232 @@
+import React, { useEffect, useState } from 'react';
+import { api } from '../api';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, fmt, fmtMoney, fmtTime } from './economy';
+
+export const GAME_INFO = {
+  dice:      { name: 'Dice',      icon: '🎲', desc: 'Roll über oder unter' },
+  mines:     { name: 'Mines',     icon: '💣', desc: 'Vermeide die Minen' },
+  plinko:    { name: 'Plinko',    icon: '🎯', desc: 'Lass den Ball fallen' },
+  crash:     { name: 'Crash',     icon: '🚀', desc: 'Cash out vor dem Crash' },
+  roulette:  { name: 'Roulette',  icon: '🎡', desc: 'Rot, Schwarz oder Zahl' },
+  blackjack: { name: 'Blackjack', icon: '🃏', desc: 'Schlag den Dealer' },
+  chicken:   { name: 'Chicken',   icon: '🐔', desc: 'Über die Straße' },
+  pump:      { name: 'Pump',      icon: '🎈', desc: 'Pump bis es knallt' },
+};
+const ALL_GAMES = Object.keys(GAME_INFO);
+
+// ─── Orte ──────────────────────────────────────────────────────────────────
+export function LocationsView({ state, onMove }) {
+  return (
+    <div className="mg-journey">
+      <div className="mg-label" style={{ textAlign: 'center', marginBottom: 20 }}>Deine Reise zum Casino-Mogul</div>
+      {LOCATIONS.map((l, i) => {
+        const status = i < state.location ? 'done' : i === state.location ? 'current' : 'future';
+        const isNext = i === state.location + 1;
+        const can = isNext && state.money >= l.cost;
+        const newTools = TOOLS.filter(t => t.loc === i);
+        const newHelpers = HELPERS.filter(h => h.loc === i);
+        const newGames = l.games.filter(g => !(LOCATIONS[i - 1]?.games || []).includes(g));
+        const hidden = i > state.location + 1;
+        return (
+          <div key={l.id} className={`mg-stop ${status}`}>
+            <div className="line">
+              <div className="dot">{hidden ? '❓' : l.icon}</div>
+              {i < LOCATIONS.length - 1 && <div className="seg" />}
+            </div>
+            <div className="mg-panel card" style={status === 'current' ? { borderColor: '#fbbf2466' } : undefined}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 17 }}>
+                    {hidden ? '???' : l.name}
+                    {status === 'current' && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--gold)' }}>📍 DU BIST HIER</span>}
+                    {status === 'done' && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--green)' }}>✓</span>}
+                  </div>
+                  {!hidden && <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>{l.desc}</div>}
+                </div>
+                {status === 'future' && (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 800, color: can ? 'var(--green)' : 'var(--text)' }}>{fmtMoney(l.cost)}</div>
+                    {isNext && <button className={can ? 'mg-btn green' : 'mg-btn-ghost'} disabled={!can} onClick={onMove} style={{ marginTop: 6, padding: '8px 14px', fontSize: 13 }}>
+                      {can ? 'Umziehen →' : `noch ${fmtMoney(l.cost - state.money)}`}
+                    </button>}
+                  </div>
+                )}
+              </div>
+              {!hidden && i > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10, fontSize: 12 }}>
+                  <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#fbbf2444', background: '#fbbf241a' }}>Fundwert ×{l.mult}</span>
+                  {newGames.map(g => <span key={g} className="mg-lvl" style={{ color: 'var(--blue)', borderColor: '#60a5fa44', background: '#60a5fa1a' }}>{GAME_INFO[g].icon} {GAME_INFO[g].name}</span>)}
+                  {newHelpers.map(h => <span key={h.id} className="mg-lvl">{h.icon} {status === 'future' ? 'Neuer Helfer' : h.name}</span>)}
+                  {newTools.length > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>🛠️ {newTools.length} Werkzeuge</span>}
+                  {l.maxBet > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>Max-Einsatz {fmtMoney(l.maxBet)}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Casino ────────────────────────────────────────────────────────────────
+export function CasinoView({ state, derived, onPick }) {
+  const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
+  return (
+    <div>
+      <div className="mg-panel" style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 40 }}>🎰</div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ fontWeight: 800, fontSize: 17 }}>Risiko-Turbo</div>
+          <div style={{ color: 'var(--muted)', fontSize: 13 }}>Verdopple dein Geld – oder verlier alles. Jede Runde gibt Zocken-XP und erhöht deinen Gewinnbonus.</div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="mg-stat"><div className="k">Max-Einsatz</div><div className="v">{derived.maxBet > 0 ? fmtMoney(derived.maxBet) : '—'}</div></div>
+          <div className="mg-stat"><div className="k">Gewinnbonus</div><div className="v" style={{ color: 'var(--green)' }}>+{(derived.winBonus * 100).toFixed(1)}%</div></div>
+        </div>
+      </div>
+      <div className="mg-games">
+        {ALL_GAMES.map(g => {
+          const unlocked = derived.games.includes(g);
+          const info = GAME_INFO[g];
+          const l = LOCATIONS[firstLoc(g)];
+          return (
+            <button key={g} className="mg-game" disabled={!unlocked} onClick={() => onPick(g)}>
+              <div className="ic" style={unlocked ? undefined : { filter: 'grayscale(1)' }}>{unlocked ? info.icon : '🔒'}</div>
+              <div className="nm">{info.name}</div>
+              <div className="ds">{unlocked ? info.desc : `ab ${l.icon} ${l.name}`}</div>
+            </button>
+          );
+        })}
+      </div>
+      {state.stats.bets > 0 && (
+        <div className="mg-statrow" style={{ marginTop: 16 }}>
+          <div className="mg-stat"><div className="k">Runden</div><div className="v">{fmt(state.stats.bets, 0)}</div></div>
+          <div className="mg-stat"><div className="k">Gewonnen</div><div className="v">{((state.stats.betWins / state.stats.bets) * 100).toFixed(0)}%</div></div>
+          <div className="mg-stat"><div className="k">Bilanz</div><div className="v" style={{ color: state.stats.gambleProfit >= 0 ? 'var(--green)' : 'var(--red)' }}>{state.stats.gambleProfit >= 0 ? '+' : '−'}{fmtMoney(Math.abs(state.stats.gambleProfit))}</div></div>
+          <div className="mg-stat"><div className="k">Größter Gewinn</div><div className="v" style={{ color: 'var(--gold)' }}>{fmtMoney(state.stats.biggestWin)}</div></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Sammlung ──────────────────────────────────────────────────────────────
+export function CollectionView({ state }) {
+  const total = CHARMS.reduce((a, c) => a + c.max, 0);
+  const have = CHARMS.reduce((a, c) => a + (state.charms[c.id] || 0), 0);
+  return (
+    <div>
+      <div className="mg-panel" style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 800, fontSize: 17 }}>🍀 Glücksbringer · {have}/{total}</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+          Seltene Funde, die nur beim <b>eigenen Klicken</b> auftauchen. Jeder Glücksbringer wirkt dauerhaft. Die Diamant-Nadel ist die Nadel im Heuhaufen.
+        </div>
+      </div>
+      <div className="mg-charms">
+        {CHARMS.map(c => {
+          const n = state.charms[c.id] || 0;
+          return (
+            <div key={c.id} className={`mg-charm ${n === 0 ? 'none' : ''}`}>
+              <div className="ic">{c.icon}</div>
+              <div style={{ fontWeight: 800, marginTop: 6 }}>{n > 0 ? c.name : '???'}</div>
+              <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{c.desc} je Stück</div>
+              <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 4 }}>Chance: 1 : {c.odds.toLocaleString('de-DE')} pro Klick</div>
+              <div className="pips">{Array.from({ length: c.max }, (_, i) => <span key={i} className={i < n ? 'on' : ''} />)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Rangliste ─────────────────────────────────────────────────────────────
+export function LeaderboardView({ user }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    api.mogulLeaderboard().then(setData).catch(() => setData({ top: [], me: null }));
+  }, []);
+  if (!data) return <div style={{ color: 'var(--muted)' }}>Lade…</div>;
+  const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <div className="mg-label">Rangliste · sortiert nach Ort, dann Gesamt verdient</div>
+      {data.me && !data.top.some(r => r.username === data.me.username) && (
+        <div className="mg-rank me">
+          <span style={{ width: 36, textAlign: 'center', fontWeight: 800 }}>#{data.me.rank}</span>
+          <div style={{ flex: 1, fontWeight: 700 }}>{data.me.username} (du)</div>
+          <span>{LOCATIONS[data.me.location]?.icon}</span>
+          <b>{fmtMoney(data.me.earned)}</b>
+        </div>
+      )}
+      {(data.top || []).map((r, i) => (
+        <div key={r.username} className={`mg-rank ${r.username === user.username ? 'me' : ''}`}>
+          <span style={{ width: 36, textAlign: 'center', fontSize: 18, fontWeight: 800 }}>{medal(i)}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700 }}>{r.username}{r.username === user.username && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (du)</span>}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12 }}>{LOCATIONS[r.location]?.icon} {LOCATIONS[r.location]?.name}</div>
+          </div>
+          <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>
+        </div>
+      ))}
+      {data.top?.length === 0 && <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 20 }}>Noch niemand da – sei der Erste!</div>}
+    </div>
+  );
+}
+
+// ─── Statistik & Konto ─────────────────────────────────────────────────────
+export function StatsView({ state, onReset }) {
+  const [newUsername, setNewUsername] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [msg, setMsg] = useState('');
+  const st = state.stats;
+  const rows = [
+    ['💰 Gesamt verdient', fmtMoney(st.totalEarned)],
+    ['⏱️ Spielzeit', fmtTime(st.playTime)],
+    ['👆 Klicks', fmt(st.clicks, 0)],
+    ['🔍 Suchen gesamt', fmt(st.searches, 0)],
+    ['🪙 Funde', fmt(st.finds, 0)],
+    ['🥇 Goldchips', fmt(st.goldChips, 0)],
+    ['🎰 Casino-Runden', fmt(st.bets, 0)],
+    ['📈 Casino-Bilanz', (st.gambleProfit >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.gambleProfit))],
+  ];
+  const input = { width: '100%', padding: 10, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, marginBottom: 8 };
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+      <div className="mg-panel">
+        <div className="mg-label">Statistik</div>
+        {rows.map(([k, v]) => (
+          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+            <span style={{ color: 'var(--muted)' }}>{k}</span><b>{v}</b>
+          </div>
+        ))}
+      </div>
+      <div className="mg-panel">
+        <div className="mg-label">Konto</div>
+        {msg && <div style={{ marginBottom: 10, fontSize: 13 }}>{msg}</div>}
+        <input style={input} placeholder="Neuer Benutzername" value={newUsername} onChange={e => setNewUsername(e.target.value)} />
+        <button className="mg-btn" style={{ width: '100%', marginBottom: 16 }} onClick={async () => {
+          if (!newUsername) return;
+          const r = await api.changeUsername(newUsername);
+          if (r.error) flash('❌ ' + r.error);
+          else { flash('✅ Geändert! Bitte neu einloggen.'); setTimeout(() => { localStorage.removeItem('token'); window.location.reload(); }, 1500); }
+        }}>Namen ändern</button>
+        <input style={input} type="password" placeholder="Altes Passwort" value={oldPassword} onChange={e => setOldPassword(e.target.value)} />
+        <input style={input} type="password" placeholder="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+        <button className="mg-btn" style={{ width: '100%', marginBottom: 24 }} onClick={async () => {
+          if (!oldPassword || !newPassword) return;
+          const r = await api.changePassword(oldPassword, newPassword);
+          if (r.error) flash('❌ ' + r.error); else { flash('✅ Passwort geändert!'); setOldPassword(''); setNewPassword(''); }
+        }}>Passwort ändern</button>
+        <div className="mg-label">Gefahrenzone</div>
+        <button className="mg-btn red" style={{ width: '100%' }} onClick={() => {
+          if (window.confirm('Spielstand wirklich komplett löschen? Das kann nicht rückgängig gemacht werden!')) onReset();
+        }}>🗑️ Spielstand zurücksetzen</button>
+      </div>
+    </div>
+  );
+}

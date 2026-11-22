@@ -54,6 +54,11 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS global_upgrade_levels TEXT DEFAULT '{}'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_levels TEXT DEFAULT '{}'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_last_claim TIMESTAMP DEFAULT NULL`);
+  // Casino-Mogul Spielstand
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS save_data TEXT DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS save_at TIMESTAMP DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_location INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_earned DOUBLE PRECISION DEFAULT 0`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -524,6 +529,64 @@ app.post('/api/idle/buy', auth, async (req, res) => {
     });
     res.status(out.status || 200).json(out.body);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
+// ─── Casino-Mogul: Spielstand ────────────────────────────────────────────────
+// Ortskosten gespiegelt aus casino-app/src/game/economy.js (für Plausibilitäts-Check)
+const MOGUL_LOCATION_COSTS = [0, 100, 1e4, 2e6, 2e9, 3e12, 3e15];
+const MOGUL_MIN_SAVE_INTERVAL_MS = 3000;
+
+app.get('/api/save', auth, async (req, res) => {
+  const r = await pool.query(`SELECT save_data FROM users WHERE id = $1`, [req.user.id]);
+  if (!r.rows[0]) return res.status(404).json({ error: 'User nicht gefunden' });
+  let save = null;
+  try { save = r.rows[0].save_data ? JSON.parse(r.rows[0].save_data) : null; } catch {}
+  res.json({ save });
+});
+
+app.post('/api/save', auth, async (req, res) => {
+  const { save, reset } = req.body || {};
+  if (!save || typeof save !== 'object') return res.status(400).json({ error: 'Kein Spielstand' });
+  const raw = JSON.stringify(save);
+  if (raw.length > 100000) return res.status(400).json({ error: 'Spielstand zu groß' });
+
+  const location = save.location;
+  const earned = save.stats && save.stats.totalEarned;
+  const money = save.money;
+  if (!Number.isInteger(location) || location < 0 || location >= MOGUL_LOCATION_COSTS.length)
+    return res.status(400).json({ error: 'Ungültiger Ort' });
+  if (![earned, money].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0))
+    return res.status(400).json({ error: 'Ungültige Werte' });
+  // Wer an Ort X ist, muss mindestens die Kosten aller Orte bis X verdient haben
+  const minEarned = MOGUL_LOCATION_COSTS.slice(0, location + 1).reduce((a, b) => a + b, 0);
+  if (earned < minEarned * 0.999 || money > earned + 1)
+    return res.status(400).json({ error: 'Spielstand unplausibel' });
+
+  const prev = await pool.query(
+    `SELECT mogul_location, mogul_earned, EXTRACT(EPOCH FROM (NOW() - save_at)) * 1000 AS since FROM users WHERE id = $1`,
+    [req.user.id]);
+  const p = prev.rows[0];
+  if (!p) return res.status(404).json({ error: 'User nicht gefunden' });
+  if (!reset && p.since !== null && parseFloat(p.since) < MOGUL_MIN_SAVE_INTERVAL_MS)
+    return res.json({ success: true, skipped: true });
+
+  await pool.query(
+    `UPDATE users SET save_data = $1, save_at = NOW(), mogul_location = $2, mogul_earned = $3 WHERE id = $4`,
+    [raw, location, earned, req.user.id]);
+  res.json({ success: true });
+});
+
+app.get('/api/mogul-leaderboard', auth, async (req, res) => {
+  const top = await pool.query(
+    `SELECT username, mogul_location AS location, mogul_earned AS earned
+     FROM users WHERE is_admin = 0 AND save_data IS NOT NULL
+     ORDER BY mogul_location DESC, mogul_earned DESC LIMIT 50`);
+  const me = await pool.query(
+    `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned,
+       (SELECT COUNT(*) FROM users o WHERE o.is_admin = 0 AND o.save_data IS NOT NULL AND
+          (o.mogul_location > u.mogul_location OR (o.mogul_location = u.mogul_location AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
+     FROM users u WHERE u.id = $1`, [req.user.id]);
+  res.json({ top: top.rows, me: me.rows[0] || null });
 });
 
 // Leaderboard
