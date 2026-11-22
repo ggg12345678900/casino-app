@@ -96,7 +96,7 @@ export const HELPER_MILESTONES = [25, 50, 100, 200, 400];
 
 // ─── Werkzeuge (einmalige Upgrades) ────────────────────────────────────────
 // type: spawn (mehr Münzen) | value (Münzwert) | pick (Wert beim Aufheben)
-//       | helper | pickPct (Aufheben bringt % des Helfer-Einkommens) | all
+//       | helper | all   (der Münzwert hängt nur von Werkzeugen ab, nie von Helfern)
 export const TOOLS = [
   { id: 'brille',     name: 'Brille',              icon: '👓', cost: 0.1, loc: 0, type: 'spawn',  x: 1.3, desc: 'Endlich scharf sehen – du entdeckst mehr Münzen.' },
   { id: 'handschuhe', name: 'Handschuhe',          icon: '🧤', cost: 0.4, loc: 0, type: 'value',  x: 2,   desc: 'Du traust dich jetzt auch in die Ecken.' },
@@ -105,18 +105,21 @@ export const TOOLS = [
   { id: 'magnet',     name: 'Magnet',              icon: '🧲', cost: 40,   loc: 1, type: 'value',  x: 2,   desc: 'Zieht die Münzen aus jeder Ritze.' },
   { id: 'dienstplan', name: 'Dienstplan',          icon: '📋', cost: 150,  loc: 1, type: 'helper', x: 2,   desc: 'Alle Helfer arbeiten doppelt so schnell.' },
   { id: 'detektor',   name: 'Metalldetektor',      icon: '📡', cost: 600,  loc: 1, type: 'spawn',  x: 1.5, desc: 'Piep. Piep. PIEEEP!' },
-  { id: 'klebe',      name: 'Klebehandschuhe',     icon: '🧤', cost: 150,   loc: 1, type: 'pickPct', x: 0.1,  desc: 'An dir bleibt jede Münze kleben – jeder Klick wächst mit deinem Imperium mit.' },
+  { id: 'klebe',      name: 'Klebehandschuhe',     icon: '🧤', cost: 150,   loc: 1, type: 'pick',    x: 3,    desc: 'An dir bleibt jede Münze kleben. Aufheben ×3.' },
+  { id: 'finger',     name: 'Fingerfertigkeit',    icon: '🤌', cost: 60,    loc: 1, type: 'pick',    x: 2.5,  desc: 'Jahrelanges Kronkorken-Schnippen zahlt sich aus. Aufheben ×2,5.' },
   { id: 'sauger',     name: 'Industriesauger',     icon: '🌪️', cost: 32000, loc: 2, type: 'pick',   x: 3,   desc: 'Jeder Klick saugt 3× so viel auf.' },
   { id: 'roentgen',   name: 'Röntgenbrille',       icon: '🕶️', cost: 1.2e5,  loc: 2, type: 'value',  x: 2.5, desc: 'Sieht Münzen sogar in Hosentaschen.' },
   { id: 'rede',       name: 'Motivationsrede',     icon: '📢', cost: 4e5,  loc: 2, type: 'helper', x: 2,   desc: '„Wir sind eine Familie!“ – Helfer ×2.' },
-  { id: 'zange',      name: 'Münzzange',           icon: '🗜️', cost: 3000,  loc: 2, type: 'pickPct', x: 0.1,  desc: 'Profi-Werkzeug: Klicken bleibt auch mit vielen Helfern stark.' },
-  { id: 'saugrohr',   name: 'Münz-Saugrohr',       icon: '🧪', cost: 1.5e5, loc: 2, type: 'pick',    x: 2,    desc: 'Schlürft Münzen direkt vom Teppich. Aufheben ×2.' },
-  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 3.2e7,  loc: 3, type: 'pickPct', x: 0.05, desc: 'Fliegt dir voraus und zeigt dir die besten Münzen.' },
+  { id: 'zange',      name: 'Münzzange',           icon: '🗜️', cost: 3000,  loc: 2, type: 'pick',    x: 2,    desc: 'Profi-Werkzeug für Kleingeld. Aufheben ×2.' },
+  { id: 'turbofinger',name: 'Turbo-Finger',        icon: '⚡', cost: 5000,  loc: 2, type: 'pick',    x: 3,    desc: 'Arcade-Reflexe: schneller als jeder Joystick. Aufheben ×3.' },
+  { id: 'saugrohr',   name: 'Münz-Saugrohr',       icon: '🧪', cost: 4e4, loc: 2, type: 'pick',    x: 2,    desc: 'Schlürft Münzen direkt vom Teppich. Aufheben ×2.' },
+  { id: 'rechen',     name: 'Münzrechen',          icon: '🧹', cost: 1.5e5,   loc: 2, type: 'pick',    x: 2,    desc: 'Harkt ganze Münzhaufen auf einmal zusammen. Aufheben ×2.' },
+  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 3.2e7,  loc: 3, type: 'pick',    x: 1.5,    desc: 'Fliegt dir voraus und zeigt dir die besten Münzen. Aufheben ×1,5.' },
   { id: 'satellit',   name: 'Satelliten-Scan',     icon: '🛰️', cost: 1.6e8,  loc: 3, type: 'spawn',  x: 1.5, desc: 'Mehr Münzen – aus dem All entdeckt.' },
   { id: 'firmenwagen',name: 'Firmenwagen',         icon: '🚗', cost: 8e8,  loc: 3, type: 'helper', x: 2,   desc: 'Helfer kommen schneller zur Arbeit. ×2' },
-  { id: 'pfanne',     name: 'Goldgräberpfanne',    icon: '🍳', cost: 3e7,   loc: 3, type: 'pick',    x: 3,    desc: 'Gold waschen wie 1849. Aufheben ×3.' },
+  { id: 'pfanne',     name: 'Goldgräberpfanne',    icon: '🍳', cost: 3e7,   loc: 3, type: 'pick',    x: 1.5,    desc: 'Gold waschen wie 1849. Aufheben ×1,5.' },
   { id: 'ki',         name: 'KI-Analyse',          icon: '🧠', cost: 2.4e10,  loc: 4, type: 'value',  x: 3,   desc: 'Berechnet, wo die wertvollsten Chips fallen.' },
-  { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 1.44e11,  loc: 4, type: 'pick',   x: 10,  desc: 'Jeder Klick ×10.' },
+  { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 1.44e11,  loc: 4, type: 'pick',   x: 3,  desc: 'Greift jeden Chip millimetergenau. Aufheben ×3.' },
   { id: 'magnethand', name: 'Magnethandschuh',     icon: '🧲', cost: 1e10,  loc: 4, type: 'pick',    x: 3,    desc: 'Chips fliegen dir in die Hand. Aufheben ×3.' },
   { id: 'kredit',     name: 'Bankkredit',          icon: '🏦', cost: 7.2e11, loc: 4, type: 'helper', x: 2,   desc: 'Mehr Budget, mehr Leute. Helfer ×2.' },
   { id: 'kugel',      name: 'Kristallkugel',       icon: '🔮', cost: 3e13, loc: 5, type: 'value',  x: 4,   desc: 'Du weißt, wo der nächste Chip fällt.' },
@@ -361,8 +364,7 @@ export const derive = (s, now = Date.now()) => {
   if (boost) { incomePerSec *= 2; Object.keys(helperIncome).forEach(k => { helperIncome[k] *= 2; }); }
 
   const pickMult = toolMult(s, 'pick');
-  const pickPct = TOOLS.reduce((m, t) => (t.type === 'pickPct' && s.tools.includes(t.id) ? m + t.x : m), 0);
-  const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1)) + pickPct * incomePerSec;
+  const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1));
   const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble'));
   const loc = LOCATIONS[s.location];
   const games = gamesUpTo(s.location);
@@ -372,7 +374,7 @@ export const derive = (s, now = Date.now()) => {
   return {
     spawnRate, valueMult, avgCoin: avg, coins: loc.coins.map(coinById),
     autoCoins, helperRates, helperIncome, helperMult, incomePerSec,
-    pickMult, pickPct, pickEV, manualPerSec: spawnRate * pickEV, frenzy, boost,
+    pickMult, pickEV, manualPerSec: spawnRate * pickEV, frenzy, boost,
     winBonus, maxBet, games, loc,
   };
 };
@@ -461,7 +463,7 @@ export const pickup = (s, coinId, gold = false, combo = 0) => {
   const d = derive(s);
   const coin = coinById(coinId);
   if (!coin) return null;
-  const money = (coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) + d.pickPct * d.incomePerSec) * comboMult(combo);
+  const money = coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) * comboMult(combo);
   const { skills, ups } = addXp(s.skills, 'suchen', 1);
   const next = earn({ ...s, skills }, money);
   next.stats = {

@@ -10,7 +10,6 @@ const TOOL_EFFECT = {
   value: (x) => `Münzwert ×${x}`,
   pick: (x) => `Aufheben bringt ×${x}`,
   helper: (x) => `Alle Helfer ×${x}`,
-  pickPct: (x) => `+${String(x).replace('.', ',')} s Helfer-Einkommen pro Münze`,
   all: (x) => `ALLES ×${x}`,
 };
 
