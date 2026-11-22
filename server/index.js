@@ -553,13 +553,14 @@ app.post('/api/save', auth, async (req, res) => {
   const location = save.location;
   const earned = save.stats && save.stats.totalEarned;
   const money = save.money;
+  const gambleWon = (save.stats && Number.isFinite(save.stats.gambleWon) && save.stats.gambleWon > 0) ? save.stats.gambleWon : 0;
   if (!Number.isInteger(location) || location < 0 || location >= MOGUL_LOCATION_COSTS.length)
     return res.status(400).json({ error: 'Ungültiger Ort' });
   if (![earned, money].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0))
     return res.status(400).json({ error: 'Ungültige Werte' });
   // Wer an Ort X ist, muss mindestens die Kosten aller Orte bis X verdient haben
   const minEarned = MOGUL_LOCATION_COSTS.slice(0, location + 1).reduce((a, b) => a + b, 0);
-  if (earned < minEarned * 0.999 || money > earned + 1)
+  if (earned < minEarned * 0.999 || money > (earned + gambleWon) * 1.0001 + 1)
     return res.status(400).json({ error: 'Spielstand unplausibel' });
 
   const prev = await pool.query(

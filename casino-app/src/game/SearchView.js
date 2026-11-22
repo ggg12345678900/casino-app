@@ -75,7 +75,7 @@ export default function SearchView({ state, derived, onSearch, onMove, onCharm }
   }, [loc.id]);
 
   const spawn = useCallback((items) => {
-    setFloats(f => [...f.slice(-30), ...items]);
+    setFloats(f => [...f.slice(-24), ...items]);
     const ids = items.map(i => i.id);
     setTimeout(() => setFloats(f => f.filter(x => !ids.includes(x.id))), 1800);
   }, []);
@@ -91,7 +91,7 @@ export default function SearchView({ state, derived, onSearch, onMove, onCharm }
       items.push({ id: ++floatId, kind: 'gold', x, y, text: `🥇 GOLDCHIP! +${fmtMoney(r.money)}` });
     } else if (r.money > 0) {
       items.push({ id: ++floatId, kind: 'find', x, y, text: `+${fmtMoney(r.money)}` });
-    } else if (r.junk) {
+    } else if (r.junk && Math.random() < 0.45) {
       items.push({ id: ++floatId, kind: 'junk', x, y, text: r.junk + '…' });
     }
     if (r.found > 0) {
@@ -139,7 +139,7 @@ export default function SearchView({ state, derived, onSearch, onMove, onCharm }
       </div>
 
       <div className="mg-statrow">
-        <div className="mg-stat"><div className="k">🎯 Fundchance</div><div className="v">{(derived.chance * 100).toFixed(derived.chance < 0.1 ? 1 : 0)}%</div></div>
+        <div className="mg-stat"><div className="k">🎯 Fundchance</div><div className="v">{(derived.chance * 100).toFixed(derived.chance < 0.1 ? 1 : 0).replace('.', ',')}%</div></div>
         <div className="mg-stat"><div className="k">🪙 Wert pro Fund</div><div className="v">{fmtMoney(derived.value)}</div></div>
         <div className="mg-stat"><div className="k">👆 Suchen pro Klick</div><div className="v">{fmt(derived.clickSearches + derived.clickPct * derived.autoSearches, 0)}</div></div>
         <div className="mg-stat"><div className="k">💸 Pro Klick (Ø)</div><div className="v" style={{ color: 'var(--green)' }}>{fmtMoney(derived.clickEV)}</div></div>

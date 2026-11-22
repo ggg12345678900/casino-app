@@ -109,7 +109,7 @@ export const CHARMS = [
 export const SKILLS = {
   suchen:     { name: 'Suchen',     icon: '🔍', base: 20, growth: 1.2, desc: (l) => `Fundchance +${l * 3}% · Fundwert ×${Math.pow(1.05, l).toFixed(2)}` },
   management: { name: 'Management', icon: '📊', base: 3,  growth: 1.2,  desc: (l) => `Helfer-Tempo +${l * 5}%` },
-  zocken:     { name: 'Zocken',     icon: '🎲', base: 10, growth: 1.15, desc: (l) => `Gewinnbonus +${(Math.min(0.10, l * 0.004) * 100).toFixed(1)}%` },
+  zocken:     { name: 'Zocken',     icon: '🎲', base: 10, growth: 1.15, desc: (l) => `Gewinnbonus +${(Math.min(0.05, l * 0.002) * 100).toFixed(1)}%` },
 };
 export const xpForLevel = (skill, level) => Math.floor(SKILLS[skill].base * Math.pow(SKILLS[skill].growth, level));
 
@@ -131,7 +131,7 @@ export const newGame = () => ({
   skills: { suchen: { level: 0, xp: 0 }, management: { level: 0, xp: 0 }, zocken: { level: 0, xp: 0 } },
   stats: {
     totalEarned: 0, clicks: 0, searches: 0, finds: 0, goldChips: 0,
-    bets: 0, betWins: 0, gambleProfit: 0, biggestWin: 0, playTime: 0, startedAt: Date.now(),
+    bets: 0, betWins: 0, gambleProfit: 0, gambleWon: 0, biggestWin: 0, playTime: 0, startedAt: Date.now(),
   },
   savedAt: Date.now(),
 });
@@ -187,7 +187,7 @@ export const derive = (s) => {
 
   const clickSearches = toolMult(s, 'click');
   const clickPct = TOOLS.reduce((m, t) => (t.type === 'clickPct' && s.tools.includes(t.id) ? m + t.x : m), 0);
-  const winBonus = Math.min(0.15, Math.min(0.10, sk.zocken.level * 0.004) + charmSum(s, 'gamble'));
+  const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble'));
   const loc = LOCATIONS[s.location];
 
   return {
@@ -287,6 +287,7 @@ export const recordBet = (s, didWin, amount) => {
     stats: {
       ...st, bets: st.bets + 1, betWins: st.betWins + (didWin ? 1 : 0),
       gambleProfit: st.gambleProfit + (didWin ? amount : -amount),
+      gambleWon: (st.gambleWon || 0) + (didWin ? amount : 0),
       biggestWin: didWin && amount > st.biggestWin ? amount : st.biggestWin,
     },
   };

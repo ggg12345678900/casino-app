@@ -84,7 +84,7 @@ export default function GameApp({ user, onLogout }) {
             <div>
               <button className="mg-btn-ghost" onClick={() => setActiveGame(null)} style={{ marginBottom: 8 }}>← Zurück zum Casino</button>
               <span style={{ marginLeft: 12, color: 'var(--muted)', fontSize: 13 }}>{GAME_INFO[activeGame].icon} {GAME_INFO[activeGame].name} · Max-Einsatz {fmtMoney(derived.maxBet)}</span>
-              <div style={{ margin: '0 -30px' }}>
+              <div className="mg-game-wrap">
                 <G balance={state.money} setBalance={game.setBalance} addResult={game.addResult}
                   maxBet={derived.maxBet} winBonus={derived.winBonus} prestigeMult={1} globalMult={1} autoSpeed={500}
                   user={PUMP_USER} setUser={() => {}} />
