@@ -70,6 +70,7 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS save_at TIMESTAMP DEFAULT NULL`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_location INTEGER DEFAULT 0`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_earned DOUBLE PRECISION DEFAULT 0`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_max_combo INTEGER DEFAULT 0`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -598,19 +599,21 @@ app.post('/api/save', auth, async (req, res) => {
   if (!reset && p.since !== null && parseFloat(p.since) < MOGUL_MIN_SAVE_INTERVAL_MS)
     return res.json({ success: true, skipped: true });
 
+  // Beste Combo (im Spiel max. ×20)
+  const maxCombo = Math.max(0, Math.min(20, Math.floor(Number(save.stats && save.stats.maxCombo) || 0)));
   await pool.query(
-    `UPDATE users SET save_data = $1, save_at = NOW(), mogul_location = $2, mogul_earned = $3 WHERE id = $4`,
-    [raw, location, earned, req.user.id]);
+    `UPDATE users SET save_data = $1, save_at = NOW(), mogul_location = $2, mogul_earned = $3, mogul_max_combo = $4 WHERE id = $5`,
+    [raw, location, earned, maxCombo, req.user.id]);
   res.json({ success: true });
 });
 
 app.get('/api/mogul-leaderboard', auth, async (req, res) => {
   const top = await pool.query(
-    `SELECT username, mogul_location AS location, mogul_earned AS earned
+    `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo
      FROM users WHERE is_admin = 0 AND save_data IS NOT NULL
      ORDER BY mogul_location DESC, mogul_earned DESC LIMIT 50`);
   const me = await pool.query(
-    `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned,
+    `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned, COALESCE(u.mogul_max_combo, 0) AS max_combo,
        (SELECT COUNT(*) FROM users o WHERE o.is_admin = 0 AND o.save_data IS NOT NULL AND
           (o.mogul_location > u.mogul_location OR (o.mogul_location = u.mogul_location AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
      FROM users u WHERE u.id = $1`, [req.user.id]);

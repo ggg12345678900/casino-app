@@ -290,6 +290,7 @@ export function LeaderboardView({ user }) {
   }, []);
   if (!data) return <div style={{ color: 'var(--muted)' }}>Lade…</div>;
   const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
+  const combo = (n) => (n > 0 ? <span className="mg-lvl" title="Beste Combo" style={{ color: '#ffb36b', borderColor: '#ff8a3d66', background: '#ff8a3d1a' }}>🔥 ×{n}</span> : null);
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <div className="mg-label">Rangliste · sortiert nach Ort, dann Gesamt verdient</div>
@@ -298,6 +299,7 @@ export function LeaderboardView({ user }) {
           <span style={{ width: 36, textAlign: 'center', fontWeight: 800 }}>#{data.me.rank}</span>
           <div style={{ flex: 1, fontWeight: 700 }}>{data.me.username} (du)</div>
           <span>{LOCATIONS[data.me.location]?.icon}</span>
+          {combo(data.me.max_combo)}
           <b>{fmtMoney(data.me.earned)}</b>
         </div>
       )}
@@ -308,6 +310,7 @@ export function LeaderboardView({ user }) {
             <div style={{ fontWeight: 700 }}>{r.username}{r.username === user.username && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (du)</span>}</div>
             <div style={{ color: 'var(--muted)', fontSize: 12 }}>{LOCATIONS[r.location]?.icon} {LOCATIONS[r.location]?.name}</div>
           </div>
+          {combo(r.max_combo)}
           <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>
         </div>
       ))}
@@ -329,6 +332,7 @@ export function StatsView({ state, onReset }) {
     ['⏱️ Spielzeit', fmtTime(st.playTime)],
     ['🪙 Münzen aufgehoben', fmt(st.finds, 0)],
     ['🥇 Goldmünzen', fmt(st.goldChips, 0)],
+    ['🔥 Beste Combo', `×${st.maxCombo || 0}${(st.maxCombo || 0) >= 20 ? ' (Maximum!)' : ''}`],
     ['🎰 Casino-Runden', fmt(st.bets, 0)],
     ['📈 Casino-Bilanz', (st.gambleProfit >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.gambleProfit))],
   ];
