@@ -3,6 +3,10 @@ import Login from './Login';
 import GameApp from './game/GameApp';
 import { api } from './api';
 
+// Demo-Build (REACT_APP_DEMO=true): kein Server, kein Login, Spielstand nur im Browser
+const DEMO = process.env.REACT_APP_DEMO === 'true';
+const DEMO_USER = { id: 'demo', username: 'Demo-Spieler' };
+
 function App() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(!!localStorage.getItem('token'));
@@ -23,6 +27,7 @@ function App() {
     setUser(null);
   };
 
+  if (DEMO) return <GameApp user={DEMO_USER} onLogout={() => window.location.reload()} />;
   if (checking) return <div style={{ background: '#0b1118', minHeight: '100vh' }} />;
   if (!user) return <Login onLogin={setUser} />;
   return <GameApp key={user.id} user={user} onLogout={logout} />;

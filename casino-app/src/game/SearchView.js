@@ -115,11 +115,10 @@ export default function SearchView({ state, derived, onSearch, onMove, onCharm }
 
       <div
         ref={floorRef}
-        className="mg-floor"
+        className={`mg-floor floor-${loc.id}`}
         onPointerDown={handleClick}
-        style={{ background: `linear-gradient(160deg, ${loc.floor[0]}, ${loc.floor[1]})` }}
       >
-        <div className="mg-floor-pattern" />
+        <div className="mg-floor-ambient" />
         {deco.map((d, i) => (
           <div key={i} className="mg-floor-deco" style={{ left: `${d.x}%`, top: `${d.y}%`, transform: `rotate(${d.r}deg)` }}>{d.e}</div>
         ))}
