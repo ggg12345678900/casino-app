@@ -85,6 +85,19 @@ const initDB = async () => {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      username TEXT,
+      rating INTEGER,
+      category TEXT,
+      message TEXT,
+      context TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Admin erstellen / Passwort immer aktuell halten
   const adminPass = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
   await pool.query(`
@@ -588,6 +601,68 @@ app.get('/api/mogul-leaderboard', auth, async (req, res) => {
           (o.mogul_location > u.mogul_location OR (o.mogul_location = u.mogul_location AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
      FROM users u WHERE u.id = $1`, [req.user.id]);
   res.json({ top: top.rows, me: me.rows[0] || null });
+});
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+// Wird gespeichert und – falls konfiguriert – per E-Mail verschickt (Resend).
+// Render-Umgebungsvariablen: RESEND_API_KEY, FEEDBACK_EMAIL (Empfänger), optional FEEDBACK_FROM
+const FEEDBACK_CATEGORIES = ['bug', 'idee', 'balancing', 'lob', 'sonstiges'];
+
+const sendFeedbackMail = async (fb) => {
+  const key = process.env.RESEND_API_KEY;
+  const to = process.env.FEEDBACK_EMAIL;
+  if (!key || !to || typeof fetch !== 'function') return false;
+  const stars = '★'.repeat(fb.rating) + '☆'.repeat(5 - fb.rating);
+  const text = [
+    `Neues Feedback von ${fb.username}`,
+    `Bewertung: ${stars} (${fb.rating}/5)`,
+    `Kategorie: ${fb.category}`,
+    '',
+    fb.message,
+    '',
+    `Spielstand: ${fb.context}`,
+  ].join('\n');
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.FEEDBACK_FROM || 'Casino-Mogul <onboarding@resend.dev>',
+        to: [to],
+        subject: `🎰 Feedback (${fb.category}, ${fb.rating}/5) von ${fb.username}`,
+        text,
+      }),
+    });
+    if (!res.ok) console.error('Feedback-Mail fehlgeschlagen:', res.status, await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error('Feedback-Mail fehlgeschlagen:', e.message);
+    return false;
+  }
+};
+
+app.post('/api/feedback', auth, async (req, res) => {
+  const { rating, category, message, context } = req.body || {};
+  const msg = typeof message === 'string' ? message.trim() : '';
+  if (msg.length < 3) return res.status(400).json({ error: 'Bitte schreib ein paar Worte' });
+  if (msg.length > 2000) return res.status(400).json({ error: 'Maximal 2000 Zeichen' });
+  const stars = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : 3;
+  const cat = FEEDBACK_CATEGORIES.includes(category) ? category : 'sonstiges';
+  const ctx = typeof context === 'string' ? context.slice(0, 300) : '';
+  const recent = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM feedback WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour'`, [req.user.id]);
+  if (recent.rows[0].n >= 5) return res.status(429).json({ error: 'Danke! Du hast schon viel Feedback geschickt – bitte später wieder.' });
+  const fb = { username: req.user.username, rating: stars, category: cat, message: msg, context: ctx };
+  await pool.query(
+    `INSERT INTO feedback (user_id, username, rating, category, message, context) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [req.user.id, fb.username, stars, cat, msg, ctx]);
+  const mailed = await sendFeedbackMail(fb);
+  res.json({ success: true, mailed });
+});
+
+app.get('/api/admin/feedback', adminAuth, async (req, res) => {
+  const r = await pool.query(`SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200`);
+  res.json(r.rows);
 });
 
 // Leaderboard

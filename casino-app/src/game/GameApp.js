@@ -6,6 +6,7 @@ import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange } from './Views';
 import Slots from './Slots';
+import Feedback from './Feedback';
 import { sfx, isMuted, setMuted } from './sound';
 import Dice from '../Dice';
 import Mines from '../Mines';
@@ -110,6 +111,7 @@ export default function GameApp({ user, onLogout }) {
   const [activeGame, setActiveGame] = useState(null);
   const [charmModal, setCharmModal] = useState(null);
   const [moveModal, setMoveModal] = useState(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const { state, derived } = game;
 
@@ -211,6 +213,7 @@ export default function GameApp({ user, onLogout }) {
         </div>
         <div className="mg-user">
           <span className="name">👤 {user.username}</span>
+          <button className="mg-icon-btn" title="Feedback geben" onClick={() => setFeedbackOpen(true)}>💬</button>
           <button className="mg-icon-btn" title={muted ? 'Ton an' : 'Ton aus'} onClick={() => { setMuted(!muted); setMutedState(!muted); if (muted) sfx.coin(); }}>{muted ? '🔇' : '🔊'}</button>
           <button className="mg-btn-ghost" onClick={() => { game.saveNow(); onLogout(); }}>Logout</button>
         </div>
@@ -276,6 +279,7 @@ export default function GameApp({ user, onLogout }) {
       )}
 
       {bigWin && <BigWin win={bigWin} onClose={closeBigWin} />}
+      {feedbackOpen && <Feedback state={state} onClose={() => setFeedbackOpen(false)} />}
       <Confetti burst={confetti} />
 
       <div className="mg-toasts">

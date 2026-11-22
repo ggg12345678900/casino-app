@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { fmtMoney, fmt } from './economy';
 import { sfx } from './sound';
 
-// Walzen-Symbole mit Gewicht (Häufigkeit). Ausschüttung ≈ 97,4 %, Trefferquote ≈ 22 %.
+// Walzen-Symbole mit Gewicht (Häufigkeit). Ausschüttung ≈ 96,1 %; bei ~53 % der Drehs kommt etwas zurück.
 const SYMBOLS = [
   { s: '🍒', w: 7, pay: 5 },
   { s: '🍋', w: 6, pay: 8 },
@@ -19,7 +19,8 @@ const rollSym = () => {
 };
 const payout = (line) => {
   if (line[0] === line[1] && line[1] === line[2]) return SYMBOLS.find(x => x.s === line[0]).pay;
-  return line.filter(x => x === '🍒').length === 2 ? 3 : 0;
+  if (line.filter(x => x === '🍒').length === 2) return 2;
+  return new Set(line).size === 2 ? 0.5 : 0; // zwei Gleiche: halber Einsatz zurück
 };
 
 const SYM_H = 92;
@@ -83,8 +84,15 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
     const ticker = setInterval(() => sfx.tick(), 85);
     setTimeout(() => {
       clearInterval(ticker);
-      const mult = payout(result) * (payout(result) > 0 ? bonus : 0);
-      if (mult > 0) {
+      const base = payout(result);
+      if (base === 0.5) {
+        const back = +(b * 0.5).toFixed(2);
+        setBalance(prev => +(prev + back).toFixed(2));
+        addResult(false, +(b - back).toFixed(2), 'slots', b, 0.5);
+        setWin({ amount: back, mult: 0.5, half: true });
+        sfx.tick();
+      } else if (base > 0) {
+        const mult = base * bonus;
         const total = +(b * mult).toFixed(2);
         setBalance(prev => +(prev + total).toFixed(2));
         addResult(true, +(total - b).toFixed(2), 'slots', b, mult);
@@ -114,12 +122,12 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
           <div className="sl-marquee">MOGUL SLOTS</div>
           <div className="sl-jackpot">7️⃣7️⃣7️⃣ JACKPOT · {fmtMoney(b * 250 * bonus)}</div>
         </div>
-        <div className={`sl-window${win ? ' won' : ''}`}>
+        <div className={`sl-window${win && !win.half ? ' won' : ''}`}>
           {reels.map((r, i) => <Reel key={i} {...r} />)}
           <div className="sl-line" />
         </div>
-        <div className={`sl-led${win ? ' won' : ''}`}>
-          {win ? <>GEWINN <b>{fmtMoney(shown)}</b> <span>×{fmt(win.mult, 1)}</span></> : spinning ? 'Viel Glück…' : 'Setz deinen Einsatz!'}
+        <div className={`sl-led${win && !win.half ? ' won' : ''}`}>
+          {win ? (win.half ? <>HALBER EINSATZ ZURÜCK <b>{fmtMoney(shown)}</b></> : <>GEWINN <b>{fmtMoney(shown)}</b> <span>×{fmt(win.mult, 1)}</span></>) : spinning ? 'Viel Glück…' : 'Setz deinen Einsatz!'}
         </div>
         <div className="sl-controls">
           <div className="sl-bets">
@@ -139,7 +147,8 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
         {[...SYMBOLS].reverse().map(x => (
           <div key={x.s} className="sl-pay"><span>{x.s}{x.s}{x.s}</span><b>×{x.pay}</b></div>
         ))}
-        <div className="sl-pay"><span>🍒🍒 + beliebig</span><b>×3</b></div>
+        <div className="sl-pay"><span>🍒🍒 + beliebig</span><b>×2</b></div>
+        <div className="sl-pay"><span style={{ fontSize: 15 }}>2 Gleiche</span><b>×0,5</b></div>
         {winBonus > 0 && <div style={{ color: 'var(--green)', fontSize: 12, marginTop: 8, fontWeight: 800 }}>Dein Zocken-Bonus: +{(winBonus * 50).toFixed(1)}% auf Gewinne</div>}
       </div>
     </div>

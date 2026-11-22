@@ -131,6 +131,13 @@ export const api = {
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(r => r.json()),
 
+  sendFeedback: (data) =>
+    fetch(`${BASE}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
   getSave: () =>
     fetch(`${BASE}/save`, {
       headers: { Authorization: `Bearer ${getToken()}` }
