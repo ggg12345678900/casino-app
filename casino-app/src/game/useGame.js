@@ -18,11 +18,13 @@ const writeLocal = (userId, s) => {
  * Hält den kompletten Spielstand, lässt die Zeit laufen und speichert.
  * Events (Funde, Glücksbringer, Level-Ups) gehen über onEvent an die UI.
  */
-export default function useGame(user) {
+export default function useGame(user, { onAchievement, onBigWin } = {}) {
   const [state, setState] = useState(null);
   const [welcome, setWelcome] = useState(null); // { seconds, earned }
   const stateRef = useRef(null);
   stateRef.current = state;
+  const cbRef = useRef({});
+  cbRef.current = { onAchievement, onBigWin };
 
   // ── Laden: neuerer Stand gewinnt (lokal vs. Server) ──────────────────
   useEffect(() => {
@@ -83,10 +85,10 @@ export default function useGame(user) {
 
   // ── Aktionen ─────────────────────────────────────────────────────────
   // pickup() rechnet synchron mit dem aktuellen Stand, damit die UI das Ergebnis sofort anzeigen kann
-  const pickup = useCallback((coinId, gold) => {
+  const pickup = useCallback((coinId, gold, combo = 0) => {
     const s = stateRef.current;
     if (!s) return null;
-    const out = E.pickup(s, coinId, gold);
+    const out = E.pickup(s, coinId, gold, combo);
     if (!out) return null;
     const { state: next, result } = out;
     // Zwischenzeitliche Zeit-Ticks nicht verlieren: nur die Differenz anwenden
@@ -127,13 +129,47 @@ export default function useGame(user) {
       return next;
     });
   }, []);
-  const addResult = useCallback((didWin, amount) => {
+  const addResult = useCallback((didWin, amount, game, bet, multiplier = 1) => {
     setState(s => {
-      const next = E.recordBet(s, didWin, amount);
+      const next = E.recordBet(s, didWin, amount, multiplier);
       stateRef.current = next;
       return next;
     });
+    if (didWin && multiplier >= 10 && cbRef.current.onBigWin) cbRef.current.onBigWin({ amount, multiplier, game });
   }, []);
+
+  const openSack = useCallback(() => {
+    const s = stateRef.current;
+    if (!s) return null;
+    const out = E.openSack(s);
+    stateRef.current = out.state;
+    setState(out.state);
+    return out.result;
+  }, []);
+
+  const spinWheel = useCallback(() => {
+    const s = stateRef.current;
+    if (!s) return null;
+    const out = E.spinWheel(s);
+    if (!out) return null;
+    stateRef.current = out.state;
+    setState(out.state);
+    return out;
+  }, []);
+
+  // Erfolge prüfen (jede Sekunde)
+  useEffect(() => {
+    if (!state) return undefined;
+    const id = setInterval(() => {
+      const s = stateRef.current;
+      if (!s) return;
+      const list = E.newAchievements(s);
+      if (!list.length) return;
+      setState(cur => E.unlockAchievements(cur, list));
+      list.forEach(a => cbRef.current.onAchievement && cbRef.current.onAchievement(a));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [state === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetGame = useCallback(() => {
     const fresh = E.newGame();
@@ -145,6 +181,6 @@ export default function useGame(user) {
 
   return {
     state, derived: state ? E.derive(state) : null, welcome, dismissWelcome: () => setWelcome(null),
-    pickup, pickCharm, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    pickup, pickCharm, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }
