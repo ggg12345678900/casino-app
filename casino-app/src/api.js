@@ -1,5 +1,12 @@
-const BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Server-Adresse: aus .env (REACT_APP_API_URL). Fallback: lokal nur auf dem eigenen Rechner,
+// sonst immer der Render-Server – damit eine fehlende Build-Variable die Seite nicht lahmlegt.
+const ON_LOCALHOST = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+export const BASE = process.env.REACT_APP_API_URL
+  || (ON_LOCALHOST ? 'http://localhost:5000/api' : 'https://casino-app-server.onrender.com/api');
 const getToken = () => localStorage.getItem('token');
+
+// Weckt den Render-Server auf (schläft im Gratis-Tarif nach ~15 min ohne Besucher)
+export const wakeServer = () => fetch(`${BASE}/mogul-leaderboard`).catch(() => {});
 
 export const api = {
   register: (username, password) =>

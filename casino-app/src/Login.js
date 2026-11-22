@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { api } from './api';
+import React, { useState, useEffect } from 'react';
+import { api, wakeServer } from './api';
 
 function Login({ onLogin }) {
   const [mode, setMode] = useState('login');
@@ -7,19 +7,30 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
+
+  // Server schon beim Öffnen der Seite aufwecken, damit der Login schneller geht
+  useEffect(() => { wakeServer(); }, []);
 
   const handleSubmit = async () => {
     if (!username || !password) return setError('Bitte alle Felder ausfüllen!');
     setLoading(true);
     setError('');
+    const slowTimer = setTimeout(() => setSlow(true), 4000);
 
-    const res = mode === 'login'
-      ? await api.login(username, password)
-      : await api.register(username, password);
-
+    let res;
+    try {
+      res = mode === 'login'
+        ? await api.login(username, password)
+        : await api.register(username, password);
+    } catch {
+      res = { error: 'Server nicht erreichbar. Er wacht vielleicht gerade auf – warte 30 Sekunden und versuch es nochmal.' };
+    }
+    clearTimeout(slowTimer);
+    setSlow(false);
     setLoading(false);
 
-    if (res.error) return setError(res.error);
+    if (!res || res.error) return setError((res && res.error) || 'Unbekannter Fehler – bitte nochmal versuchen.');
 
     localStorage.setItem('token', res.token);
     onLogin(res);
@@ -84,7 +95,7 @@ function Login({ onLogin }) {
           {/* Button */}
           <button onClick={handleSubmit} disabled={loading}
             style={{ width: '100%', marginTop: '20px', padding: '14px', backgroundColor: loading ? '#555' : '#00e701', border: 'none', color: loading ? '#aaa' : '#000', borderRadius: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
-            {loading ? '⏳ Laden...' : mode === 'login' ? '🔑 Einloggen' : '🚀 Account erstellen'}
+            {loading ? (slow ? '⏳ Server wacht auf… (bis zu 1 Minute)' : '⏳ Laden...') : mode === 'login' ? '🔑 Einloggen' : '🚀 Account erstellen'}
           </button>
 
           {/* Admin Hint */}
