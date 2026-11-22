@@ -40,7 +40,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {
       const pick = [local, remote].filter(Boolean).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))[0];
       const loaded = E.migrate(pick);
       const off = E.offlineProgress(loaded);
-      if (off.seconds > 60 && off.earned > 0) setWelcome({ seconds: off.seconds, earned: off.earned });
+      if (off.seconds > 60 && off.earned > 0) setWelcome({ seconds: off.seconds, away: off.away, earned: off.earned });
       setState({ ...off.state, savedAt: Date.now() });
     })();
     return () => { cancelled = true; };

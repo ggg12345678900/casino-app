@@ -146,7 +146,8 @@ export const GOLD_CHANCE = 0.02;     // 2% der Münzen sind Goldmünzen
 export const GOLD_MULT = 25;
 export const GOLD_LIFETIME = 2.8;
 export const CHARM_LIFETIME = 4;
-export const OFFLINE_CAP_SEC = 8 * 3600;
+export const OFFLINE_CAP_SEC = 8 * 3600; // max. 8 h werden angerechnet
+export const OFFLINE_RATE = 0.2;         // offline verdienen Helfer 20 % ihres normalen Einkommens
 export const COMBO_WINDOW_MS = 1600;  // so schnell muss die nächste Münze folgen
 export const COMBO_STEP = 0.05;       // +5% pro Combo-Stufe
 export const COMBO_MAX = 20;          // max. ×2
@@ -500,8 +501,9 @@ export const recordBet = (s, didWin, amount, multiplier = 1, bet = 0, hitJackpot
 // Offline-Einnahmen seit dem letzten Speichern
 export const offlineProgress = (s, now = Date.now()) => {
   const sec = Math.min(Math.max(0, (now - (s.savedAt || now)) / 1000), OFFLINE_CAP_SEC);
-  const earned = derive(s).incomePerSec * sec;
-  return { seconds: sec, earned, state: earn(s, earned) };
+  const away = Math.max(0, (now - (s.savedAt || now)) / 1000);
+  const earned = derive(s).incomePerSec * OFFLINE_RATE * sec;
+  return { seconds: sec, away, earned, state: earn(s, earned) };
 };
 
 // ─── Zahlenformat ──────────────────────────────────────────────────────────

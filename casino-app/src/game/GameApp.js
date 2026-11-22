@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, jackpotPool } from './economy';
+import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, jackpotPool, OFFLINE_CAP_SEC } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard } from './Views';
@@ -240,8 +240,11 @@ export default function GameApp({ user, onLogout }) {
             <div className="rays" />
             <div className="big">💤</div>
             <h2>Willkommen zurück!</h2>
-            <p>Während du {fmtTime(game.welcome.seconds)} weg warst, haben deine Helfer gesammelt:</p>
+            <p>Während du {fmtTime(game.welcome.away || game.welcome.seconds)} weg warst, haben deine Helfer gesammelt:</p>
             <div className="disp" style={{ fontSize: 38, color: 'var(--green)', marginBottom: 20 }}>+{fmtMoney(game.welcome.earned)}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: -12, marginBottom: 18 }}>
+              Offline arbeiten deine Helfer mit 20 % Tempo{(game.welcome.away || 0) > OFFLINE_CAP_SEC ? ' · nur die ersten 8 Stunden zählen' : ' · max. 8 Stunden'}
+            </div>
             <button className="mg-btn green" onClick={() => { sfx.gold(); game.dismissWelcome(); }}>Einsammeln</button>
           </div>
         </div>
