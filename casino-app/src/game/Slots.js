@@ -23,13 +23,38 @@ const linePay = (line) => {
 };
 
 const SYM_H = 88;
-const STOP_MS = [850, 1200, 1550];
+const STOP_MS = [1300, 1750, 2200];
+const WIN_PAUSE_MS = 3000; // nach einem Gewinn kurz feiern, erst dann weiterdrehen
+
+// Feuerwerk links und rechts vom Automaten
+const FW_COLORS = ['#ffd34d', '#ff3ea5', '#3ee6ff', '#3dff8b', '#b18cff', '#ff8a3d'];
+function Fireworks({ big }) {
+  const bursts = useRef(Array.from({ length: big ? 8 : 4 }, (_, i) => ({
+    side: i % 2 ? 'right' : 'left',
+    top: 10 + Math.random() * 60,
+    delay: Math.floor(i / 2) * 0.55 + Math.random() * 0.2,
+    color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+    color2: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+  }))).current;
+  return (
+    <>
+      {bursts.map((b, i) => (
+        <div key={i} className={`sl-fw ${b.side}`} style={{ top: `${b.top}%`, animationDelay: `${b.delay}s` }}>
+          {Array.from({ length: 14 }, (_, k) => (
+            <span key={k} style={{ '--a': `${k * (360 / 14)}deg`, '--c': k % 2 ? b.color : b.color2, animationDelay: `${b.delay}s` }} />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
 
 function Reel({ strip, offset, duration, spinning, theme, winRow, scatterGlow }) {
   const last = strip.length - 3;
   return (
-    <div className={`sl-reel${spinning ? ' spinning' : ''}`}>
-      <div className="sl-strip" style={{ transform: `translateY(${-offset * SYM_H}px)`, transition: duration ? `transform ${duration}ms cubic-bezier(.15,.85,.25,1.04)` : 'none' }}>
+    <div className="sl-reel">
+      {/* Unschärfe nur in der schnellen Phase – beim Abbremsen sind die Symbole schon erkennbar */}
+      <div className="sl-strip" style={{ transform: `translateY(${-offset * SYM_H}px)`, transition: duration ? `transform ${duration}ms cubic-bezier(.15,.85,.25,1.04)` : 'none', animation: duration && spinning ? `slBlurOut ${duration}ms linear forwards` : 'none' }}>
         {strip.map((s, i) => {
           const row = i - last; // 0 oben, 1 Mitte, 2 unten (nur nach dem Stopp relevant)
           const win = !spinning && offset === last && ((winRow && row === 1) || (scatterGlow && s === S && row >= 0));
@@ -55,6 +80,7 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
   const [shown, setShown] = useState(0);
   const [free, setFree] = useState({ left: 0, total: 0, won: 0 });
   const [banner, setBanner] = useState(null);
+  const [pause, setPause] = useState(0); // >0: Gewinn-Feier läuft, Knopf gesperrt (Zähler = Feuerwerk-Key)
   const autoRef = useRef(false); autoRef.current = auto;
   const balRef = useRef(balance); balRef.current = balance;
   const freeRef = useRef(free); freeRef.current = free;
@@ -112,6 +138,13 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
       }
 
       if (amount > 0) setWin({ amount, mult, half: base === PAIR_OTHER && !isFree, row: true });
+      // Echte Gewinne (nicht „halber Einsatz zurück“): 3 Sekunden Feuerwerk, solange gesperrt
+      if (base >= 1) {
+        const id = Date.now();
+        setPause(id);
+        sfx.firework();
+        setTimeout(() => setPause(p => (p === id ? 0 : p)), WIN_PAUSE_MS);
+      }
       if (base >= 1 && mult < 10) sfx.win(); else if (base === PAIR_OTHER) sfx.tick();
 
       // Freispiele: 3+ Scatter irgendwo im Fenster
@@ -133,19 +166,21 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
 
   // Freispiele laufen automatisch, Auto-Spin auf Wunsch
   useEffect(() => {
-    if (spinning) return undefined;
+    if (spinning || pause) return undefined;
     if (free.left > 0) { const t = setTimeout(spin, banner ? 2300 : 700); return () => clearTimeout(t); }
     if (!auto) return undefined;
     const t = setTimeout(() => { if (autoRef.current) spin(); }, win ? 900 : 350);
     return () => clearTimeout(t);
-  }, [auto, spinning, spin, win, free.left, banner]);
+  }, [auto, spinning, spin, win, free.left, banner, pause]);
 
   const b = inFree ? free.bet : Math.min(bet, maxBet);
-  const canSpin = !spinning && !inFree && b > 0 && b <= balance;
+  const canSpin = !spinning && !pause && !inFree && b > 0 && b <= balance;
   const style = { '--c1': theme.c1, '--c2': theme.c2, '--neon': theme.neon, '--glass': theme.glass };
 
   return (
     <div className="sl-wrap">
+      <div className="sl-stage">
+      {pause > 0 && <Fireworks key={pause} big={!!(win && win.mult >= 10)} />}
       <div className={`sl-cabinet${win && !win.half ? ' hot' : ''}${inFree ? ' free' : ''}`} style={style}>
         <div className="sl-bulbs" />
         <div className="sl-top">
@@ -171,10 +206,11 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
           </div>
           <div className="sl-actions">
             <button className={`sl-auto${auto ? ' on' : ''}`} onClick={() => setAuto(a => !a)}>{auto ? '⏹ STOP' : '🔁 AUTO'}</button>
-            <button className="sl-spin" disabled={!canSpin} onClick={spin}>{inFree ? 'FREE' : spinning ? '…' : 'SPIN'}</button>
+            <button className="sl-spin" disabled={!canSpin} onClick={spin}>{inFree ? 'FREE' : spinning ? '…' : pause ? '🎆' : 'SPIN'}</button>
           </div>
           <div className="sl-betinfo">Einsatz <b>{fmtMoney(b)}</b>{bet > maxBet && ' (Max)'}</div>
         </div>
+      </div>
       </div>
       <div className="sl-paytable">
         <div className="mg-label">Gewinntabelle</div>

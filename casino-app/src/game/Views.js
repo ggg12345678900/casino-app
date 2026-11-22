@@ -93,8 +93,11 @@ function LiveFeed({ maxBet, games }) {
       setRows(r => [{ id: Math.random(), name: FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)], g, amount, big, mult }, ...r].slice(0, 6));
     };
     add(); add(); add();
-    const id = setInterval(add, 2600);
-    return () => clearInterval(id);
+    // neue Meldung alle 6–12 Sekunden (zufällig, wirkt natürlicher)
+    let t;
+    const next = () => { t = setTimeout(() => { add(); next(); }, 6000 + Math.random() * 6000); };
+    next();
+    return () => clearTimeout(t);
   }, [maxBet, games]);
   return (
     <div className="cs-feed">

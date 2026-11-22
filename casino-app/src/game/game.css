@@ -549,3 +549,15 @@
 .mg-floor.mg-hl .mg-coin { box-shadow: 0 0 0 3px #fff, 0 0 22px 6px rgba(255,220,90,.9), 0 4px 10px rgba(0,0,0,.6); }
 @keyframes mgHl { 0%, 100% { box-shadow: 0 0 0 3px rgba(255,211,77,.9), 0 0 18px 4px rgba(255,200,60,.55); } 50% { box-shadow: 0 0 0 6px rgba(255,211,77,.5), 0 0 34px 10px rgba(255,200,60,.85); } }
 @keyframes mgPoint { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+/* Automat: Unschärfe nur am Anfang, Feuerwerk bei Gewinnen */
+.sl-reel.spinning .sl-strip { filter: none; }
+@keyframes slBlurOut { 0% { filter: blur(3px); } 45% { filter: blur(2.5px); } 62% { filter: blur(0); } 100% { filter: blur(0); } }
+.sl-stage { position: relative; }
+.sl-fw { position: absolute; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.sl-fw.left { left: calc(50% - 330px); }
+.sl-fw.right { right: calc(50% - 330px); }
+@media (max-width: 820px) { .sl-fw.left { left: 24px; } .sl-fw.right { right: 24px; } }
+.sl-fw span { position: absolute; left: 0; top: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c), 0 0 16px var(--c);
+  opacity: 0; transform: rotate(var(--a)) translateX(0); animation: slFw 1.3s cubic-bezier(.2,.7,.3,1) forwards; }
+@keyframes slFw { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.2); } 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(90px) translateY(25px) scale(.4); } }
