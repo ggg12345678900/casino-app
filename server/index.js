@@ -71,6 +71,20 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_location INTEGER DEFAULT 0`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_earned DOUBLE PRECISION DEFAULT 0`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_max_combo INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_jackpot_at TIMESTAMP DEFAULT NULL`);
+  // Gemeinsamer Jackpot für alle Spieler
+  await pool.query(`CREATE TABLE IF NOT EXISTS jackpot (id INTEGER PRIMARY KEY, pool DOUBLE PRECISION NOT NULL DEFAULT 0)`);
+  await pool.query(`INSERT INTO jackpot (id, pool) VALUES (1, 1000) ON CONFLICT (id) DO NOTHING`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS jackpot_wins (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      username TEXT,
+      amount DOUBLE PRECISION,
+      game TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -680,6 +694,68 @@ app.post('/api/feedback', auth, async (req, res) => {
 app.get('/api/admin/feedback', adminAuth, async (req, res) => {
   const r = await pool.query(`SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200`);
   res.json(r.rows);
+});
+
+// ─── Gemeinsamer Jackpot ─────────────────────────────────────────────────────
+// Jede Wette aller Spieler füllt den Topf (der Client meldet gesammelte Beiträge alle paar Sekunden).
+// Das Knacken würfelt der Client aus; der Server zahlt aus, begrenzt auf das 500-Fache des
+// Max-Einsatzes des Gewinners (damit Anfänger nicht die Billionen der Profis abräumen) und
+// erlaubt pro Spieler höchstens einen Jackpot alle 2 Stunden.
+const JACKPOT_SEED = 1000;
+const JACKPOT_COOLDOWN_MIN = 120;
+
+app.get('/api/jackpot', auth, async (req, res) => {
+  const p = await pool.query(`SELECT pool FROM jackpot WHERE id = 1`);
+  const w = await pool.query(`SELECT id, username, amount, game, created_at FROM jackpot_wins ORDER BY id DESC LIMIT 10`);
+  res.json({ pool: p.rows[0] ? p.rows[0].pool : JACKPOT_SEED, wins: w.rows });
+});
+
+app.post('/api/jackpot/contribute', auth, async (req, res) => {
+  const amount = Number(req.body && req.body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Ungültiger Betrag' });
+  // Plausibilität: niemand kann mehr einzahlen, als er insgesamt verdient hat
+  const u = await pool.query(`SELECT COALESCE(mogul_earned, 0) AS earned FROM users WHERE id = $1`, [req.user.id]);
+  const cap = Math.max(50, (u.rows[0] ? u.rows[0].earned : 0) * 0.05);
+  const add = Math.min(amount, cap);
+  const r2 = await pool.query(`UPDATE jackpot SET pool = pool + $1 WHERE id = 1 RETURNING pool`, [add]);
+  res.json({ pool: r2.rows[0].pool });
+});
+
+app.post('/api/jackpot/claim', auth, async (req, res) => {
+  const game = typeof req.body?.game === 'string' ? req.body.game.slice(0, 40) : 'casino';
+  const maxBet = Number(req.body && req.body.maxBet);
+  if (!Number.isFinite(maxBet) || maxBet <= 0) return res.status(400).json({ error: 'Ungültig' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const u = await client.query(
+      `SELECT username, COALESCE(mogul_earned, 0) AS earned,
+         EXTRACT(EPOCH FROM (NOW() - last_jackpot_at)) / 60 AS mins
+       FROM users WHERE id = $1 FOR UPDATE`, [req.user.id]);
+    const me = u.rows[0];
+    if (!me) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'User nicht gefunden' }); }
+    if (me.mins !== null && parseFloat(me.mins) < JACKPOT_COOLDOWN_MIN) {
+      await client.query('ROLLBACK');
+      return res.json({ won: false, cooldown: Math.ceil(JACKPOT_COOLDOWN_MIN - parseFloat(me.mins)) });
+    }
+    const j = await client.query(`SELECT pool FROM jackpot WHERE id = 1 FOR UPDATE`);
+    const potNow = j.rows[0] ? j.rows[0].pool : JACKPOT_SEED;
+    const safeBet = Math.min(maxBet, Math.max(5, me.earned)); // Max-Einsatz kann nicht höher sein als alles Verdiente
+    const amount = Math.min(potNow, Math.max(JACKPOT_SEED, safeBet * 500));
+    const rest = Math.max(JACKPOT_SEED, potNow - amount);
+    await client.query(`UPDATE jackpot SET pool = $1 WHERE id = 1`, [rest]);
+    await client.query(`UPDATE users SET last_jackpot_at = NOW() WHERE id = $1`, [req.user.id]);
+    await client.query(`INSERT INTO jackpot_wins (user_id, username, amount, game) VALUES ($1, $2, $3, $4)`,
+      [req.user.id, me.username, amount, game]);
+    await client.query('COMMIT');
+    res.json({ won: true, amount, pool: rest });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: 'Serverfehler' });
+  } finally {
+    client.release();
+  }
 });
 
 // Leaderboard

@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
 import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime } from './economy';
 import { sfx } from './sound';
+import { SLOT_THEMES } from './slotThemes';
 
 export const GAME_INFO = {
-  slots:     { name: 'Mogul Slots', icon: '🎰', desc: '7️⃣7️⃣7️⃣ knackt den Jackpot', bg: 'linear-gradient(160deg, #ff3ea5, #7c1d9e)', tag: 'hot' },
   dice:      { name: 'Dice',      icon: '🎲', desc: 'Roll über oder unter', bg: 'linear-gradient(160deg, #3b82f6, #1e3a8a)' },
   mines:     { name: 'Mines',     icon: '💣', desc: 'Vermeide die Minen', bg: 'linear-gradient(160deg, #ef4444, #7f1d1d)' },
   plinko:    { name: 'Plinko',    icon: '🎯', desc: 'Lass den Ball fallen', bg: 'linear-gradient(160deg, #a855f7, #4c1d95)' },
@@ -14,7 +14,12 @@ export const GAME_INFO = {
   chicken:   { name: 'Chicken',   icon: '🐔', desc: 'Über die Straße', bg: 'linear-gradient(160deg, #84cc16, #365314)' },
   pump:      { name: 'Pump',      icon: '🎈', desc: 'Pump bis es knallt', bg: 'linear-gradient(160deg, #06b6d4, #164e63)' },
 };
-const ALL_GAMES = Object.keys(GAME_INFO);
+// Ein Automat pro Ort (vorne), danach die Tischspiele
+LOCATIONS.slice().reverse().forEach(l => {
+  const t = SLOT_THEMES[l.id];
+  GAME_INFO[`slots-${l.id}`] = { name: t.name, icon: t.icon, desc: `Automat · ${t.scatter}×3 = Freispiele`, bg: `linear-gradient(160deg, ${t.c1}, ${t.c2})`, slot: l.id };
+});
+const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_INFO).filter(g => !g.startsWith('slots-'))];
 export const coinRange = (loc) => {
   const a = coinById(loc.coins[0]); const b = coinById(loc.coins[3]);
   return `${a.label} ${a.unit} – ${b.label} ${b.unit}`;
@@ -31,7 +36,7 @@ export function LocationsView({ state, onMove }) {
         const can = isNext && state.money >= l.cost;
         const newTools = TOOLS.filter(t => t.loc === i);
         const newHelpers = HELPERS.filter(h => h.loc === i);
-        const newGames = l.games.filter(g => !(LOCATIONS[i - 1]?.games || []).includes(g));
+        const newGames = l.games;
         const hidden = i > state.location + 1;
         return (
           <div key={l.id} className={`mg-stop ${status}`}>
@@ -104,7 +109,7 @@ function LiveFeed({ maxBet, games }) {
   );
 }
 
-export function Wheel({ state, onSpin }) {
+export function Wheel({ state, onSpin, hl }) {
   const [rot, setRot] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState('');
@@ -145,7 +150,7 @@ export function Wheel({ state, onSpin }) {
         <div className="hub">🎩</div>
       </div>
       <div className="cs-wheel-result">{result || (ready ? 'Gratis-Dreh bereit!' : `Nächster Dreh in ${fmtTime(left)}`)}</div>
-      <button className="mg-btn pink" disabled={!ready || spinning} onClick={spin}>{spinning ? 'Dreht…' : ready ? '🎡 Gratis drehen!' : '⏳ Warten'}</button>
+      <button className={`mg-btn pink${hl ? ' mg-hl' : ''}`} disabled={!ready || spinning} onClick={spin}>{spinning ? 'Dreht…' : ready ? '🎡 Gratis drehen!' : '⏳ Warten'}</button>
     </div>
   );
 }
@@ -182,9 +187,10 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', jackpot }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
-  const jp = jackpotPool(state);
+  const jp = jackpot ? jackpot.pool : jackpotPool(state);
+  const online = jackpot && jackpot.online;
   const oneIn = Math.round(1 / jackpotChance(state, derived.maxBet));
 
   return (
@@ -196,8 +202,10 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           <div className="sub">Verdopple dein Geld – oder verlier alles. Jede Runde gibt Zocken-XP.</div>
           <div className="cs-jackpot"><span className="lbl">💰 JACKPOT</span><span className="val">{fmtMoney(jp)}</span></div>
           <div className="cs-jp-info">
+            {online ? <><b style={{ color: '#fff' }}>Ein Topf für alle Spieler!</b> </> : null}
             Jede Wette füllt den Topf (2 % vom Einsatz). Jede Runde in jedem Spiel kann ihn knacken – mit vollem Max-Einsatz
-            1 : {oneIn.toLocaleString('de-DE')}, mit weniger Einsatz seltener. <b>7️⃣7️⃣7️⃣ am Automaten knackt ihn immer!</b>
+            1 : {oneIn.toLocaleString('de-DE')}, mit weniger Einsatz seltener. <b>Das Top-Symbol 3× am Automaten knackt ihn immer!</b>
+            {online && <> Auszahlung bis zum 500-Fachen deines Max-Einsatzes, der Rest bleibt im Topf.</>}
           </div>
           <VipCard state={state} derived={derived} onBuy={onBuyVip} />
           <div className="cs-chips">
@@ -207,7 +215,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
         </div>
         <div className="mg-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="mg-label" style={{ marginBottom: 0 }}>🎡 Glücksrad · alle 8 Minuten gratis</div>
-          <Wheel state={state} onSpin={onSpin} />
+          <Wheel state={state} onSpin={onSpin} hl={hl === 'wheel'} />
         </div>
       </div>
 
@@ -218,7 +226,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           const info = GAME_INFO[g];
           const l = LOCATIONS[firstLoc(g)];
           return (
-            <button key={g} className="cs-game" disabled={!unlocked} onClick={() => onPick(g)}>
+            <button key={g} className={`cs-game${hl === `game-${g}` ? ' mg-hl' : ''}`} disabled={!unlocked} onClick={() => onPick(g)}>
               {unlocked && info.tag && <span className={`tag ${info.tag}`}>{info.tag === 'hot' ? '🔥 HOT' : '✨ NEU'}</span>}
               <div className="art" style={{ background: info.bg }}>{unlocked ? info.icon : '🔒'}</div>
               <div className="info">
@@ -229,6 +237,21 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           );
         })}
       </div>
+
+      {online && jackpot.wins && jackpot.wins.length > 0 && (
+        <div className="mg-panel" style={{ marginTop: 18 }}>
+          <div className="mg-label">💰 Letzte Jackpot-Gewinner</div>
+          <div className="cs-feed">
+            {jackpot.wins.slice(0, 5).map(w => (
+              <div key={w.id} className="cs-feed-row big">
+                <span>🎉</span>
+                <span><b style={{ color: 'var(--text)', marginLeft: 0 }}>{w.username}</b> · {GAME_INFO[w.game]?.name || w.game}</span>
+                <b>+{fmtMoney(w.amount)}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mg-panel" style={{ marginTop: 18 }}>
         <div className="mg-label">📡 Live-Gewinne</div>

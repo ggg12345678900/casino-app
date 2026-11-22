@@ -508,3 +508,44 @@
 .cs-vip .pips span.on { background: currentColor; }
 .cs-jp-info { max-width: 520px; margin: 8px auto 0; font-size: 12px; color: #ffd9ef; line-height: 1.45; }
 .cs-jp-info b { color: var(--gold); }
+
+/* ═══ Themen-Automaten ═══════════════════════════════════════════════════ */
+.sl-cabinet { position: relative; background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--neon) 30%, transparent), transparent 60%), linear-gradient(180deg, var(--c1), var(--c2)) !important;
+  border-color: var(--neon) !important; box-shadow: 0 0 0 4px rgba(0,0,0,.45), 0 0 40px color-mix(in srgb, var(--neon) 45%, transparent), inset 0 2px 0 rgba(255,255,255,.2), 0 10px 0 var(--shadow) !important; overflow: hidden; }
+.sl-bulbs { position: absolute; inset: 6px; border-radius: 22px; pointer-events: none; border: 5px dotted var(--neon); opacity: .85; filter: drop-shadow(0 0 4px var(--neon)); animation: slChase 1.2s steps(2) infinite; }
+.sl-cabinet.hot .sl-bulbs { animation-duration: .25s; }
+.sl-cabinet.free { box-shadow: 0 0 0 4px rgba(0,0,0,.45), 0 0 60px #ffd34d, 0 0 120px color-mix(in srgb, var(--neon) 60%, transparent), 0 10px 0 var(--shadow) !important; }
+.sl-cabinet.free .sl-bulbs { border-color: #ffd34d; animation-duration: .4s; }
+.sl-marquee { text-shadow: 0 0 6px #fff, 0 0 18px var(--neon), 0 0 30px var(--neon), 0 4px 0 rgba(0,0,0,.5) !important; }
+.sl-jackpot { border-color: var(--neon) !important; color: var(--neon) !important; }
+.sl-reel { background: linear-gradient(180deg, color-mix(in srgb, var(--glass) 70%, #000) 0%, var(--glass) 20%, var(--glass) 80%, color-mix(in srgb, var(--glass) 70%, #000) 100%) !important; height: calc(88px * 3) !important; }
+.sl-reel.spinning .sl-strip { filter: blur(2.5px); }
+.sl-sym { height: 88px !important; font-size: 52px !important; transition: transform .2s; }
+.sl-sym.win { animation: slWin .45s ease-in-out infinite alternate; }
+.sl-sym.scatter.win { animation: slWin .3s ease-in-out infinite alternate; }
+.sl-line { background: color-mix(in srgb, var(--neon) 70%, transparent) !important; box-shadow: 0 0 10px var(--neon) !important; }
+.sl-window { position: relative; }
+.sl-banner { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap; padding: 12px 22px; border-radius: 16px; font-family: var(--f-display); font-size: clamp(20px, 4vw, 30px);
+  color: #3a1d00; background: linear-gradient(180deg, #fff3b0, #ffc83d); box-shadow: 0 6px 0 #9a5b00, 0 0 40px rgba(255,200,60,.8); animation: mgPop .4s cubic-bezier(.2,1.6,.4,1); }
+.sl-free { margin: -4px 0 10px; text-align: center; padding: 8px; border-radius: 12px; font-family: var(--f-display); font-size: 16px; color: #3a1d00;
+  background: repeating-linear-gradient(45deg, #ffd34d 0 16px, #ffbf1f 16px 32px); background-size: 45px 45px; animation: mgStripes .8s linear infinite; }
+.sl-led { color: var(--neon) !important; }
+.sl-led.won { color: #ffe066 !important; }
+@keyframes slWin { from { transform: scale(1); filter: drop-shadow(0 0 0 transparent); } to { transform: scale(1.18); filter: drop-shadow(0 0 12px var(--neon)) brightness(1.2); } }
+@keyframes slChase { 0% { filter: drop-shadow(0 0 4px var(--neon)) brightness(1); } 100% { filter: drop-shadow(0 0 2px var(--neon)) brightness(.45) hue-rotate(30deg); } }
+
+/* ═══ Tutorial-Aufgaben ══════════════════════════════════════════════════ */
+.mg-quest { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px; border-radius: 18px; border: 2px solid #c79a2a;
+  background: linear-gradient(90deg, rgba(90,66,20,.9), rgba(36,22,80,.9)); box-shadow: 0 5px 0 var(--shadow), 0 0 24px rgba(255,200,60,.2); }
+.mg-quest .ic { font-size: 30px; animation: mgFloatY 2s ease-in-out infinite; }
+.mg-quest .t { font-family: var(--f-display); font-size: 18px; letter-spacing: .3px; }
+.mg-quest .h { color: #ffe9b8; font-size: 12px; font-weight: 700; }
+.mg-quest .bar { height: 8px; border-radius: 4px; background: rgba(0,0,0,.4); overflow: hidden; margin-top: 6px; max-width: 360px; }
+.mg-quest .bar div { height: 100%; background: linear-gradient(90deg, #ffb020, #ffe58a); transition: width .3s; }
+.mg-quest .rw { font-family: var(--f-display); color: var(--gold); white-space: nowrap; }
+.mg-hl { position: relative; z-index: 3; animation: mgHl 1.1s ease-in-out infinite !important; border-color: #ffd34d !important; }
+.mg-hl::after { content: '👆'; position: absolute; right: 10px; bottom: -14px; font-size: 26px; animation: mgPoint .8s ease-in-out infinite; pointer-events: none; z-index: 4; }
+.mg-floor.mg-hl::after { content: none; }
+.mg-floor.mg-hl .mg-coin { box-shadow: 0 0 0 3px #fff, 0 0 22px 6px rgba(255,220,90,.9), 0 4px 10px rgba(0,0,0,.6); }
+@keyframes mgHl { 0%, 100% { box-shadow: 0 0 0 3px rgba(255,211,77,.9), 0 0 18px 4px rgba(255,200,60,.55); } 50% { box-shadow: 0 0 0 6px rgba(255,211,77,.5), 0 0 34px 10px rgba(255,200,60,.85); } }
+@keyframes mgPoint { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }

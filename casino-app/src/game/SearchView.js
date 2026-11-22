@@ -54,7 +54,7 @@ function Coin({ item, onPick }) {
   );
 }
 
-function GoalBanner({ state, onMove }) {
+function GoalBanner({ state, onMove, hl }) {
   const next = LOCATIONS[state.location + 1];
   if (!next) {
     return (
@@ -70,7 +70,7 @@ function GoalBanner({ state, onMove }) {
   const pct = Math.min(1, state.money / next.cost);
   const ready = pct >= 1;
   return (
-    <div className="mg-panel mg-goal">
+    <div className={`mg-panel mg-goal${hl ? ' mg-hl' : ''}`}>
       <div className="icon">{next.icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}>
@@ -102,7 +102,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '' }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -237,9 +237,9 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
 
   return (
     <div>
-      <GoalBanner state={state} onMove={onMove} />
+      <GoalBanner state={state} onMove={onMove} hl={hl === 'goal'} />
 
-      <div ref={floorRef} className={`mg-floor floor-${loc.id}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}`} onPointerDown={missClick}>
+      <div ref={floorRef} className={`mg-floor floor-${loc.id}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} onPointerDown={missClick}>
         <div className="mg-floor-ambient" />
         {deco.map((d, i) => (
           <div key={i} className="mg-floor-deco" style={{ left: `${d.x}%`, top: `${d.y}%`, transform: `rotate(${d.r}deg)` }}>{d.e}</div>

@@ -4,6 +4,8 @@ import * as E from './economy';
 
 const LOCAL_KEY = (userId) => `mogul_save_${userId}`;
 const TICK_MS = 100;
+// Online: gemeinsamer Jackpot über den Server. Demo: eigener Topf im Browser.
+const ONLINE = process.env.REACT_APP_DEMO !== 'true';
 const LOCAL_SAVE_MS = 5000;
 const SERVER_SAVE_MS = 30000;
 
@@ -18,13 +20,16 @@ const writeLocal = (userId, s) => {
  * Hält den kompletten Spielstand, lässt die Zeit laufen und speichert.
  * Events (Funde, Glücksbringer, Level-Ups) gehen über onEvent an die UI.
  */
-export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {}) {
+export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown } = {}) {
   const [state, setState] = useState(null);
   const [welcome, setWelcome] = useState(null); // { seconds, earned }
   const stateRef = useRef(null);
   stateRef.current = state;
   const cbRef = useRef({});
-  cbRef.current = { onAchievement, onBigWin, onJackpot };
+  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown };
+  const [globalJp, setGlobalJp] = useState({ pool: null, wins: [] });
+  const pendingRef = useRef(0);       // noch nicht gemeldete Jackpot-Einzahlungen
+  const lastWinRef = useRef(null);    // höchste bekannte Gewinn-ID
 
   // ── Laden: neuerer Stand gewinnt (lokal vs. Server) ──────────────────
   useEffect(() => {
@@ -112,6 +117,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {
   }, []);
 
   const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
+  const claimQuest = useCallback(() => apply(s => E.claimQuest(s)), [apply]);
   const buyVip = useCallback((n = 1) => apply(s => E.buyVip(s, n)), [apply]);
   const buyHelper = useCallback((id, n) => apply(s => E.buyHelper(s, id, n)), [apply]);
   const buyTool = useCallback((id) => apply(s => E.buyTool(s, id)), [apply]);
@@ -133,15 +139,29 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {
   const addResult = useCallback((didWin, amount, game, bet = 0, multiplier = 1) => {
     const s0 = stateRef.current;
     // Jackpot hier auswürfeln (nicht im State-Updater), damit das Ergebnis eindeutig ist
-    const hit = !!s0 && ((game === 'slots' && multiplier >= 250) || Math.random() < E.jackpotChance(s0, bet));
+    const hit = !!s0 && ((String(game).startsWith('slots') && multiplier >= 250) || Math.random() < E.jackpotChance(s0, bet));
     const pool = s0 ? E.jackpotPool(s0) + Math.max(0, bet) * E.JACKPOT_SHARE : 0;
+    const localHit = hit && !ONLINE;
+    if (ONLINE) pendingRef.current += Math.max(0, bet) * E.JACKPOT_SHARE;
     setState(s => {
-      const next = E.recordBet(s, didWin, amount, multiplier, bet, hit);
+      const next = E.recordBet(s, didWin, amount, multiplier, bet, localHit);
       stateRef.current = next;
       return next;
     });
-    if (hit && cbRef.current.onJackpot) cbRef.current.onJackpot({ amount: pool, game });
-    else if (didWin && multiplier >= 10 && cbRef.current.onBigWin) cbRef.current.onBigWin({ amount, multiplier, game });
+    if (didWin && multiplier >= 10 && cbRef.current.onBigWin && !hit) cbRef.current.onBigWin({ amount, multiplier, game });
+    if (localHit && cbRef.current.onJackpot) cbRef.current.onJackpot({ amount: pool, game });
+    if (hit && ONLINE && s0) {
+      // Gemeinsamen Jackpot beim Server einfordern
+      api.jackpotClaim(game, E.derive(s0).maxBet).then(res => {
+        if (res && res.won) {
+          setState(s => { const next = E.creditJackpot(s, res.amount); stateRef.current = next; return next; });
+          setGlobalJp(g => ({ ...g, pool: res.pool }));
+          if (cbRef.current.onJackpot) cbRef.current.onJackpot({ amount: res.amount, game });
+        } else if (res && res.cooldown && cbRef.current.onJackpotCooldown) {
+          cbRef.current.onJackpotCooldown(res.cooldown);
+        }
+      }).catch(() => {});
+    }
   }, []);
 
   const openSack = useCallback(() => {
@@ -162,6 +182,33 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {
     setState(out.state);
     return out;
   }, []);
+
+  // Gemeinsamer Jackpot: Einzahlungen melden (10 s) und Topf + Gewinner abfragen (15 s)
+  useEffect(() => {
+    if (!ONLINE || !state) return undefined;
+    const poll = () => api.jackpot().then(res => {
+      if (!res || res.error) return;
+      const wins = res.wins || [];
+      const maxId = wins.reduce((m, w) => Math.max(m, w.id), 0);
+      if (lastWinRef.current !== null) {
+        wins.filter(w => w.id > lastWinRef.current && w.username !== user.username)
+          .forEach(w => cbRef.current.onJackpotNews && cbRef.current.onJackpotNews(w));
+      }
+      lastWinRef.current = Math.max(lastWinRef.current || 0, maxId);
+      setGlobalJp({ pool: res.pool, wins });
+    }).catch(() => {});
+    const flush = () => {
+      const amount = pendingRef.current;
+      if (amount <= 0) return;
+      pendingRef.current = 0;
+      api.jackpotContribute(amount).then(res => { if (res && res.pool) setGlobalJp(g => ({ ...g, pool: res.pool })); })
+        .catch(() => { pendingRef.current += amount; });
+    };
+    poll();
+    const a = setInterval(flush, 10000);
+    const b = setInterval(poll, 15000);
+    return () => { clearInterval(a); clearInterval(b); flush(); };
+  }, [state === null, user.username]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Erfolge prüfen (jede Sekunde)
   useEffect(() => {
@@ -186,7 +233,8 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {
   }, [user.id]);
 
   return {
-    state, derived: state ? E.derive(state) : null, welcome, dismissWelcome: () => setWelcome(null),
-    pickup, pickCharm, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    state, derived: state ? E.derive(state) : null, welcome,
+    jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
+    pickup, pickCharm, claimQuest, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

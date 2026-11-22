@@ -29,45 +29,48 @@ export const COINS = [
 export const COIN_WEIGHTS = [50, 30, 15, 5];
 
 // ─── Orte ──────────────────────────────────────────────────────────────────
-// coins: welche vier Münzsorten hier herumliegen. games: freigeschaltete Spiele.
+// coins: welche vier Münzsorten hier herumliegen. games: Spiele, die hier NEU dazukommen.
 export const LOCATIONS = [
   {
-    id: 'hinterhof', name: 'Hinterhof-Spielhalle', icon: '🏚️', cost: 0, coins: ['c1', 'c2', 'c5', 'c10'], games: [],
+    id: 'hinterhof', name: 'Hinterhof-Spielhalle', icon: '🏚️', cost: 0, coins: ['c1', 'c2', 'c5', 'c10'], games: ['slots-hinterhof'],
     junk: ['Kronkorken', 'Kaugummi', 'Zigarettenstummel', 'Staub', 'Ein Knopf', 'Rattenkot', 'Kassenbon', 'Eine Socke', 'Glasscherbe'],
     desc: 'Ein dreckiger Hinterhof. Zwischen dem Müll liegt hier und da ein Cent.',
   },
   {
-    id: 'kneipe', name: 'Eckkneipe', icon: '🍺', cost: 25, coins: ['c5', 'c10', 'c20', 'c50'], games: ['slots', 'dice'],
+    id: 'kneipe', name: 'Eckkneipe', icon: '🍺', cost: 25, coins: ['c5', 'c10', 'c20', 'c50'], games: ['slots-kneipe', 'dice', 'mines'],
     junk: ['Bierdeckel', 'Erdnussschale', 'Feuerzeug', 'Klebriger Fleck', 'Dartpfeil', 'Leeres Glas', 'Bierflaschendeckel'],
     desc: 'Klebriger Boden, betrunkene Gäste – hier fällt öfter mal Kleingeld runter. Würfeln erlaubt!',
   },
   {
-    id: 'spielhalle', name: 'Stadt-Spielhalle', icon: '🕹️', cost: 10000, coins: ['c20', 'c50', 'e1', 'e2'], games: ['slots', 'dice', 'mines', 'plinko'],
+    id: 'spielhalle', name: 'Stadt-Spielhalle', icon: '🕹️', cost: 10000, coins: ['c20', 'c50', 'e1', 'e2'], games: ['slots-spielhalle', 'plinko', 'crash'],
     junk: ['Popcorn', 'Token-Attrappe', 'Kaputter Joystick', 'Gewinnlos (Niete)', 'Strohhalm', 'Kassenzettel'],
     desc: 'Neonlicht und blinkende Automaten. Hier rollen Euro-Münzen. Mines und Plinko warten.',
   },
   {
-    id: 'casino', name: 'Stadt-Casino', icon: '🏛️', cost: 8e6, coins: ['e1', 'e2', 'k5', 'k10'], games: ['slots', 'dice', 'mines', 'plinko', 'crash', 'roulette'],
+    id: 'casino', name: 'Stadt-Casino', icon: '🏛️', cost: 8e6, coins: ['e1', 'e2', 'k5', 'k10'], games: ['slots-casino', 'roulette', 'blackjack'],
     junk: ['Visitenkarte', 'Manschettenknopf', 'Olive', 'Cocktailschirmchen', 'Verlorener Ohrring', 'Zahnstocher'],
     desc: 'Roter Teppich, Smoking-Pflicht. Die ersten echten Casino-Chips liegen herum.',
   },
   {
-    id: 'vegas', name: 'Las Vegas', icon: '🌴', cost: 4.8e9, coins: ['k5', 'k10', 'k25', 'k100'], games: ['slots', 'dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken'],
+    id: 'vegas', name: 'Las Vegas', icon: '🌴', cost: 4.8e9, coins: ['k5', 'k10', 'k25', 'k100'], games: ['slots-vegas', 'chicken'],
     junk: ['Elvis-Perücke', 'Hochzeitsring (Plastik)', 'Show-Ticket', 'Sonnenbrille', 'Federboa', 'Glitzerkonfetti'],
     desc: 'Die Stadt, die niemals schläft. Chips bis 100 €. Blackjack und Chicken freigeschaltet.',
   },
   {
-    id: 'monaco', name: 'Monaco', icon: '🛥️', cost: 3e12, coins: ['k25', 'k100', 'k500', 'k1k'], games: ['slots', 'dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken', 'pump'],
+    id: 'monaco', name: 'Monaco', icon: '🛥️', cost: 3e12, coins: ['k25', 'k100', 'k500', 'k1k'], games: ['slots-monaco', 'pump'],
     junk: ['Kaviar-Löffel', 'Yachtschlüssel (Attrappe)', 'Champagnerkorken', 'Rolex-Box (leer)', 'Seidentuch'],
     desc: 'Yachten, Adel und Milliardäre. Hier liegen 1000-€-Chips unterm Tisch.',
   },
   {
-    id: 'mond', name: 'Mond-Casino', icon: '🌙', cost: 4e15, coins: ['k500', 'k1k', 'k5k', 'k25k'], games: ['slots', 'dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken', 'pump'],
+    id: 'mond', name: 'Mond-Casino', icon: '🌙', cost: 4e15, coins: ['k500', 'k1k', 'k5k', 'k25k'], games: ['slots-mond'],
     junk: ['Mondstaub', 'Astronautennahrung', 'Kleiner Krater', 'Verlorene Antenne', 'Mondgestein'],
     desc: 'Das exklusivste Casino des Universums. Schwerelose 25.000-€-Chips.',
   },
 ];
 export const coinById = (id) => COINS.find(c => c.id === id);
+// Alle Spiele bis einschließlich Ort idx
+export const gamesUpTo = (idx) => LOCATIONS.slice(0, idx + 1).flatMap(l => l.games);
+export const gameUnlockLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
 // Durchschnittswert einer Münze an einem Ort
 export const avgCoin = (locIdx) => {
   const ids = LOCATIONS[locIdx].coins;
@@ -195,6 +198,24 @@ export const ACHIEVEMENTS = [
   { id: 'jackpot1', icon: '💰', name: 'JACKPOT!',            desc: 'Knack den progressiven Jackpot',   test: s => (s.stats.jackpots || 0) >= 1 },
   { id: 'vip10',    icon: '💳', name: 'Platin-Kunde',        desc: 'VIP-Stufe 10 erreicht',            test: s => (s.vip || 0) >= 10 },
 ];
+// ─── Tutorial-Aufgaben ─────────────────────────────────────────────────────
+// hl: welches Element aufleuchtet. progress: 0..1. reward: Bonus in €.
+export const QUESTS = [
+  { id: 'coins',  icon: '🪙', title: 'Heb 10 Münzen auf',                  hint: 'Klick die Münzen auf dem Boden an, bevor sie verschwinden.', hl: 'floor',            reward: 0.3, progress: s => s.stats.finds / 10 },
+  { id: 'brille', icon: '👓', title: 'Kauf die Brille',                     hint: 'Im Shop rechts unter „Werkzeuge“ – damit siehst du mehr Münzen.', hl: 'tool-brille',   reward: 0.5, progress: s => (s.tools.includes('brille') ? 1 : Math.min(0.99, s.money / 0.1)) },
+  { id: 'helfer', icon: '🧹', title: 'Stell eine Putzkraft ein',            hint: 'Unter „Helfer“ – sie sammelt automatisch für dich, auch wenn du nicht klickst.', hl: 'helper-putzkraft', reward: 1, progress: s => ((s.helpers.putzkraft || 0) >= 1 ? 1 : Math.min(0.99, s.money / 0.5)) },
+  { id: 'combo',  icon: '🔥', title: 'Schaff eine Combo ×3',                hint: 'Heb Münzen schnell hintereinander auf – jede Combo-Stufe gibt +5 % Wert.', hl: 'floor', reward: 1.5, progress: s => (s.stats.maxCombo || 0) / 3 },
+  { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten',       hint: 'Im Casino wartet die Kronkorken-Kiste. Schon ab 5 Cent Einsatz!', hl: 'game-slots-hinterhof', reward: 3, progress: s => (s.stats.bets >= 1 ? 1 : 0) },
+  { id: 'wheel',  icon: '🎡', title: 'Dreh das Glücksrad',                  hint: 'Im Casino – alle 8 Minuten ein Gratis-Dreh.', hl: 'wheel', reward: 2, progress: s => ((s.stats.wheelSpins || 0) >= 1 ? 1 : 0) },
+  { id: 'kneipe', icon: '🍺', title: 'Zieh in die Eckkneipe',               hint: 'Spar 25 € und klick oben auf „Umziehen“. Dort warten neue Spiele und mehr Geld.', hl: 'goal', reward: 10, progress: s => (s.location >= 1 ? 1 : Math.min(0.99, s.money / 25)) },
+];
+export const questDone = (s, i = s.quest) => i < QUESTS.length && QUESTS[i].progress(s) >= 1;
+export const claimQuest = (s) => {
+  const i = s.quest || 0;
+  if (!questDone(s, i)) return null;
+  return { ...earn(s, QUESTS[i].reward), quest: i + 1 };
+};
+
 export const newAchievements = (s) => ACHIEVEMENTS.filter(a => !(s.achievements || []).includes(a.id) && a.test(s));
 export const unlockAchievements = (s, list) => ({ ...s, achievements: [...(s.achievements || []), ...list.map(a => a.id)] });
 
@@ -232,7 +253,7 @@ export const spinWheel = (s, rng = Math.random, now = Date.now()) => {
   let text = '';
   const secs = { small: 120, small2: 180, big: 600, jackpot: 3600 }[prize.id];
   if (secs) { const amount = earningsFor(s, secs); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
-  if (prize.id === 'frenzy') { next.frenzyUntil = now + FRENZY_SEC * 1000; text = 'Geldregen! Ab zum Suchen!'; }
+  if (prize.id === 'frenzy') { next.frenzyUntil = now + FRENZY_SEC * 1000; text = 'Geldregen! Ab zum Sammeln!'; }
   if (prize.id === 'boost') { next.boostUntil = now + 5 * 60 * 1000; text = 'Helfer verdienen 5 Minuten doppelt!'; }
   if (prize.id === 'charm') {
     const open = CHARMS.filter(c => (s.charms[c.id] || 0) < c.max && c.odds <= 10000);
@@ -256,6 +277,7 @@ export const newGame = () => ({
   frenzyUntil: 0,   // Geldregen aktiv bis (ms)
   boostUntil: 0,    // doppeltes Helfer-Einkommen bis (ms)
   wheelReadyAt: 0,  // Glücksrad wieder drehbar ab (ms)
+  quest: 0,         // Tutorial-Aufgabe (Index in QUESTS)
   skills: { suchen: { level: 0, xp: 0 }, management: { level: 0, xp: 0 }, zocken: { level: 0, xp: 0 } },
   stats: {
     totalEarned: 0, clicks: 0, searches: 0, finds: 0, goldChips: 0, maxCombo: 0, sacks: 0, wheelSpins: 0,
@@ -268,7 +290,10 @@ export const newGame = () => ({
 export const migrate = (s) => {
   const base = newGame();
   if (!s || typeof s !== 'object' || s.v !== SAVE_VERSION) return base;
+  // Bestehende Spieler, die schon weit sind, überspringen das Tutorial
+  const quest = typeof s.quest === 'number' ? s.quest : ((s.stats && s.stats.finds > 30) || (s.location || 0) > 0 ? QUESTS.length : 0);
   return {
+    quest,
     ...base, ...s,
     skills: { ...base.skills, ...(s.skills || {}) },
     stats: { ...base.stats, ...(s.stats || {}) },
@@ -304,7 +329,8 @@ export const derive = (s, now = Date.now()) => {
   if (spawnRate > SPAWN_CAP) { overflow = spawnRate / SPAWN_CAP; spawnRate = SPAWN_CAP; }
   if (frenzy) spawnRate *= FRENZY_MULT;
 
-  const valueMult = toolMult(s, 'value') * Math.pow(1.05, sk.suchen.level) * (1 + charmSum(s, 'value')) * overflow * allMult;
+  const valueMult = toolMult(s, 'value') * Math.pow(1.05, sk.suchen.level) * (1 + charmSum(s, 'value')) * overflow * allMult
+    * (1 + (s.vip || 0) * VIP_COIN_BONUS);
   const avg = avgCoin(s.location);
 
   const helperMult = toolMult(s, 'helper') * (1 + sk.management.level * 0.05) * (1 + charmSum(s, 'helper'));
@@ -328,14 +354,15 @@ export const derive = (s, now = Date.now()) => {
   const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1)) + pickPct * incomePerSec;
   const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble'));
   const loc = LOCATIONS[s.location];
+  const games = gamesUpTo(s.location);
   // Max-Einsatz: steigt nur durch gekaufte VIP-Stufen (nicht durch Einkommen oder Umzug)
-  const maxBet = loc.games.length > 0 ? vipLimit(s.vip || 0) : 0;
+  const maxBet = vipLimit(s.vip || 0);
 
   return {
     spawnRate, valueMult, avgCoin: avg, coins: loc.coins.map(coinById),
     autoCoins, helperRates, helperIncome, helperMult, incomePerSec,
     pickMult, pickPct, pickEV, manualPerSec: spawnRate * pickEV, frenzy, boost,
-    winBonus, maxBet, games: loc.games,
+    winBonus, maxBet, games, loc,
   };
 };
 
@@ -350,6 +377,7 @@ export const niceRound = (x) => {
 // ─── VIP-Karte: Einsatzlimit kaufen ────────────────────────────────────────
 // Start 5 €, jede Stufe verdoppelt das Limit. Preis = 20× das neue Limit.
 export const BET_BASE = 5;
+export const VIP_COIN_BONUS = 0.05; // jede VIP-Stufe: +5 % Münzwert
 export const VIP_PRICE_FACTOR = 20;
 export const vipLimit = (lvl) => BET_BASE * Math.pow(2, lvl);
 export const vipCostAt = (lvl) => vipLimit(lvl + 1) * VIP_PRICE_FACTOR;
@@ -364,7 +392,6 @@ export const vipAffordable = (s) => {
   return n;
 };
 export const buyVip = (s, count = 1) => {
-  if (LOCATIONS[s.location].games.length === 0) return null;
   let lvl = s.vip || 0; let money = s.money;
   for (let i = 0; i < count; i++) {
     const c = vipCostAt(lvl);
@@ -379,6 +406,7 @@ export const buyVip = (s, count = 1) => {
 // Jede Wette zahlt 2% ein. Jede Runde kann ihn knacken (Chance steigt mit dem Einsatz),
 // 7️⃣7️⃣7️⃣ am Spielautomaten knackt ihn immer.
 export const JACKPOT_SHARE = 0.02;
+export const JACKPOT_SEED_ONLINE = 1000; // Startwert des gemeinsamen Server-Topfs
 export const JACKPOT_CHANCE = 1 / 2500;  // bei vollem Max-Einsatz
 export const jackpotSeed = (s) => vipLimit(s.vip || 0) * 25;
 export const jackpotPool = (s) => Math.max(s.jackpot || 0, jackpotSeed(s));
@@ -470,6 +498,16 @@ export const moveLocation = (s) => {
 };
 
 // Ergebnis einer Casino-Runde: XP + Statistik (Geld bewegen die Spiele selbst)
+// Gewinn aus dem gemeinsamen (Server-)Jackpot gutschreiben
+export const creditJackpot = (s, amount) => ({
+  ...s, money: s.money + amount,
+  stats: {
+    ...s.stats, jackpots: (s.stats.jackpots || 0) + 1,
+    gambleProfit: s.stats.gambleProfit + amount, gambleWon: (s.stats.gambleWon || 0) + amount,
+    biggestWin: Math.max(s.stats.biggestWin, amount),
+  },
+});
+
 // hitJackpot: vorher (außerhalb von React) ausgewürfelt, damit das Ergebnis eindeutig bleibt
 export const recordBet = (s, didWin, amount, multiplier = 1, bet = 0, hitJackpot = false) => {
   const { skills } = addXp(s.skills, 'zocken', 1);
