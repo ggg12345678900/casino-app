@@ -506,3 +506,5 @@
 .cs-vip .pips { display: flex; gap: 3px; margin-top: 6px; }
 .cs-vip .pips span { flex: 1; height: 5px; border-radius: 3px; background: rgba(0,0,0,.35); }
 .cs-vip .pips span.on { background: currentColor; }
+.cs-jp-info { max-width: 520px; margin: 8px auto 0; font-size: 12px; color: #ffd9ef; line-height: 1.45; }
+.cs-jp-info b { color: var(--gold); }

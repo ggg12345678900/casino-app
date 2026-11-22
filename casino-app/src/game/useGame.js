@@ -18,13 +18,13 @@ const writeLocal = (userId, s) => {
  * Hält den kompletten Spielstand, lässt die Zeit laufen und speichert.
  * Events (Funde, Glücksbringer, Level-Ups) gehen über onEvent an die UI.
  */
-export default function useGame(user, { onAchievement, onBigWin } = {}) {
+export default function useGame(user, { onAchievement, onBigWin, onJackpot } = {}) {
   const [state, setState] = useState(null);
   const [welcome, setWelcome] = useState(null); // { seconds, earned }
   const stateRef = useRef(null);
   stateRef.current = state;
   const cbRef = useRef({});
-  cbRef.current = { onAchievement, onBigWin };
+  cbRef.current = { onAchievement, onBigWin, onJackpot };
 
   // ── Laden: neuerer Stand gewinnt (lokal vs. Server) ──────────────────
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function useGame(user, { onAchievement, onBigWin } = {}) {
   }, []);
 
   const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
-  const buyVip = useCallback(() => apply(s => E.buyVip(s)), [apply]);
+  const buyVip = useCallback((n = 1) => apply(s => E.buyVip(s, n)), [apply]);
   const buyHelper = useCallback((id, n) => apply(s => E.buyHelper(s, id, n)), [apply]);
   const buyTool = useCallback((id) => apply(s => E.buyTool(s, id)), [apply]);
   const moveLocation = useCallback(() => {
@@ -130,13 +130,18 @@ export default function useGame(user, { onAchievement, onBigWin } = {}) {
       return next;
     });
   }, []);
-  const addResult = useCallback((didWin, amount, game, bet, multiplier = 1) => {
+  const addResult = useCallback((didWin, amount, game, bet = 0, multiplier = 1) => {
+    const s0 = stateRef.current;
+    // Jackpot hier auswürfeln (nicht im State-Updater), damit das Ergebnis eindeutig ist
+    const hit = !!s0 && ((game === 'slots' && multiplier >= 250) || Math.random() < E.jackpotChance(s0, bet));
+    const pool = s0 ? E.jackpotPool(s0) + Math.max(0, bet) * E.JACKPOT_SHARE : 0;
     setState(s => {
-      const next = E.recordBet(s, didWin, amount, multiplier);
+      const next = E.recordBet(s, didWin, amount, multiplier, bet, hit);
       stateRef.current = next;
       return next;
     });
-    if (didWin && multiplier >= 10 && cbRef.current.onBigWin) cbRef.current.onBigWin({ amount, multiplier, game });
+    if (hit && cbRef.current.onJackpot) cbRef.current.onJackpot({ amount: pool, game });
+    else if (didWin && multiplier >= 10 && cbRef.current.onBigWin) cbRef.current.onBigWin({ amount, multiplier, game });
   }, []);
 
   const openSack = useCallback(() => {

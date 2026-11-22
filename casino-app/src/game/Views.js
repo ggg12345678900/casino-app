@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, VIP_MAX, VIP_NAMES, vipCost, coinById, fmt, fmtMoney, fmtTime } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime } from './economy';
 import { sfx } from './sound';
 
 export const GAME_INFO = {
-  slots:     { name: 'Mogul Slots', icon: '🎰', desc: '3 Walzen · Jackpot ×250', bg: 'linear-gradient(160deg, #ff3ea5, #7c1d9e)', tag: 'hot' },
+  slots:     { name: 'Mogul Slots', icon: '🎰', desc: '7️⃣7️⃣7️⃣ knackt den Jackpot', bg: 'linear-gradient(160deg, #ff3ea5, #7c1d9e)', tag: 'hot' },
   dice:      { name: 'Dice',      icon: '🎲', desc: 'Roll über oder unter', bg: 'linear-gradient(160deg, #3b82f6, #1e3a8a)' },
   mines:     { name: 'Mines',     icon: '💣', desc: 'Vermeide die Minen', bg: 'linear-gradient(160deg, #ef4444, #7f1d1d)' },
   plinko:    { name: 'Plinko',    icon: '🎯', desc: 'Lass den Ball fallen', bg: 'linear-gradient(160deg, #a855f7, #4c1d95)' },
@@ -64,7 +64,6 @@ export function LocationsView({ state, onMove }) {
                   {newGames.map(g => <span key={g} className="mg-lvl" style={{ color: 'var(--blue)', borderColor: '#60a5fa44', background: '#60a5fa1a' }}>{GAME_INFO[g].icon} {GAME_INFO[g].name}</span>)}
                   {newHelpers.map(h => <span key={h.id} className="mg-lvl">{h.icon} {status === 'future' ? 'Neuer Helfer' : h.name}</span>)}
                   {newTools.length > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>🛠️ {newTools.length} Werkzeuge</span>}
-                  {l.maxBet > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>Max-Einsatz {fmtMoney(l.maxBet)}</span>}
                 </div>
               )}
             </div>
@@ -153,36 +152,40 @@ export function Wheel({ state, onSpin }) {
 
 export function VipCard({ state, derived, onBuy, compact }) {
   const lvl = state.vip || 0;
-  const maxed = lvl >= VIP_MAX;
-  const cost = maxed ? 0 : vipCost(state);
-  const can = !maxed && state.money >= cost;
+  const cost = vipCost(state);
+  const can = state.money >= cost;
+  const many = vipAffordable(state);
+  const tier = vipTierIndex(lvl);
   return (
-    <div className="cs-vip" data-lvl={lvl}>
+    <div className="cs-vip" data-lvl={Math.min(tier, 6)}>
       <div className="card">
-        <div className="tier">🎫 VIP · {VIP_NAMES[lvl]}</div>
-        <div className="pips">{Array.from({ length: VIP_MAX }, (_, i) => <span key={i} className={i < lvl ? 'on' : ''} />)}</div>
+        <div className="tier">🎫 VIP · {vipName(lvl)}</div>
+        <div style={{ fontSize: 11, fontWeight: 900, opacity: .8 }}>Stufe {lvl}</div>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 150 }}>
         <div style={{ fontWeight: 900 }}>Max-Einsatz {fmtMoney(derived.maxBet)}</div>
-        {!compact && <div style={{ color: 'var(--muted)', fontSize: 12 }}>Wächst mit deinem Einkommen (≈ 1 Minute). Jede VIP-Stufe verdoppelt ihn.</div>}
+        <div style={{ color: 'var(--muted)', fontSize: 12 }}>
+          {compact ? <>Nächste Stufe: {fmtMoney(vipLimit(lvl + 1))}</> : <>Steigt nur durch Kaufen. Jede Stufe verdoppelt dein Limit (nächste: {fmtMoney(vipLimit(lvl + 1))}).</>}
+        </div>
       </div>
-      {maxed
-        ? <span className="mg-lvl" style={{ color: 'var(--gold)' }}>MAX</span>
-        : <button className={can ? 'mg-btn' : 'mg-btn-ghost'} disabled={!can} onClick={onBuy} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
-            ⬆️ {VIP_NAMES[lvl + 1]} · {fmtMoney(cost)}
-          </button>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className={can ? 'mg-btn' : 'mg-btn-ghost'} disabled={!can} onClick={() => onBuy(1)} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
+          ⬆️ +1 Stufe · {fmtMoney(cost)}
+        </button>
+        {many > 1 && (
+          <button className="mg-btn green" onClick={() => onBuy(many)} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
+            ⏫ Max (+{many})
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
-  const [jp, setJp] = useState(() => derived.maxBet * 180);
-  useEffect(() => {
-    setJp(derived.maxBet * 180);
-    const id = setInterval(() => setJp(v => v + derived.maxBet * (0.05 + Math.random() * 0.3)), 120);
-    return () => clearInterval(id);
-  }, [derived.maxBet]);
+  const jp = jackpotPool(state);
+  const oneIn = Math.round(1 / jackpotChance(state, derived.maxBet));
 
   return (
     <div>
@@ -192,6 +195,10 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           <h1>CASINO</h1>
           <div className="sub">Verdopple dein Geld – oder verlier alles. Jede Runde gibt Zocken-XP.</div>
           <div className="cs-jackpot"><span className="lbl">💰 JACKPOT</span><span className="val">{fmtMoney(jp)}</span></div>
+          <div className="cs-jp-info">
+            Jede Wette füllt den Topf (2 % vom Einsatz). Jede Runde in jedem Spiel kann ihn knacken – mit vollem Max-Einsatz
+            1 : {oneIn.toLocaleString('de-DE')}, mit weniger Einsatz seltener. <b>7️⃣7️⃣7️⃣ am Automaten knackt ihn immer!</b>
+          </div>
           <VipCard state={state} derived={derived} onBuy={onBuyVip} />
           <div className="cs-chips">
             <div className="mg-stat"><div className="k">Gewinnbonus</div><div className="v" style={{ color: 'var(--green)' }}>+{(derived.winBonus * 100).toFixed(1)}%</div></div>

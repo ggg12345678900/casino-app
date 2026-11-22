@@ -36,7 +36,7 @@ function Reel({ strip, offset, duration }) {
   );
 }
 
-export default function Slots({ balance, setBalance, addResult, maxBet = 5, winBonus = 0 }) {
+export default function Slots({ balance, setBalance, addResult, maxBet = 5, winBonus = 0, jackpot = 0 }) {
   const presets = [0.01, 0.05, 0.1, 0.25, 0.5, 1].map(f => Math.max(0.01, +(maxBet * f).toPrecision(2)));
   const [bet, setBet] = useState(presets[2]);
   const [reels, setReels] = useState(() => [0, 1, 2].map(() => ({ strip: [rollSym(), rollSym(), rollSym()], offset: 0, duration: 0 })));
@@ -120,7 +120,7 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
       <div className="sl-cabinet">
         <div className="sl-top">
           <div className="sl-marquee">MOGUL SLOTS</div>
-          <div className="sl-jackpot">7️⃣7️⃣7️⃣ JACKPOT · {fmtMoney(b * 250 * bonus)}</div>
+          <div className="sl-jackpot">7️⃣7️⃣7️⃣ = ×250 + JACKPOT {fmtMoney(jackpot)}</div>
         </div>
         <div className={`sl-window${win && !win.half ? ' won' : ''}`}>
           {reels.map((r, i) => <Reel key={i} {...r} />)}
@@ -145,7 +145,7 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
       <div className="sl-paytable">
         <div className="mg-label">Gewinntabelle</div>
         {[...SYMBOLS].reverse().map(x => (
-          <div key={x.s} className="sl-pay"><span>{x.s}{x.s}{x.s}</span><b>×{x.pay}</b></div>
+          <div key={x.s} className="sl-pay"><span>{x.s}{x.s}{x.s}</span><b>×{x.pay}{x.pay === 250 ? ' + 💰' : ''}</b></div>
         ))}
         <div className="sl-pay"><span>🍒🍒 + beliebig</span><b>×2</b></div>
         <div className="sl-pay"><span style={{ fontSize: 15 }}>2 Gleiche</span><b>×0,5</b></div>

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone } from './economy';
+import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, jackpotPool } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard } from './Views';
@@ -78,15 +78,15 @@ function BigWin({ win, onClose }) {
     const close = setTimeout(onClose, 4200);
     return () => { cancelAnimationFrame(raf); clearTimeout(close); };
   }, [win, onClose]);
-  const tier = win.multiplier >= 200 ? 'epic' : win.multiplier >= 50 ? 'mega' : 'big';
-  const title = { big: 'BIG WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' }[tier];
+  const tier = win.jackpot ? 'epic' : win.multiplier >= 200 ? 'epic' : win.multiplier >= 50 ? 'mega' : 'big';
+  const title = win.jackpot ? '💰 JACKPOT! 💰' : { big: 'BIG WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' }[tier];
   const rain = useRef(Array.from({ length: 36 }, (_, i) => ({ id: i, left: Math.random() * 100, dur: 1.6 + Math.random() * 2, delay: Math.random() * 1.5, e: ['🪙', '💰', '💵', '💎'][i % 4] }))).current;
   return (
     <div className={`mg-bigwin ${tier}`} onClick={onClose}>
       {rain.map(r => <div key={r.id} className="mg-rain" style={{ left: `${r.left}%`, animationDuration: `${r.dur}s`, animationDelay: `${r.delay}s` }}>{r.e}</div>)}
       <div className="title">{title}</div>
       <div className="amt">+{fmtMoney(shown)}</div>
-      <div className="mult">×{fmt(win.multiplier, 1)} · {GAME_INFO[win.game]?.name || 'Casino'}</div>
+      <div className="mult">{win.jackpot ? `Progressiver Jackpot geknackt · ${GAME_INFO[win.game]?.name || 'Casino'}` : `×${fmt(win.multiplier, 1)} · ${GAME_INFO[win.game]?.name || 'Casino'}`}</div>
     </div>
   );
 }
@@ -106,6 +106,7 @@ export default function GameApp({ user, onLogout }) {
   const game = useGame(user, {
     onAchievement: (a) => { sfx.achievement(); toast({ kind: 'ach', icon: a.icon, title: 'ERFOLG FREIGESCHALTET', text: `${a.name} · +2% auf alles` }); },
     onBigWin: (w) => { sfx.bigWin(); setBigWin(w); },
+    onJackpot: (w) => { sfx.bigWin(); setTimeout(() => sfx.bigWin(), 900); setConfetti(c => c + 1); setBigWin({ ...w, jackpot: true, multiplier: 0 }); },
   });
   const [tab, setTab] = useState('search');
   const [activeGame, setActiveGame] = useState(null);
@@ -129,7 +130,7 @@ export default function GameApp({ user, onLogout }) {
   }, [game, state, toast]);
 
   const buyTool = useCallback((id) => { if (game.buyTool(id)) sfx.buy(); else sfx.nope(); }, [game]);
-  const buyVip = useCallback(() => { if (game.buyVip()) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
+  const buyVip = useCallback((n = 1) => { if (game.buyVip(n)) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
 
   const move = useCallback(() => {
     const target = LOCATIONS[state.location + 1];
@@ -178,7 +179,7 @@ export default function GameApp({ user, onLogout }) {
               <div className={activeGame === 'slots' ? '' : 'mg-game-wrap'}>
                 <G balance={state.money} setBalance={game.setBalance} addResult={game.addResult}
                   maxBet={derived.maxBet} winBonus={derived.winBonus} prestigeMult={1} globalMult={1} autoSpeed={500}
-                  user={PUMP_USER} setUser={() => {}} />
+                  user={PUMP_USER} setUser={() => {}} jackpot={jackpotPool(state)} />
               </div>
             </div>
           );
@@ -272,7 +273,6 @@ export default function GameApp({ user, onLogout }) {
             <p>{moveModal.desc}</p>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
               <span className="mg-lvl" style={{ color: 'var(--gold)' }}>🪙 {coinRange(moveModal)}</span>
-              {moveModal.maxBet > 0 && <span className="mg-lvl">Max-Einsatz {fmt(moveModal.maxBet)} €</span>}
             </div>
             <button className="mg-btn green" onClick={() => setMoveModal(null)}>Los geht's!</button>
           </div>
