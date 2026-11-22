@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import {
-  HELPERS, TOOLS, LOCATIONS, HELPER_SPEED_SCALE,
+  HELPERS, TOOLS, LOCATIONS,
   helperCostN, maxAffordable, nextMilestone, HELPER_MILESTONES, fmt, fmtMoney,
 } from './economy';
+import { coinRange } from './Views';
 
 const TOOL_EFFECT = {
-  chance: (x) => `Fundchance ×${x}`,
-  value: (x) => `Fundwert ×${x}`,
-  click: (x) => `Suchen pro Klick ×${x}`,
+  spawn: (x) => `${Math.round((x - 1) * 100)}% mehr Münzen`,
+  value: (x) => `Münzwert ×${x}`,
+  pick: (x) => `Aufheben bringt ×${x}`,
   helper: (x) => `Alle Helfer ×${x}`,
-  clickPct: (x) => `Klick +${x * 100}% der Auto-Suchen`,
+  pickPct: (x) => `+${String(x).replace('.', ',')} s Helfer-Einkommen pro Münze`,
   all: (x) => `ALLES ×${x}`,
 };
 
@@ -33,7 +34,7 @@ function Helpers({ state, derived, onBuy }) {
         const nm = nextMilestone(owned);
         const prevM = [0, ...HELPER_MILESTONES].filter(m => m <= owned).pop();
         const rate = derived.helperRates[h.id];
-        const each = h.speed * HELPER_SPEED_SCALE * derived.helperMult;
+        const each = h.speed * derived.helperMult;
         return (
           <button key={h.id} className={`mg-item ${can ? 'can' : 'poor'}`} onClick={() => can && onBuy(h.id, n)}>
             <div className="ic">{h.icon}</div>
@@ -41,8 +42,9 @@ function Helpers({ state, derived, onBuy }) {
               <div className="name">{h.name}</div>
               <div className="desc">
                 {owned > 0
-                  ? <>{fmt(rate, 1)} Suchen/s · <span style={{ color: 'var(--green)' }}>{fmtMoney(rate * derived.chance * derived.value)}/s</span></>
-                  : <>+{fmt(each, 2)} Suchen/s je Stück</>}
+                  ? <>{fmt(rate, 1)} Münzen/s · <span style={{ color: 'var(--green)' }}>{fmtMoney(derived.helperIncome[h.id])}/s</span></>
+                  : <>+{fmt(each, 2)} Münzen/s je Stück</>}
+                <div style={{ color: 'var(--dim)' }}>🪙 sammelt {coinRange(LOCATIONS[h.loc])}</div>
               </div>
               {nm && (
                 <>

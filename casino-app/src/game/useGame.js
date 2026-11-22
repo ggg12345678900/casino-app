@@ -82,12 +82,14 @@ export default function useGame(user) {
   }, [state === null, saveServer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Aktionen ─────────────────────────────────────────────────────────
-  // search() rechnet synchron mit dem aktuellen Stand, damit die UI das Ergebnis sofort anzeigen kann
-  const search = useCallback(() => {
+  // pickup() rechnet synchron mit dem aktuellen Stand, damit die UI das Ergebnis sofort anzeigen kann
+  const pickup = useCallback((coinId, gold) => {
     const s = stateRef.current;
     if (!s) return null;
-    const { state: next, result } = E.search(s);
-    // Zeit-Ticks, die zwischendurch passiert sind, nicht verlieren: Differenz anwenden
+    const out = E.pickup(s, coinId, gold);
+    if (!out) return null;
+    const { state: next, result } = out;
+    // Zwischenzeitliche Zeit-Ticks nicht verlieren: nur die Differenz anwenden
     setState(cur => ({
       ...next,
       money: cur.money + (next.money - s.money),
@@ -107,6 +109,7 @@ export default function useGame(user) {
     return true;
   }, []);
 
+  const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
   const buyHelper = useCallback((id, n) => apply(s => E.buyHelper(s, id, n)), [apply]);
   const buyTool = useCallback((id) => apply(s => E.buyTool(s, id)), [apply]);
   const moveLocation = useCallback(() => {
@@ -142,6 +145,6 @@ export default function useGame(user) {
 
   return {
     state, derived: state ? E.derive(state) : null, welcome, dismissWelcome: () => setWelcome(null),
-    search, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    pickup, pickCharm, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

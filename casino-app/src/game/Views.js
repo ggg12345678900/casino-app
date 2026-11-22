@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, fmt, fmtMoney, fmtTime } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, coinById, fmt, fmtMoney, fmtTime } from './economy';
 
 export const GAME_INFO = {
   dice:      { name: 'Dice',      icon: '🎲', desc: 'Roll über oder unter' },
@@ -13,6 +13,10 @@ export const GAME_INFO = {
   pump:      { name: 'Pump',      icon: '🎈', desc: 'Pump bis es knallt' },
 };
 const ALL_GAMES = Object.keys(GAME_INFO);
+export const coinRange = (loc) => {
+  const a = coinById(loc.coins[0]); const b = coinById(loc.coins[3]);
+  return `${a.label} ${a.unit} – ${b.label} ${b.unit}`;
+};
 
 // ─── Orte ──────────────────────────────────────────────────────────────────
 export function LocationsView({ state, onMove }) {
@@ -52,9 +56,9 @@ export function LocationsView({ state, onMove }) {
                   </div>
                 )}
               </div>
-              {!hidden && i > 0 && (
+              {!hidden && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10, fontSize: 12 }}>
-                  <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#fbbf2444', background: '#fbbf241a' }}>Fundwert ×{l.mult}</span>
+                  <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#fbbf2444', background: '#fbbf241a' }}>🪙 {coinRange(l)}</span>
                   {newGames.map(g => <span key={g} className="mg-lvl" style={{ color: 'var(--blue)', borderColor: '#60a5fa44', background: '#60a5fa1a' }}>{GAME_INFO[g].icon} {GAME_INFO[g].name}</span>)}
                   {newHelpers.map(h => <span key={h.id} className="mg-lvl">{h.icon} {status === 'future' ? 'Neuer Helfer' : h.name}</span>)}
                   {newTools.length > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>🛠️ {newTools.length} Werkzeuge</span>}
@@ -120,7 +124,7 @@ export function CollectionView({ state }) {
       <div className="mg-panel" style={{ marginBottom: 16 }}>
         <div style={{ fontWeight: 800, fontSize: 17 }}>🍀 Glücksbringer · {have}/{total}</div>
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
-          Seltene Funde, die nur beim <b>eigenen Klicken</b> auftauchen. Jeder Glücksbringer wirkt dauerhaft. Die Diamant-Nadel ist die Nadel im Heuhaufen.
+          Tauchen ganz selten zwischen den Münzen auf dem Boden auf – und sind nach 4 Sekunden wieder weg. Schnell klicken! Jeder Glücksbringer wirkt dauerhaft. Die Diamant-Nadel ist die Nadel im Heuhaufen.
         </div>
       </div>
       <div className="mg-charms">
@@ -131,7 +135,7 @@ export function CollectionView({ state }) {
               <div className="ic">{c.icon}</div>
               <div style={{ fontWeight: 800, marginTop: 6 }}>{n > 0 ? c.name : '???'}</div>
               <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{c.desc} je Stück</div>
-              <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 4 }}>Chance: 1 : {c.odds.toLocaleString('de-DE')} pro Klick</div>
+              <div style={{ color: 'var(--dim)', fontSize: 11, marginTop: 4 }}>Chance: 1 : {c.odds.toLocaleString('de-DE')} pro Münze</div>
               <div className="pips">{Array.from({ length: c.max }, (_, i) => <span key={i} className={i < n ? 'on' : ''} />)}</div>
             </div>
           );
@@ -185,10 +189,8 @@ export function StatsView({ state, onReset }) {
   const rows = [
     ['💰 Gesamt verdient', fmtMoney(st.totalEarned)],
     ['⏱️ Spielzeit', fmtTime(st.playTime)],
-    ['👆 Klicks', fmt(st.clicks, 0)],
-    ['🔍 Suchen gesamt', fmt(st.searches, 0)],
-    ['🪙 Funde', fmt(st.finds, 0)],
-    ['🥇 Goldchips', fmt(st.goldChips, 0)],
+    ['🪙 Münzen aufgehoben', fmt(st.finds, 0)],
+    ['🥇 Goldmünzen', fmt(st.goldChips, 0)],
     ['🎰 Casino-Runden', fmt(st.bets, 0)],
     ['📈 Casino-Bilanz', (st.gambleProfit >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.gambleProfit))],
   ];

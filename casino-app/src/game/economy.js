@@ -5,119 +5,147 @@
 
 export const SAVE_VERSION = 1;
 
+// ─── Münzen & Chips ─────────────────────────────────────────────────────────
+// kind bestimmt das Aussehen auf dem Boden
+export const COINS = [
+  { id: 'c1',   v: 0.01,  label: '1',    unit: 'ct', kind: 'copper',  size: 36 },
+  { id: 'c2',   v: 0.02,  label: '2',    unit: 'ct', kind: 'copper',  size: 41 },
+  { id: 'c5',   v: 0.05,  label: '5',    unit: 'ct', kind: 'copper',  size: 46 },
+  { id: 'c10',  v: 0.10,  label: '10',   unit: 'ct', kind: 'brass',   size: 43 },
+  { id: 'c20',  v: 0.20,  label: '20',   unit: 'ct', kind: 'brass',   size: 48 },
+  { id: 'c50',  v: 0.50,  label: '50',   unit: 'ct', kind: 'brass',   size: 53 },
+  { id: 'e1',   v: 1,     label: '1',    unit: '€',  kind: 'bimetal', size: 50 },
+  { id: 'e2',   v: 2,     label: '2',    unit: '€',  kind: 'bimetal2',size: 55 },
+  { id: 'k5',   v: 5,     label: '5',    unit: '€',  kind: 'chip-red',    size: 55 },
+  { id: 'k10',  v: 10,    label: '10',   unit: '€',  kind: 'chip-blue',   size: 55 },
+  { id: 'k25',  v: 25,    label: '25',   unit: '€',  kind: 'chip-green',  size: 58 },
+  { id: 'k100', v: 100,   label: '100',  unit: '€',  kind: 'chip-black',  size: 58 },
+  { id: 'k500', v: 500,   label: '500',  unit: '€',  kind: 'chip-purple', size: 60 },
+  { id: 'k1k',  v: 1000,  label: '1K',   unit: '€',  kind: 'chip-gold',   size: 60 },
+  { id: 'k5k',  v: 5000,  label: '5K',   unit: '€',  kind: 'chip-orange', size: 62 },
+  { id: 'k25k', v: 25000, label: '25K',  unit: '€',  kind: 'chip-diamond',size: 65 },
+];
+// Häufigkeit der vier Münzsorten eines Ortes (von klein nach groß)
+export const COIN_WEIGHTS = [50, 30, 15, 5];
+
 // ─── Orte ──────────────────────────────────────────────────────────────────
-// mult: Multiplikator auf den Wert jedes Fundes. games: freigeschaltete Spiele.
+// coins: welche vier Münzsorten hier herumliegen. games: freigeschaltete Spiele.
 export const LOCATIONS = [
   {
-    id: 'hinterhof', name: 'Hinterhof-Spielhalle', icon: '🏚️', cost: 0, mult: 1, maxBet: 0, games: [],
-    floor: ['#3b2f2a', '#2a211d'], accent: '#a8a29e',
+    id: 'hinterhof', name: 'Hinterhof-Spielhalle', icon: '🏚️', cost: 0, coins: ['c1', 'c2', 'c5', 'c10'], maxBet: 0, games: [],
     junk: ['Kronkorken', 'Kaugummi', 'Zigarettenstummel', 'Staub', 'Ein Knopf', 'Rattenkot', 'Kassenbon', 'Eine Socke', 'Glasscherbe'],
-    desc: 'Ein dreckiger Hinterhof. Irgendwo zwischen dem Müll liegen verlorene Chips.',
+    desc: 'Ein dreckiger Hinterhof. Zwischen dem Müll liegt hier und da ein Cent.',
   },
   {
-    id: 'kneipe', name: 'Eckkneipe', icon: '🍺', cost: 100, mult: 2, maxBet: 25, games: ['dice'],
-    floor: ['#4a2c17', '#2e1a0d'], accent: '#f59e0b',
+    id: 'kneipe', name: 'Eckkneipe', icon: '🍺', cost: 25, coins: ['c5', 'c10', 'c20', 'c50'], maxBet: 5, games: ['dice'],
     junk: ['Bierdeckel', 'Erdnussschale', 'Feuerzeug', 'Klebriger Fleck', 'Dartpfeil', 'Leeres Glas', 'Bierflaschendeckel'],
-    desc: 'Klebriger Boden, betrunkene Gäste – hier fällt öfter mal was runter. Würfeln erlaubt!',
+    desc: 'Klebriger Boden, betrunkene Gäste – hier fällt öfter mal Kleingeld runter. Würfeln erlaubt!',
   },
   {
-    id: 'spielhalle', name: 'Stadt-Spielhalle', icon: '🕹️', cost: 10000, mult: 2.5, maxBet: 1000, games: ['dice', 'mines', 'plinko'],
-    floor: ['#2e1065', '#1e0a45'], accent: '#a855f7',
+    id: 'spielhalle', name: 'Stadt-Spielhalle', icon: '🕹️', cost: 10000, coins: ['c20', 'c50', 'e1', 'e2'], maxBet: 1000, games: ['dice', 'mines', 'plinko'],
     junk: ['Popcorn', 'Token-Attrappe', 'Kaputter Joystick', 'Gewinnlos (Niete)', 'Strohhalm', 'Kassenzettel'],
-    desc: 'Neonlicht und blinkende Automaten. Mines und Plinko warten.',
+    desc: 'Neonlicht und blinkende Automaten. Hier rollen Euro-Münzen. Mines und Plinko warten.',
   },
   {
-    id: 'casino', name: 'Stadt-Casino', icon: '🏛️', cost: 2e6, mult: 3, maxBet: 100000, games: ['dice', 'mines', 'plinko', 'crash', 'roulette'],
-    floor: ['#7f1d1d', '#4c0d0d'], accent: '#ef4444',
+    id: 'casino', name: 'Stadt-Casino', icon: '🏛️', cost: 8e6, coins: ['e1', 'e2', 'k5', 'k10'], maxBet: 4e5, games: ['dice', 'mines', 'plinko', 'crash', 'roulette'],
     junk: ['Visitenkarte', 'Manschettenknopf', 'Olive', 'Cocktailschirmchen', 'Verlorener Ohrring', 'Zahnstocher'],
-    desc: 'Roter Teppich, Smoking-Pflicht. Die Chips hier sind richtig was wert.',
+    desc: 'Roter Teppich, Smoking-Pflicht. Die ersten echten Casino-Chips liegen herum.',
   },
   {
-    id: 'vegas', name: 'Las Vegas', icon: '🌴', cost: 2e9, mult: 4, maxBet: 10000000, games: ['dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken'],
-    floor: ['#78350f', '#451a03'], accent: '#facc15',
+    id: 'vegas', name: 'Las Vegas', icon: '🌴', cost: 4.8e9, coins: ['k5', 'k10', 'k25', 'k100'], maxBet: 6e7, games: ['dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken'],
     junk: ['Elvis-Perücke', 'Hochzeitsring (Plastik)', 'Show-Ticket', 'Sonnenbrille', 'Federboa', 'Glitzerkonfetti'],
-    desc: 'Die Stadt, die niemals schläft. Blackjack und Chicken freigeschaltet.',
+    desc: 'Die Stadt, die niemals schläft. Chips bis 100 €. Blackjack und Chicken freigeschaltet.',
   },
   {
-    id: 'monaco', name: 'Monaco', icon: '🛥️', cost: 3e12, mult: 5, maxBet: 2e9, games: ['dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken', 'pump'],
-    floor: ['#0c4a6e', '#082f49'], accent: '#38bdf8',
+    id: 'monaco', name: 'Monaco', icon: '🛥️', cost: 3e12, coins: ['k25', 'k100', 'k500', 'k1k'], maxBet: 7.5e9, games: ['dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken', 'pump'],
     junk: ['Kaviar-Löffel', 'Yachtschlüssel (Attrappe)', 'Champagnerkorken', 'Rolex-Box (leer)', 'Seidentuch'],
-    desc: 'Yachten, Adel und Milliardäre. Wer hier sucht, findet Gold.',
+    desc: 'Yachten, Adel und Milliardäre. Hier liegen 1000-€-Chips unterm Tisch.',
   },
   {
-    id: 'mond', name: 'Mond-Casino', icon: '🌙', cost: 3e15, mult: 8, maxBet: 1e12, games: ['dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken', 'pump'],
-    floor: ['#1e293b', '#0f172a'], accent: '#e2e8f0',
+    id: 'mond', name: 'Mond-Casino', icon: '🌙', cost: 4e15, coins: ['k500', 'k1k', 'k5k', 'k25k'], maxBet: 2.66e12, games: ['dice', 'mines', 'plinko', 'crash', 'roulette', 'blackjack', 'chicken', 'pump'],
     junk: ['Mondstaub', 'Astronautennahrung', 'Kleiner Krater', 'Verlorene Antenne', 'Mondgestein'],
-    desc: 'Das exklusivste Casino des Universums. Schwerelos zocken.',
+    desc: 'Das exklusivste Casino des Universums. Schwerelose 25.000-€-Chips.',
   },
 ];
+export const coinById = (id) => COINS.find(c => c.id === id);
+// Durchschnittswert einer Münze an einem Ort
+export const avgCoin = (locIdx) => {
+  const ids = LOCATIONS[locIdx].coins;
+  const tot = COIN_WEIGHTS.reduce((a, b) => a + b, 0);
+  return ids.reduce((sum, id, i) => sum + coinById(id).v * COIN_WEIGHTS[i], 0) / tot;
+};
 
-// ─── Helfer (suchen automatisch) ───────────────────────────────────────────
+// ─── Helfer (sammeln automatisch Münzen) ───────────────────────────────────
+// speed: Münzen pro Sekunde je Stück. Jeder Helfer sammelt die Münzsorten seines Heimatorts (loc).
 export const HELPERS = [
-  { id: 'putzkraft', name: 'Putzkraft',    icon: '🧹', baseCost: 5,     speed: 0.5,    loc: 0, desc: 'Fegt den Boden und behält nichts für sich.' },
-  { id: 'detektiv',  name: 'Detektiv',     icon: '🕵️', baseCost: 60,    speed: 3,      loc: 0, desc: 'Findet Spuren, wo andere nichts sehen.' },
-  { id: 'spuerhund', name: 'Spürhund',     icon: '🐕', baseCost: 700,   speed: 15,     loc: 1, desc: 'Riecht Chips aus zehn Metern.' },
-  { id: 'tuersteher',name: 'Türsteher',    icon: '🕴️', baseCost: 9000,  speed: 80,     loc: 2, desc: 'Kassiert verlorene Chips am Eingang ein.' },
-  { id: 'croupier',  name: 'Croupier',     icon: '🎩', baseCost: 120000,speed: 400,    loc: 3, desc: 'Lässt beim Abräumen „versehentlich“ was fallen.' },
-  { id: 'insider',   name: 'Insider',      icon: '🦹', baseCost: 2e6,   speed: 2500,   loc: 4, desc: 'Kennt jede Ritze im Casino.' },
-  { id: 'fee',       name: 'Glücksfee',    icon: '🧚', baseCost: 4e7,   speed: 15000,  loc: 5, desc: 'Zaubert Chips aus dem Nichts.' },
-  { id: 'alien',     name: 'Alien-Scout',  icon: '👽', baseCost: 1e9,   speed: 100000, loc: 6, desc: 'Scannt den Boden aus dem Orbit.' },
+  { id: 'putzkraft', name: 'Putzkraft',    icon: '🧹', baseCost: 0.5,  speed: 0.1,  loc: 0, desc: 'Fegt den Boden und behält nichts für sich.' },
+  { id: 'detektiv',  name: 'Detektiv',     icon: '🕵️', baseCost: 6,    speed: 0.6,  loc: 0, desc: 'Findet Spuren, wo andere nichts sehen.' },
+  { id: 'spuerhund', name: 'Spürhund',     icon: '🐕', baseCost: 120,  speed: 3,    loc: 1, desc: 'Riecht Kleingeld aus zehn Metern.' },
+  { id: 'tuersteher',name: 'Türsteher',    icon: '🕴️', baseCost: 32000, speed: 15,   loc: 2, desc: 'Kassiert verlorene Münzen am Eingang ein.' },
+  { id: 'croupier',  name: 'Croupier',     icon: '🎩', baseCost: 3.2e7,  speed: 70,   loc: 3, desc: 'Lässt beim Abräumen „versehentlich“ Chips fallen.' },
+  { id: 'insider',   name: 'Insider',      icon: '🦹', baseCost: 1.92e10,  speed: 350,  loc: 4, desc: 'Kennt jede Ritze im Casino.' },
+  { id: 'fee',       name: 'Glücksfee',    icon: '🧚', baseCost: 1.2e13, speed: 1800, loc: 5, desc: 'Zaubert Chips aus dem Nichts.' },
+  { id: 'alien',     name: 'Alien-Scout',  icon: '👽', baseCost: 2e16, speed: 9000, loc: 6, desc: 'Scannt den Boden aus dem Orbit.' },
 ];
 export const HELPER_COST_GROWTH = 1.2;
-export const HELPER_SPEED_SCALE = 0.25;
 // Bei diesen Stückzahlen verdoppelt sich das Tempo eines Helfers
 export const HELPER_MILESTONES = [25, 50, 100, 200, 400];
 
 // ─── Werkzeuge (einmalige Upgrades) ────────────────────────────────────────
-// type: chance | value | click | helper | clickPct | all
+// type: spawn (mehr Münzen) | value (Münzwert) | pick (Wert beim Aufheben)
+//       | helper | pickPct (Aufheben bringt % des Helfer-Einkommens) | all
 export const TOOLS = [
-  { id: 'brille',     name: 'Brille',              icon: '👓', cost: 0.5,  loc: 0, type: 'chance', x: 1.5, desc: 'Endlich scharf sehen.' },
-  { id: 'handschuhe', name: 'Handschuhe',          icon: '🧤', cost: 2,    loc: 0, type: 'value',  x: 2,   desc: 'Du traust dich jetzt auch in die Ecken.' },
-  { id: 'lampe',      name: 'Taschenlampe',        icon: '🔦', cost: 8,    loc: 0, type: 'chance', x: 1.5, desc: 'Licht unter den Automaten.' },
-  { id: 'schaufel',   name: 'Kehrschaufel',        icon: '🥄', cost: 25,   loc: 0, type: 'click',  x: 2,   desc: 'Jeder Klick durchsucht 2× so viel.' },
-  { id: 'magnet',     name: 'Magnet',              icon: '🧲', cost: 150,  loc: 1, type: 'value',  x: 2,   desc: 'Zieht auch die Chips mit Metallkern an.' },
-  { id: 'dienstplan', name: 'Dienstplan',          icon: '📋', cost: 600,  loc: 1, type: 'helper', x: 2,   desc: 'Alle Helfer arbeiten doppelt so schnell.' },
-  { id: 'detektor',   name: 'Metalldetektor',      icon: '📡', cost: 2500, loc: 1, type: 'chance', x: 2,   desc: 'Piep. Piep. PIEEEP!' },
-  { id: 'sauger',     name: 'Industriesauger',     icon: '🌪️', cost: 15000,loc: 2, type: 'click',  x: 3,   desc: 'Jeder Klick saugt 3× so viel Fläche ab.' },
-  { id: 'roentgen',   name: 'Röntgenbrille',       icon: '🕶️', cost: 6e4,  loc: 2, type: 'value',  x: 2.5, desc: 'Sieht Chips sogar in Hosentaschen.' },
-  { id: 'rede',       name: 'Motivationsrede',     icon: '📢', cost: 2e5,  loc: 2, type: 'helper', x: 2,   desc: '„Wir sind eine Familie!“ – Helfer ×2.' },
-  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 1.5e6,loc: 3, type: 'clickPct', x: 0.05, desc: 'Jeder Klick bringt zusätzlich 5% deiner Auto-Suchen pro Sekunde.' },
-  { id: 'satellit',   name: 'Satelliten-Scan',     icon: '🛰️', cost: 8e6,  loc: 3, type: 'chance', x: 2,   desc: 'Fundchance ×2 – aus dem All.' },
-  { id: 'firmenwagen',name: 'Firmenwagen',         icon: '🚗', cost: 4e7,  loc: 3, type: 'helper', x: 2,   desc: 'Helfer kommen schneller zur Arbeit. ×2' },
-  { id: 'ki',         name: 'KI-Analyse',          icon: '🧠', cost: 1e10, loc: 4, type: 'value',  x: 3,   desc: 'Berechnet, wo die wertvollsten Chips fallen.' },
-  { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 6e10, loc: 4, type: 'click',  x: 10,  desc: 'Jeder Klick ×10.' },
-  { id: 'kredit',     name: 'Bankkredit',          icon: '🏦', cost: 3e11, loc: 4, type: 'helper', x: 2,   desc: 'Mehr Budget, mehr Leute. Helfer ×2.' },
+  { id: 'brille',     name: 'Brille',              icon: '👓', cost: 0.1, loc: 0, type: 'spawn',  x: 1.3, desc: 'Endlich scharf sehen – du entdeckst mehr Münzen.' },
+  { id: 'handschuhe', name: 'Handschuhe',          icon: '🧤', cost: 0.4, loc: 0, type: 'value',  x: 2,   desc: 'Du traust dich jetzt auch in die Ecken.' },
+  { id: 'lampe',      name: 'Taschenlampe',        icon: '🔦', cost: 1.5, loc: 0, type: 'spawn',  x: 1.3, desc: 'Licht unter den Automaten.' },
+  { id: 'schaufel',   name: 'Kehrschaufel',        icon: '🥄', cost: 6,    loc: 0, type: 'pick',   x: 2,   desc: 'Du schaufelst mehrere Münzen auf einmal auf.' },
+  { id: 'magnet',     name: 'Magnet',              icon: '🧲', cost: 40,   loc: 1, type: 'value',  x: 2,   desc: 'Zieht die Münzen aus jeder Ritze.' },
+  { id: 'dienstplan', name: 'Dienstplan',          icon: '📋', cost: 150,  loc: 1, type: 'helper', x: 2,   desc: 'Alle Helfer arbeiten doppelt so schnell.' },
+  { id: 'detektor',   name: 'Metalldetektor',      icon: '📡', cost: 600,  loc: 1, type: 'spawn',  x: 1.5, desc: 'Piep. Piep. PIEEEP!' },
+  { id: 'sauger',     name: 'Industriesauger',     icon: '🌪️', cost: 32000, loc: 2, type: 'pick',   x: 3,   desc: 'Jeder Klick saugt 3× so viel auf.' },
+  { id: 'roentgen',   name: 'Röntgenbrille',       icon: '🕶️', cost: 1.2e5,  loc: 2, type: 'value',  x: 2.5, desc: 'Sieht Münzen sogar in Hosentaschen.' },
+  { id: 'rede',       name: 'Motivationsrede',     icon: '📢', cost: 4e5,  loc: 2, type: 'helper', x: 2,   desc: '„Wir sind eine Familie!“ – Helfer ×2.' },
+  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 3.2e7,  loc: 3, type: 'pickPct', x: 0.5, desc: 'Jede aufgehobene Münze bringt zusätzlich 0,5 Sekunden Helfer-Einkommen.' },
+  { id: 'satellit',   name: 'Satelliten-Scan',     icon: '🛰️', cost: 1.6e8,  loc: 3, type: 'spawn',  x: 1.5, desc: 'Mehr Münzen – aus dem All entdeckt.' },
+  { id: 'firmenwagen',name: 'Firmenwagen',         icon: '🚗', cost: 8e8,  loc: 3, type: 'helper', x: 2,   desc: 'Helfer kommen schneller zur Arbeit. ×2' },
+  { id: 'ki',         name: 'KI-Analyse',          icon: '🧠', cost: 2.4e10,  loc: 4, type: 'value',  x: 3,   desc: 'Berechnet, wo die wertvollsten Chips fallen.' },
+  { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 1.44e11,  loc: 4, type: 'pick',   x: 10,  desc: 'Jeder Klick ×10.' },
+  { id: 'kredit',     name: 'Bankkredit',          icon: '🏦', cost: 7.2e11, loc: 4, type: 'helper', x: 2,   desc: 'Mehr Budget, mehr Leute. Helfer ×2.' },
   { id: 'kugel',      name: 'Kristallkugel',       icon: '🔮', cost: 3e13, loc: 5, type: 'value',  x: 4,   desc: 'Du weißt, wo der nächste Chip fällt.' },
   { id: 'zeit',       name: 'Zeitmaschine',        icon: '⏳', cost: 3e14, loc: 5, type: 'helper', x: 3,   desc: 'Helfer arbeiten in mehreren Zeitlinien. ×3' },
-  { id: 'meteor',     name: 'Meteoriten-Detektor', icon: '☄️', cost: 1e17, loc: 6, type: 'value',  x: 5,   desc: 'Findet Chips aus Sternenstaub.' },
-  { id: 'krone',      name: 'Mogul-Krone',         icon: '👑', cost: 1e18, loc: 6, type: 'all',    x: 10,  desc: 'Du bist der Casino-Mogul. Alles ×10.' },
+  { id: 'meteor',     name: 'Meteoriten-Detektor', icon: '☄️', cost: 6.68e16, loc: 6, type: 'value',  x: 5,   desc: 'Findet Chips aus Sternenstaub.' },
+  { id: 'krone',      name: 'Mogul-Krone',         icon: '👑', cost: 6.68e17, loc: 6, type: 'all',    x: 10,  desc: 'Du bist der Casino-Mogul. Alles ×10.' },
 ];
 
-// ─── Glücksbringer (seltene Funde, nur beim eigenen Suchen) ───────────────
-// odds: 1 zu X pro Suche. bonus pro Exemplar. max: maximale Anzahl.
+// ─── Glücksbringer (tauchen selten als Objekt auf dem Boden auf) ──────────
+// odds: 1 zu X pro erscheinender Münze. bonus pro Exemplar. max: maximale Anzahl.
 export const CHARMS = [
-  { id: 'cent',      name: 'Glückscent',        icon: '🪙', odds: 300,    max: 10, type: 'value',  bonus: 0.05, desc: '+5% Fundwert' },
-  { id: 'klee',      name: 'Vierblättriges Kleeblatt', icon: '🍀', odds: 1000,   max: 10, type: 'chance', bonus: 0.05, desc: '+5% Fundchance' },
+  { id: 'cent',      name: 'Glückscent',        icon: '🪙', odds: 300,    max: 10, type: 'value',  bonus: 0.05, desc: '+5% Münzwert' },
+  { id: 'klee',      name: 'Vierblättriges Kleeblatt', icon: '🍀', odds: 1000,   max: 10, type: 'spawn', bonus: 0.05, desc: '+5% mehr Münzen' },
   { id: 'kaefer',    name: 'Marienkäfer',       icon: '🐞', odds: 2500,   max: 10, type: 'helper', bonus: 0.10, desc: '+10% Helfer-Tempo' },
   { id: 'wuerfel',   name: 'Goldener Würfel',   icon: '🎲', odds: 5000,   max: 5,  type: 'gamble', bonus: 0.01, desc: '+1% Gewinnbonus beim Zocken' },
   { id: 'hufeisen',  name: 'Hufeisen',          icon: '🧿', odds: 10000,  max: 10, type: 'all',    bonus: 0.10, desc: '+10% auf alles' },
-  { id: 'regenbogen',name: 'Regenbogen-Chip',   icon: '🌈', odds: 25000,  max: 5,  type: 'value',  bonus: 0.25, desc: '+25% Fundwert' },
+  { id: 'regenbogen',name: 'Regenbogen-Chip',   icon: '🌈', odds: 25000,  max: 5,  type: 'value',  bonus: 0.25, desc: '+25% Münzwert' },
   { id: 'nadel',     name: 'Diamant-Nadel',     icon: '💎', odds: 100000, max: 5,  type: 'allx',   bonus: 2,    desc: '×2 auf alles (die Nadel im Heuhaufen!)' },
 ];
 
 // ─── Skills (leveln durch Benutzen) ────────────────────────────────────────
 export const SKILLS = {
-  suchen:     { name: 'Suchen',     icon: '🔍', base: 20, growth: 1.2, desc: (l) => `Fundchance +${l * 3}% · Fundwert ×${Math.pow(1.05, l).toFixed(2)}` },
+  suchen:     { name: 'Sammeln',    icon: '🫳', base: 15, growth: 1.2,  desc: (l) => `Münzen +${l * 2}% · Münzwert ×${Math.pow(1.05, l).toFixed(2)}` },
   management: { name: 'Management', icon: '📊', base: 3,  growth: 1.2,  desc: (l) => `Helfer-Tempo +${l * 5}%` },
   zocken:     { name: 'Zocken',     icon: '🎲', base: 10, growth: 1.15, desc: (l) => `Gewinnbonus +${(Math.min(0.05, l * 0.002) * 100).toFixed(1)}%` },
 };
 export const xpForLevel = (skill, level) => Math.floor(SKILLS[skill].base * Math.pow(SKILLS[skill].growth, level));
 
 // ─── Grundwerte ────────────────────────────────────────────────────────────
-export const BASE_CHANCE = 0.05;   // 1 von 20 Suchen findet etwas
-export const BASE_VALUE = 0.10;    // 10 Cent
-export const GOLD_CHIP_CHANCE = 0.02; // 2% der eigenen Funde sind Goldchips
-export const GOLD_CHIP_MULT = 25;
+export const BASE_SPAWN = 0.6;       // Münzen pro Sekunde am Anfang
+export const SPAWN_CAP = 2.5;        // mehr passt nicht auf den Boden – Überschuss wird zu Münzwert
+export const MAX_ON_FLOOR = 7;
+export const COIN_LIFETIME = 6.5;    // Sekunden, bis eine Münze verschwindet
+export const GOLD_CHANCE = 0.02;     // 2% der Münzen sind Goldmünzen
+export const GOLD_MULT = 25;
+export const GOLD_LIFETIME = 2.8;
+export const CHARM_LIFETIME = 4;
 export const OFFLINE_CAP_SEC = 8 * 3600;
 
 // ─── Zustand ───────────────────────────────────────────────────────────────
@@ -168,35 +196,53 @@ export const derive = (s) => {
   const sk = s.skills;
   const allMult = toolMult(s, 'all') * (1 + charmSum(s, 'all')) * Math.pow(2, s.charms.nadel || 0);
 
-  let chance = BASE_CHANCE * toolMult(s, 'chance') * (1 + sk.suchen.level * 0.03) * (1 + charmSum(s, 'chance'));
+  let spawnRate = BASE_SPAWN * toolMult(s, 'spawn') * (1 + sk.suchen.level * 0.02) * (1 + charmSum(s, 'spawn'));
   let overflow = 1;
-  if (chance > 1) { overflow = chance; chance = 1; } // Überschuss wird zu Fundwert
+  if (spawnRate > SPAWN_CAP) { overflow = spawnRate / SPAWN_CAP; spawnRate = SPAWN_CAP; }
 
-  const value = BASE_VALUE * toolMult(s, 'value') * Math.pow(1.05, sk.suchen.level)
-    * LOCATIONS[s.location].mult * (1 + charmSum(s, 'value')) * overflow * allMult;
+  const valueMult = toolMult(s, 'value') * Math.pow(1.05, sk.suchen.level) * (1 + charmSum(s, 'value')) * overflow * allMult;
+  const avg = avgCoin(s.location);
 
   const helperMult = toolMult(s, 'helper') * (1 + sk.management.level * 0.05) * (1 + charmSum(s, 'helper'));
+  // Jeder Helfer sammelt die Münzsorten seines Heimatorts
   const helperRates = {};
-  let autoSearches = 0;
+  const helperIncome = {};
+  let autoCoins = 0;
+  let incomePerSec = 0;
   HELPERS.forEach(h => {
     const n = s.helpers[h.id] || 0;
-    const r = n * h.speed * HELPER_SPEED_SCALE * Math.pow(2, milestoneCount(n)) * helperMult;
+    const r = n * h.speed * Math.pow(2, milestoneCount(n)) * helperMult;
     helperRates[h.id] = r;
-    autoSearches += r;
+    helperIncome[h.id] = r * avgCoin(h.loc) * valueMult;
+    autoCoins += r;
+    incomePerSec += helperIncome[h.id];
   });
 
-  const clickSearches = toolMult(s, 'click');
-  const clickPct = TOOLS.reduce((m, t) => (t.type === 'clickPct' && s.tools.includes(t.id) ? m + t.x : m), 0);
+  const pickMult = toolMult(s, 'pick');
+  const pickPct = TOOLS.reduce((m, t) => (t.type === 'pickPct' && s.tools.includes(t.id) ? m + t.x : m), 0);
+  const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1)) + pickPct * incomePerSec;
   const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble'));
   const loc = LOCATIONS[s.location];
 
   return {
-    chance, value, autoSearches, helperRates, helperMult,
-    incomePerSec: autoSearches * chance * value,
-    clickSearches, clickPct,
-    clickEV: (clickSearches + clickPct * autoSearches) * chance * value,
+    spawnRate, valueMult, avgCoin: avg, coins: loc.coins.map(coinById),
+    autoCoins, helperRates, helperIncome, helperMult, incomePerSec,
+    pickMult, pickPct, pickEV, manualPerSec: spawnRate * pickEV,
     winBonus, maxBet: loc.maxBet, games: loc.games,
   };
+};
+
+// Was erscheint als Nächstes auf dem Boden? (Münze, Goldmünze oder Glücksbringer)
+export const rollSpawn = (s, rng = Math.random) => {
+  for (const c of [...CHARMS].reverse()) {
+    if ((s.charms[c.id] || 0) >= c.max) continue;
+    if (rng() < 1 / c.odds) return { type: 'charm', charm: c };
+  }
+  const ids = LOCATIONS[s.location].coins;
+  let r = rng() * COIN_WEIGHTS.reduce((a, b) => a + b, 0);
+  let idx = 0;
+  while (r >= COIN_WEIGHTS[idx]) { r -= COIN_WEIGHTS[idx]; idx++; }
+  return { type: 'coin', coin: coinById(ids[idx]), gold: rng() < GOLD_CHANCE };
 };
 
 // ─── Aktionen (geben neuen Zustand zurück) ────────────────────────────────
@@ -218,40 +264,29 @@ export const tick = (s, dtSec) => {
   return next;
 };
 
-// Ein Klick aufs Suchfeld. rng ist für Tests austauschbar.
-export const search = (s, rng = Math.random) => {
+// Eine Münze vom Boden aufheben
+export const pickup = (s, coinId, gold = false) => {
   const d = derive(s);
-  const n = d.clickSearches;
-  let found = 0; let gold = 0; let money = 0;
-  for (let i = 0; i < n; i++) {
-    if (rng() < d.chance) {
-      found++;
-      if (rng() < GOLD_CHIP_CHANCE) { gold++; money += d.value * GOLD_CHIP_MULT; } else money += d.value;
-    }
-  }
-  const bonus = d.clickPct * d.autoSearches * d.chance * d.value; // Drohne: Erwartungswert
-  money += bonus;
-
-  // Glücksbringer: pro Klick höchstens einer, seltenster zuerst geprüft
-  let charm = null;
-  const charms = { ...s.charms };
-  for (const c of [...CHARMS].reverse()) {
-    if ((charms[c.id] || 0) >= c.max) continue;
-    const p = 1 / c.odds;
-    if (rng() < p) { charms[c.id] = (charms[c.id] || 0) + 1; charm = c; break; }
-  }
-
+  const coin = coinById(coinId);
+  if (!coin) return null;
+  const money = coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) + d.pickPct * d.incomePerSec;
   const { skills, ups } = addXp(s.skills, 'suchen', 1);
-  let next = earn({ ...s, skills, charms }, money);
-  next.stats = {
-    ...next.stats, clicks: s.stats.clicks + 1, searches: s.stats.searches + n,
-    finds: s.stats.finds + found, goldChips: s.stats.goldChips + gold,
-  };
-  const junkList = LOCATIONS[s.location].junk;
-  return {
-    state: next,
-    result: { money, found, gold, charm, levelUp: ups > 0 ? skills.suchen.level : null, junk: found === 0 && bonus === 0 ? junkList[Math.floor(rng() * junkList.length)] : null },
-  };
+  const next = earn({ ...s, skills }, money);
+  next.stats = { ...next.stats, clicks: s.stats.clicks + 1, finds: s.stats.finds + 1, goldChips: s.stats.goldChips + (gold ? 1 : 0) };
+  return { state: next, result: { money, gold, levelUp: ups > 0 ? skills.suchen.level : null } };
+};
+
+// Einen Glücksbringer vom Boden aufheben
+export const pickCharm = (s, charmId) => {
+  const c = CHARMS.find(x => x.id === charmId);
+  if (!c || (s.charms[c.id] || 0) >= c.max) return null;
+  return { ...s, charms: { ...s.charms, [c.id]: (s.charms[c.id] || 0) + 1 } };
+};
+
+// Klick ins Leere: nur Müll
+export const randomJunk = (s, rng = Math.random) => {
+  const list = LOCATIONS[s.location].junk;
+  return list[Math.floor(rng() * list.length)];
 };
 
 export const buyHelper = (s, id, count = 1) => {

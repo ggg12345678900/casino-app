@@ -533,7 +533,7 @@ app.post('/api/idle/buy', auth, async (req, res) => {
 
 // ─── Casino-Mogul: Spielstand ────────────────────────────────────────────────
 // Ortskosten gespiegelt aus casino-app/src/game/economy.js (für Plausibilitäts-Check)
-const MOGUL_LOCATION_COSTS = [0, 100, 1e4, 2e6, 2e9, 3e12, 3e15];
+const MOGUL_LOCATION_COSTS = [0, 25, 1e4, 8e6, 4.8e9, 3e12, 4e15];
 const MOGUL_MIN_SAVE_INTERVAL_MS = 3000;
 
 app.get('/api/save', auth, async (req, res) => {

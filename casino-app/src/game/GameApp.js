@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import './game.css';
 import useGame from './useGame';
 import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone } from './economy';
+import { coinRange } from './Views';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO } from './Views';
@@ -100,7 +101,7 @@ export default function GameApp({ user, onLogout }) {
       default:
         return (
           <div className="mg-split">
-            <SearchView state={state} derived={derived} onSearch={game.search} onMove={move} onCharm={setCharmModal} />
+            <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onMove={move} onCharm={setCharmModal} />
             <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={game.buyTool} />
           </div>
         );
@@ -153,7 +154,7 @@ export default function GameApp({ user, onLogout }) {
             <div style={{ color: 'var(--gold)', fontWeight: 800, letterSpacing: 2, fontSize: 12 }}>✨ SELTENER FUND ✨</div>
             <div className="big" style={{ marginTop: 10 }}>{charmModal.icon}</div>
             <h2>{charmModal.name}</h2>
-            <p>Chance 1 : {charmModal.odds.toLocaleString('de-DE')}<br /><b style={{ color: 'var(--gold)' }}>{charmModal.desc}</b> – dauerhaft!</p>
+            <p>Chance 1 : {charmModal.odds.toLocaleString('de-DE')} pro Münze<br /><b style={{ color: 'var(--gold)' }}>{charmModal.desc}</b> – dauerhaft!</p>
             <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>Du hast jetzt {state.charms[charmModal.id]} / {charmModal.max}</div>
             <button className="mg-btn" onClick={() => setCharmModal(null)}>Nice!</button>
           </div>
@@ -169,7 +170,7 @@ export default function GameApp({ user, onLogout }) {
             <h2>{moveModal.name}</h2>
             <p>{moveModal.desc}</p>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
-              <span className="mg-lvl" style={{ color: 'var(--gold)' }}>Fundwert ×{moveModal.mult}</span>
+              <span className="mg-lvl" style={{ color: 'var(--gold)' }}>🪙 {coinRange(moveModal)}</span>
               {moveModal.maxBet > 0 && <span className="mg-lvl">Max-Einsatz {fmt(moveModal.maxBet)} €</span>}
             </div>
             <button className="mg-btn green" onClick={() => setMoveModal(null)}>Los geht's!</button>

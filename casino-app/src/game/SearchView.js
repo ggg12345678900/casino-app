@@ -1,5 +1,8 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { LOCATIONS, SKILLS, xpForLevel, fmt, fmtMoney } from './economy';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import {
+  LOCATIONS, SKILLS, xpForLevel, fmt, fmtMoney, rollSpawn, randomJunk,
+  MAX_ON_FLOOR, COIN_LIFETIME, GOLD_LIFETIME, CHARM_LIFETIME,
+} from './economy';
 
 const DECO = {
   hinterhof: ['🥫', '🚬', '📰', '🗑️', '🍌', '🧦'],
@@ -11,7 +14,43 @@ const DECO = {
   mond: ['🌑', '🛰️', '⭐', '🪐', '👨‍🚀'],
 };
 
-let floatId = 0;
+let uid = 0;
+
+// Zufällige Stelle, die nicht direkt auf einer anderen Münze liegt
+const freeSpot = (list) => {
+  let best = null;
+  for (let i = 0; i < 8; i++) {
+    const p = { x: 8 + Math.random() * 84, y: 16 + Math.random() * 72 };
+    const clash = list.some(o => Math.abs(o.x - p.x) < 9 && Math.abs(o.y - p.y) < 14);
+    if (!clash) return p;
+    best = p;
+  }
+  return best;
+};
+export const coinLabel = (c) => `${c.label} ${c.unit}`;
+
+// Eine Münze bzw. ein Chip auf dem Boden
+function Coin({ item, onPick }) {
+  const { coin, gold, charm, life } = item;
+  const style = {
+    left: `${item.x}%`, top: `${item.y}%`,
+    '--size': `${charm ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
+    animationDuration: `${life}s`,
+  };
+  const pick = (e) => { e.stopPropagation(); onPick(item, e); };
+  if (charm) {
+    return (
+      <button className="mg-coin charm" style={style} onPointerDown={pick} aria-label={`${charm.name} aufheben`}>
+        <span>{charm.icon}</span>
+      </button>
+    );
+  }
+  return (
+    <button className={`mg-coin ${coin.kind}${gold ? ' gold' : ''}`} style={style} onPointerDown={pick} aria-label={`${coinLabel(coin)} aufheben`}>
+      <span className="face"><b>{coin.label}</b><i>{coin.unit}</i></span>
+    </button>
+  );
+}
 
 function GoalBanner({ state, onMove }) {
   const next = LOCATIONS[state.location + 1];
@@ -61,75 +100,114 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onSearch, onMove, onCharm }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onMove, onCharm }) {
+  const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const rateRef = useRef(derived.spawnRate);
+  rateRef.current = derived.spawnRate;
   const loc = LOCATIONS[state.location];
 
-  // Deko-Objekte pro Ort einmal zufällig verteilen
   const deco = useMemo(() => {
     const list = DECO[loc.id] || [];
-    return Array.from({ length: 9 }, (_, i) => ({
+    return Array.from({ length: 8 }, (_, i) => ({
       e: list[i % list.length], x: 5 + ((i * 37) % 88), y: 8 + ((i * 53) % 80), r: (i * 47) % 360,
     }));
   }, [loc.id]);
 
-  const spawn = useCallback((items) => {
-    setFloats(f => [...f.slice(-24), ...items]);
-    const ids = items.map(i => i.id);
+  // Beim Ortswechsel den Boden leeren
+  useEffect(() => { setItems([]); }, [loc.id]);
+
+  // Münzen erscheinen lassen und verschwinden lassen
+  useEffect(() => {
+    let acc = 0.6; // erste Münze kommt schnell
+    let last = performance.now();
+    const id = setInterval(() => {
+      const now = performance.now();
+      const dt = Math.min((now - last) / 1000, 1);
+      last = now;
+      if (document.visibilityState === 'hidden') return;
+      acc += rateRef.current * dt;
+      setItems(cur => {
+        let list = cur.filter(it => now - it.born < it.life * 1000);
+        while (acc >= 1) {
+          acc -= 1;
+          if (list.length >= MAX_ON_FLOOR) continue;
+          const sp = rollSpawn(stateRef.current);
+          const { x, y } = freeSpot(list);
+          list = [...list, {
+            id: ++uid, x, y, born: now, rot: Math.random() * 60 - 30,
+            coin: sp.coin, gold: sp.gold, charm: sp.type === 'charm' ? sp.charm : null,
+            life: sp.type === 'charm' ? CHARM_LIFETIME : sp.gold ? GOLD_LIFETIME : COIN_LIFETIME,
+          }];
+        }
+        return list.length === cur.length && list.every((o, i) => o === cur[i]) ? cur : list;
+      });
+    }, 100);
+    return () => clearInterval(id);
+  }, []);
+
+  const spawnFloats = useCallback((list) => {
+    setFloats(f => [...f.slice(-20), ...list]);
+    const ids = list.map(i => i.id);
     setTimeout(() => setFloats(f => f.filter(x => !ids.includes(x.id))), 1800);
   }, []);
 
-  const handleClick = (e) => {
+  const posOf = (e) => {
     const rect = floorRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const r = onSearch();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const pick = (item, e) => {
+    setItems(cur => cur.filter(o => o.id !== item.id));
+    const { x, y } = posOf(e);
+    if (item.charm) {
+      if (onPickCharm(item.charm.id)) onCharm(item.charm);
+      return;
+    }
+    const r = onPickup(item.coin.id, item.gold);
     if (!r) return;
-    const items = [];
-    if (r.gold > 0) {
-      items.push({ id: ++floatId, kind: 'gold', x, y, text: `🥇 GOLDCHIP! +${fmtMoney(r.money)}` });
-    } else if (r.money > 0) {
-      items.push({ id: ++floatId, kind: 'find', x, y, text: `+${fmtMoney(r.money)}` });
-    } else if (r.junk && Math.random() < 0.45) {
-      items.push({ id: ++floatId, kind: 'junk', x, y, text: r.junk + '…' });
+    const list = [{ id: ++uid, kind: item.gold ? 'gold' : 'find', x, y, text: `${item.gold ? '🥇 GOLD! ' : ''}+${fmtMoney(r.money)}` }];
+    const n = item.gold ? 7 : 3;
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 30 + Math.random() * 50;
+      list.push({ id: ++uid, kind: 'chip', x, y, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist - 30, rot: Math.random() * 720 - 360, text: '✨' });
     }
-    if (r.found > 0) {
-      const n = Math.min(6, 1 + r.gold * 4 + Math.floor(Math.log10(r.found + 1) * 2));
-      for (let i = 0; i < n; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        const dist = 40 + Math.random() * 60;
-        items.push({ id: ++floatId, kind: 'chip', x, y, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist - 30, rot: Math.random() * 720 - 360, text: r.gold ? '🟡' : '🪙' });
-      }
-    }
-    if (r.levelUp) items.push({ id: ++floatId, kind: 'level', x, y: y - 36, text: `⬆️ Suchen Lv ${r.levelUp}` });
-    spawn(items);
-    if (r.charm) onCharm(r.charm);
+    if (r.levelUp) list.push({ id: ++uid, kind: 'level', x, y: y - 36, text: `⬆️ Sammeln Lv ${r.levelUp}` });
+    spawnFloats(list);
+  };
+
+  const missClick = (e) => {
+    if (Math.random() > 0.35) return;
+    const { x, y } = posOf(e);
+    spawnFloats([{ id: ++uid, kind: 'junk', x, y, text: randomJunk(stateRef.current) + '…' }]);
   };
 
   const sk = state.skills;
+  const range = `${derived.coins[0].label} ${derived.coins[0].unit} – ${derived.coins[3].label} ${derived.coins[3].unit}`;
 
   return (
     <div>
       <GoalBanner state={state} onMove={onMove} />
 
-      <div
-        ref={floorRef}
-        className={`mg-floor floor-${loc.id}`}
-        onPointerDown={handleClick}
-      >
+      <div ref={floorRef} className={`mg-floor floor-${loc.id}`} onPointerDown={missClick}>
         <div className="mg-floor-ambient" />
         {deco.map((d, i) => (
           <div key={i} className="mg-floor-deco" style={{ left: `${d.x}%`, top: `${d.y}%`, transform: `rotate(${d.r}deg)` }}>{d.e}</div>
         ))}
         <div className="mg-floor-vignette" />
-        <div className="mg-floor-loc">{loc.icon} {loc.name}</div>
-        {derived.autoSearches > 0 && <div className="mg-floor-auto">🤖 {fmt(derived.autoSearches, 1)} Suchen/s</div>}
-        <div className="mg-floor-hint">
-          <div className="glass">🔍</div>
-          <div className="txt">{state.stats.clicks < 5 ? 'Klick auf den Boden, um zu suchen!' : 'Weitersuchen…'}</div>
-          {state.stats.clicks < 30 && <div className="sub">Irgendwo hier liegen verlorene Chips</div>}
-        </div>
+        <div className="mg-floor-loc">{loc.icon} {loc.name} · 🪙 {range}</div>
+        {derived.autoCoins > 0 && <div className="mg-floor-auto">🤖 Helfer: {fmt(derived.autoCoins, 1)} Münzen/s</div>}
+        {state.stats.finds < 3 && items.length === 0 && (
+          <div className="mg-floor-hint">
+            <div className="txt">Halt die Augen offen…</div>
+            <div className="sub">Gleich taucht eine Münze auf. Klick sie an, bevor sie weg ist!</div>
+          </div>
+        )}
+        {items.map(it => <Coin key={it.id} item={it} onPick={pick} />)}
         {floats.map(f => f.kind === 'chip' ? (
           <div key={f.id} className="mg-chip" style={{ left: f.x - 9, top: f.y - 9, '--dx': `${f.dx}px`, '--dy': `${f.dy}px`, '--rot': `${f.rot}deg` }}>{f.text}</div>
         ) : (
@@ -138,10 +216,10 @@ export default function SearchView({ state, derived, onSearch, onMove, onCharm }
       </div>
 
       <div className="mg-statrow">
-        <div className="mg-stat"><div className="k">🎯 Fundchance</div><div className="v">{(derived.chance * 100).toFixed(derived.chance < 0.1 ? 1 : 0).replace('.', ',')}%</div></div>
-        <div className="mg-stat"><div className="k">🪙 Wert pro Fund</div><div className="v">{fmtMoney(derived.value)}</div></div>
-        <div className="mg-stat"><div className="k">👆 Suchen pro Klick</div><div className="v">{fmt(derived.clickSearches + derived.clickPct * derived.autoSearches, 0)}</div></div>
-        <div className="mg-stat"><div className="k">💸 Pro Klick (Ø)</div><div className="v" style={{ color: 'var(--green)' }}>{fmtMoney(derived.clickEV)}</div></div>
+        <div className="mg-stat"><div className="k">🪙 Neue Münzen</div><div className="v">{fmt(derived.spawnRate * 60, 0)}/min</div></div>
+        <div className="mg-stat"><div className="k">💎 Münzwert</div><div className="v">×{fmt(derived.valueMult)}</div></div>
+        <div className="mg-stat"><div className="k">🫳 Pro Münze (Ø)</div><div className="v">{fmtMoney(derived.pickEV)}</div></div>
+        <div className="mg-stat"><div className="k">⚡ Wenn du alles einsammelst</div><div className="v" style={{ color: 'var(--green)' }}>{fmtMoney(derived.manualPerSec)}/s</div></div>
       </div>
 
       <div className="mg-panel" style={{ marginTop: 12 }}>
