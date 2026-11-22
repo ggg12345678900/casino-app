@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './api';
+import IdlePanel from './IdlePanel';
 import {
   GAME_ORDER, GAMES_META,
   prestigeCost, prestigeMult, PRESTIGE_GAMES_REQ, fmt,
@@ -14,6 +15,7 @@ const GAME_DESCS = {
   roulette: 'Zahlen, Farben, Chancen',
   chicken:  'Überquere die Straße',
   pump:     'Pump den Ballon – cash out!',
+  blackjack:'Schlag den Dealer',
 };
 
 const GAME_GRADIENT = {
@@ -24,9 +26,10 @@ const GAME_GRADIENT = {
   roulette: 'linear-gradient(135deg, #5f1e3a 0%, #1a2c38 100%)',
   chicken:  'linear-gradient(135deg, #1e5f2a 0%, #1a2c38 100%)',
   pump:     'linear-gradient(135deg, #0e3a4f 0%, #1a2c38 100%)',
+  blackjack:'linear-gradient(135deg, #5f4f1e 0%, #1a2c38 100%)',
 };
 
-export default function Lobby({ user, balance, stats, onGameSelect, progression }) {
+export default function Lobby({ user, balance, stats, onGameSelect, progression, onBalanceUpdate }) {
   const [leaderboard, setLeaderboard] = useState([]);
   const [featuredIdx, setFeaturedIdx] = useState(0);
   const [loading, setLoading] = useState(null); // which action is loading
@@ -144,6 +147,9 @@ export default function Lobby({ user, balance, stats, onGameSelect, progression 
           </button>
         )}
       </div>
+
+      {/* ── Idle-Business ────────────────────────────────────────── */}
+      <IdlePanel balance={balance} prestigeCount={prestigeCount} globalLevels={globalLevels} onBalanceUpdate={onBalanceUpdate} />
 
       {/* ── Globale Upgrades ─────────────────────────────────────── */}
       <div style={{ padding: '16px 24px 0' }}>

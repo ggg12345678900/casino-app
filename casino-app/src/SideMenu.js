@@ -9,7 +9,7 @@ const GAME_LIST = [
   { id: 'roulette', name: 'Roulette', icon: '🎡', desc: 'Setze auf Zahlen, Farben oder Gruppen' },
   { id: 'chicken', name: 'Chicken', icon: '🐔', desc: 'Überquere die Straße – hop für hop' },
   { id: 'pump', name: 'Pump', icon: '🎈', desc: 'Pumpe den Ballon – cash out rechtzeitig' },
-  { id: 'blackjack', name: 'Blackjack', icon: '🃏', desc: 'Kommt bald...' },
+  { id: 'blackjack', name: 'Blackjack', icon: '🃏', desc: 'Schlag den Dealer – 3:2 bei Blackjack' },
 ];
 
 function SideMenu({ open, onClose, user, balance, onGameSelect, onBalanceUpdate }) {

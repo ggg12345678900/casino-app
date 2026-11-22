@@ -131,6 +131,24 @@ export const api = {
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(r => r.json()),
 
+  idle: () =>
+    fetch(`${BASE}/idle`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(r => r.json()),
+
+  idleClaim: () =>
+    fetch(`${BASE}/idle/claim`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    }).then(r => r.json()),
+
+  idleBuy: (businessId) =>
+    fetch(`${BASE}/idle/buy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ businessId })
+    }).then(r => r.json()),
+
   upgradeGlobal: (upgradeId) =>
     fetch(`${BASE}/upgrade-global`, {
       method: 'POST',

@@ -1,7 +1,7 @@
 // ─── Shared Progression Constants ────────────────────────────────────────────
 // Used by frontend (Lobby, UpgradePanel, games) and mirrored in server
 
-export const GAME_ORDER = ['dice','mines','plinko','crash','roulette','chicken','pump'];
+export const GAME_ORDER = ['dice','mines','plinko','crash','roulette','chicken','pump','blackjack'];
 
 export const GAMES_META = {
   dice:     { cost: 0,           prestigeReq: 0, icon: '🎲', name: 'Dice',     color: '#3b82f6' },
@@ -11,6 +11,7 @@ export const GAMES_META = {
   roulette: { cost: 1000000,     prestigeReq: 1, icon: '🎡', name: 'Roulette', color: '#ec4899' },
   chicken:  { cost: 10000000,    prestigeReq: 2, icon: '🐔', name: 'Chicken',  color: '#4ade80' },
   pump:     { cost: 100000000,   prestigeReq: 2, icon: '🎈', name: 'Pump',     color: '#06b6d4' },
+  blackjack:{ cost: 1000000000,  prestigeReq: 3, icon: '🃏', name: 'Blackjack', color: '#facc15' },
 };
 
 // Max bet levels: index = level (0=default, 5=max)
@@ -18,13 +19,13 @@ export const MAX_BET_VALUES = [50, 200, 1000, 5000, 25000, 100000];
 
 // Max bet upgrade costs per game (cost to go from level N to N+1, 5 upgrades)
 const MB_BASE = [200, 1000, 5000, 25000, 150000];
-const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
+const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 export const maxBetCosts = (game) => MB_BASE.map(c => Math.round(c * MB_MULT[game]));
 
 // Win rate upgrade costs per game (5 levels, +4% per level)
 export const WINRATE_BONUS_PER_LEVEL = 0.04; // +4% per upgrade
 const WR_BASE = [100, 500, 2500, 12000, 60000];
-const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
+const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 export const winrateCosts = (game) => WR_BASE.map(c => Math.round(c * WR_MULT[game]));
 
 // Prestige
@@ -79,6 +80,22 @@ export const GLOBAL_UPGRADES = [
 export const GLOBAL_START_BALANCE = [1000, 2000, 5000, 10000, 25000, 50000];
 export const GLOBAL_AUTO_SPEED    = [700, 600, 500, 400, 300, 200]; // ms
 export const GLOBAL_DAILY_BONUS   = [100, 200, 500, 1000, 2500, 5000];
+
+// ─── Idle-Business (passives Einkommen) ──────────────────────────────────────
+// Gespiegelt in server/index.js – Server berechnet alles verbindlich.
+export const IDLE_BUSINESSES = [
+  { id: 'slot',   icon: '🎰', name: 'Spielautomat',  baseCost: 500,       income: 1 },
+  { id: 'table',  icon: '🃏', name: 'Kartentisch',   baseCost: 6000,      income: 8 },
+  { id: 'bar',    icon: '🍸', name: 'Casino-Bar',    baseCost: 70000,     income: 60 },
+  { id: 'hotel',  icon: '🏨', name: 'Hotel',         baseCost: 800000,    income: 450 },
+  { id: 'yacht',  icon: '🛥️', name: 'Yacht-Casino',  baseCost: 10000000,  income: 3500 },
+  { id: 'island', icon: '🏝️', name: 'Privatinsel',   baseCost: 150000000, income: 30000 },
+];
+export const IDLE_COST_GROWTH = 1.15;
+export const IDLE_OFFLINE_CAP_SEC = 8 * 3600; // max. 8h Offline-Einnahmen
+export const idleCost = (biz, owned) => Math.round(biz.baseCost * Math.pow(IDLE_COST_GROWTH, owned));
+export const idleBaseRate = (levels) =>
+  IDLE_BUSINESSES.reduce((sum, b) => sum + (levels?.[b.id] || 0) * b.income, 0);
 
 // Helper: format large numbers
 export const fmt = (n) => {

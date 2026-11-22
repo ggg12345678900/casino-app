@@ -52,6 +52,8 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS prestige_count INTEGER DEFAULT 0`);
   await pool.query(`UPDATE users SET prestige_count = 0 WHERE prestige_count IS NULL`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS global_upgrade_levels TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_levels TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_last_claim TIMESTAMP DEFAULT NULL`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -180,13 +182,14 @@ const GAMES_META = {
   roulette: { cost: 1000000,    prestigeReq: 1 },
   chicken:  { cost: 10000000,   prestigeReq: 2 },
   pump:     { cost: 100000000,  prestigeReq: 2 },
+  blackjack:{ cost: 1000000000, prestigeReq: 3 },
 };
 const MAX_BET_VALUES = [50, 200, 1000, 5000, 25000, 100000];
 const MB_BASE = [200, 1000, 5000, 25000, 150000];
-const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
+const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 const maxBetCosts = (g) => MB_BASE.map(c => Math.round(c * (MB_MULT[g]||1)));
 const WR_BASE = [100, 500, 2500, 12000, 60000];
-const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
+const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 const winrateCosts = (g) => WR_BASE.map(c => Math.round(c * (WR_MULT[g]||1)));
 const prestigeCostFn = (count) => Math.round(50000 * Math.pow(10, count));
 
@@ -278,6 +281,8 @@ app.post('/api/prestige', auth, async (req, res) => {
       unlocked_games = '["dice"]',
       max_bet_levels = '{}',
       winrate_levels = '{}',
+      idle_levels = '{}',
+      idle_last_claim = NOW(),
       prestige_count = $2
     WHERE id = $3
   `, [startBal, newPrestige, req.user.id]);
@@ -423,6 +428,104 @@ app.post('/api/upgrade-global', auth, async (req, res) => {
   res.json({ balance: newBalance, global_upgrade_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
 });
 
+// ─── Idle-Business (passives Einkommen) ──────────────────────────────────────
+// Gespiegelt aus casino-app/src/progression.js
+const IDLE_BUSINESSES = {
+  slot:   { baseCost: 500,       income: 1 },
+  table:  { baseCost: 6000,      income: 8 },
+  bar:    { baseCost: 70000,     income: 60 },
+  hotel:  { baseCost: 800000,    income: 450 },
+  yacht:  { baseCost: 10000000,  income: 3500 },
+  island: { baseCost: 150000000, income: 30000 },
+};
+const IDLE_COST_GROWTH = 1.15;
+const IDLE_OFFLINE_CAP_SEC = 8 * 3600;
+const idleCost = (id, owned) => Math.round(IDLE_BUSINESSES[id].baseCost * Math.pow(IDLE_COST_GROWTH, owned));
+
+// Einkommen pro Sekunde inkl. Prestige- und Global-Multiplikator
+const idleRate = (u) => {
+  const levels = JSON.parse(u.idle_levels || '{}');
+  const g = JSON.parse(u.global_upgrade_levels || '{}');
+  const base = Object.entries(IDLE_BUSINESSES).reduce((s, [id, b]) => s + (levels[id] || 0) * b.income, 0);
+  return base * Math.pow(2, u.prestige_count || 0) * (1 + (g.global_mult || 0) * 0.03);
+};
+
+// Liest den User gesperrt (FOR UPDATE) und berechnet die offenen Einnahmen
+const loadIdle = async (client, userId) => {
+  const r = await client.query(
+    `SELECT balance, COALESCE(prestige_count, 0) AS prestige_count,
+       COALESCE(idle_levels, '{}') AS idle_levels,
+       COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels,
+       COALESCE(EXTRACT(EPOCH FROM (NOW() - idle_last_claim)), 0) AS elapsed
+     FROM users WHERE id = $1 FOR UPDATE`, [userId]);
+  const u = r.rows[0];
+  if (!u) return null;
+  const rate = idleRate(u);
+  const seconds = Math.min(Math.max(parseFloat(u.elapsed) || 0, 0), IDLE_OFFLINE_CAP_SEC);
+  return { u, rate, pending: parseFloat((rate * seconds).toFixed(2)), seconds };
+};
+
+const withTx = async (fn) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const out = await fn(client);
+    await client.query('COMMIT');
+    return out;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+};
+
+app.get('/api/idle', auth, async (req, res) => {
+  try {
+    const out = await withTx(async (c) => loadIdle(c, req.user.id));
+    if (!out) return res.status(404).json({ error: 'User nicht gefunden' });
+    res.json({ idle_levels: out.u.idle_levels, rate: out.rate, pending: out.pending, seconds: out.seconds, cap: IDLE_OFFLINE_CAP_SEC });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
+app.post('/api/idle/claim', auth, async (req, res) => {
+  try {
+    const out = await withTx(async (c) => {
+      const d = await loadIdle(c, req.user.id);
+      if (!d) return { status: 404, body: { error: 'User nicht gefunden' } };
+      const newBalance = parseFloat((d.u.balance + d.pending).toFixed(2));
+      await c.query(`UPDATE users SET balance = $1, idle_last_claim = NOW() WHERE id = $2`, [newBalance, req.user.id]);
+      return { body: { balance: newBalance, claimed: d.pending, rate: d.rate } };
+    });
+    res.status(out.status || 200).json(out.body);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
+app.post('/api/idle/buy', auth, async (req, res) => {
+  const { businessId } = req.body;
+  if (!IDLE_BUSINESSES[businessId]) return res.status(400).json({ error: 'Unbekanntes Business' });
+  try {
+    const out = await withTx(async (c) => {
+      const d = await loadIdle(c, req.user.id);
+      if (!d) return { status: 404, body: { error: 'User nicht gefunden' } };
+      // Offene Einnahmen zuerst gutschreiben, dann kaufen (Rate ändert sich)
+      const levels = JSON.parse(d.u.idle_levels || '{}');
+      const owned = levels[businessId] || 0;
+      const cost = idleCost(businessId, owned);
+      const available = d.u.balance + d.pending;
+      if (available < cost) return { status: 400, body: { error: 'Nicht genug Guthaben' } };
+      levels[businessId] = owned + 1;
+      const newBalance = parseFloat((available - cost).toFixed(2));
+      await c.query(
+        `UPDATE users SET balance = $1, idle_levels = $2, idle_last_claim = NOW() WHERE id = $3`,
+        [newBalance, JSON.stringify(levels), req.user.id]);
+      const rate = idleRate({ ...d.u, idle_levels: JSON.stringify(levels) });
+      return { body: { balance: newBalance, idle_levels: JSON.stringify(levels), rate, claimed: d.pending } };
+    });
+    res.status(out.status || 200).json(out.body);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
 // Leaderboard
 app.get('/api/leaderboard', auth, async (req, res) => {
   const result = await pool.query(
@@ -493,15 +596,6 @@ app.post('/api/change-password', auth, async (req, res) => {
   const hash = bcrypt.hashSync(newPassword, 10);
   await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [hash, req.user.id]);
   res.json({ success: true });
-});
-
-// Admin setup
-app.post('/api/setup-admin', async (req, res) => {
-  const { username, setupKey } = req.body;
-  if (setupKey !== 'casino-setup-2024')
-    return res.status(403).json({ error: 'Falscher Key' });
-  await pool.query(`UPDATE users SET is_admin = 1 WHERE username = $1`, [username]);
-  res.json({ success: true, message: `${username} ist jetzt Admin!` });
 });
 
 // Admin routes

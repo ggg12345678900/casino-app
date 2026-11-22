@@ -11,6 +11,7 @@ import Roulette from './Roulette';
 import Chicken from './Chicken';
 import Pump from './Pump';
 import Lobby from './Lobby';
+import Blackjack from './Blackjack';
 import { MAX_BET_VALUES, WINRATE_BONUS_PER_LEVEL, prestigeMult, GLOBAL_AUTO_SPEED } from './progression';
 
 
@@ -262,7 +263,7 @@ function App() {
       onPrestige: handlePrestige,
     };
     switch (activeGame) {
-      case null: return <Lobby user={user} balance={balance} stats={stats} onGameSelect={setActiveGame} progression={progression} />;
+      case null: return <Lobby user={user} balance={balance} stats={stats} onGameSelect={setActiveGame} progression={progression} onBalanceUpdate={setBalanceState} />;
       case 'dice': return <Dice balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('dice')} />;
       case 'mines': return <Mines balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('mines')} />;
       case 'crash': return <Crash balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('crash')} />;
@@ -270,6 +271,7 @@ function App() {
       case 'roulette': return <Roulette balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('roulette')} />;
       case 'chicken': return <Chicken balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('chicken')} />;
       case 'pump': return <Pump balance={balance} setBalance={setBalance} addResult={addResult} user={user} setUser={setUser} {...getGameProps('pump')} />;
+      case 'blackjack': return <Blackjack balance={balance} setBalance={setBalance} addResult={addResult} {...getGameProps('blackjack')} />;
       default: return <ComingSoon name={GAMES.find(g => g.id === activeGame)?.name} icon={GAMES.find(g => g.id === activeGame)?.icon} />;
     }
   };
