@@ -613,8 +613,9 @@ app.post('/api/save', auth, async (req, res) => {
   if (!reset && p.since !== null && parseFloat(p.since) < MOGUL_MIN_SAVE_INTERVAL_MS)
     return res.json({ success: true, skipped: true });
 
-  // Beste Combo (im Spiel max. ×20)
-  const maxCombo = Math.max(0, Math.min(20, Math.floor(Number(save.stats && save.stats.maxCombo) || 0)));
+  // Beste Combo: zählt unbegrenzt, kann aber nie höher sein als alle aufgehobenen Münzen
+  const finds = Math.max(0, Math.floor(Number(save.stats && save.stats.finds) || 0));
+  const maxCombo = Math.max(0, Math.min(finds, 1e6, Math.floor(Number(save.stats && save.stats.maxCombo) || 0)));
   await pool.query(
     `UPDATE users SET save_data = $1, save_at = NOW(), mogul_location = $2, mogul_earned = $3, mogul_max_combo = $4 WHERE id = $5`,
     [raw, location, earned, maxCombo, req.user.id]);
@@ -622,6 +623,19 @@ app.post('/api/save', auth, async (req, res) => {
 });
 
 app.get('/api/mogul-leaderboard', auth, async (req, res) => {
+  if (req.query.by === 'combo') {
+    const top = await pool.query(
+      `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo
+       FROM users WHERE is_admin = 0 AND save_data IS NOT NULL AND COALESCE(mogul_max_combo, 0) > 0
+       ORDER BY mogul_max_combo DESC, mogul_earned DESC LIMIT 50`);
+    const me = await pool.query(
+      `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned, COALESCE(u.mogul_max_combo, 0) AS max_combo,
+         (SELECT COUNT(*) FROM users o WHERE o.is_admin = 0 AND o.save_data IS NOT NULL AND
+            (COALESCE(o.mogul_max_combo, 0) > COALESCE(u.mogul_max_combo, 0) OR
+             (COALESCE(o.mogul_max_combo, 0) = COALESCE(u.mogul_max_combo, 0) AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
+       FROM users u WHERE u.id = $1`, [req.user.id]);
+    return res.json({ top: top.rows, me: me.rows[0] || null });
+  }
   const top = await pool.query(
     `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo
      FROM users WHERE is_admin = 0 AND save_data IS NOT NULL

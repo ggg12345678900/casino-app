@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   LOCATIONS, SKILLS, xpForLevel, fmt, fmtMoney, rollSpawn, randomJunk, comboMult,
-  MAX_ON_FLOOR, COIN_LIFETIME, GOLD_LIFETIME, CHARM_LIFETIME, COMBO_WINDOW_MS, COMBO_MAX,
+  MAX_ON_FLOOR, COIN_LIFETIME, GOLD_LIFETIME, CHARM_LIFETIME, COMBO_WINDOW_MS, COMBO_MAX, COMBO_MILESTONES,
   SACK_MIN_SEC, SACK_MAX_SEC,
 } from './economy';
 import { sfx } from './sound';
@@ -189,7 +189,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     }
     const nowMs = Date.now();
     const c = comboRef.current;
-    c.n = nowMs - c.last < COMBO_WINDOW_MS ? Math.min(c.n + 1, COMBO_MAX) : 0;
+    c.n = nowMs - c.last < COMBO_WINDOW_MS ? c.n + 1 : 0;
     c.last = nowMs;
     setCombo(c.n);
     const r = onPickup(item.coin.id, item.gold, c.n);
@@ -204,6 +204,11 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       list.push({ id: ++uid, kind: 'chip', x, y, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist - 30, rot: Math.random() * 720 - 360, text: '✨' });
     }
     if (r.levelUp) list.push({ id: ++uid, kind: 'level', x, y: y - 36, text: `⬆️ Sammeln Lv ${r.levelUp}` });
+    if (COMBO_MILESTONES.includes(c.n)) {
+      list.push({ id: ++uid, kind: 'gold', x, y: y - 60, text: `🔥 COMBO ×${c.n}!` });
+      sfx.achievement();
+      setShake(true); setTimeout(() => setShake(false), 350);
+    }
     spawnFloats(list);
   };
 
@@ -260,7 +265,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
         {combo >= 2 && (
           <div className="mg-combo">
             <div key={combo} className="n pop">COMBO ×{combo}</div>
-            <div style={{ color: '#ffd9a8', fontSize: 12, fontWeight: 900 }}>+{Math.round((comboMult(combo) - 1) * 100)}% Wert</div>
+            <div style={{ color: '#ffd9a8', fontSize: 12, fontWeight: 900 }}>+{Math.round((comboMult(combo) - 1) * 100)}% Wert{combo >= COMBO_MAX ? ' (MAX)' : ''}</div>
             <div className="bar"><div style={{ width: `${comboLeft * 100}%` }} /></div>
           </div>
         )}

@@ -314,37 +314,46 @@ export function CollectionView({ state }) {
 
 // ─── Rangliste ─────────────────────────────────────────────────────────────
 export function LeaderboardView({ user }) {
+  const [by, setBy] = useState('money');
   const [data, setData] = useState(null);
   useEffect(() => {
-    api.mogulLeaderboard().then(setData).catch(() => setData({ top: [], me: null }));
-  }, []);
-  if (!data) return <div style={{ color: 'var(--muted)' }}>Lade…</div>;
+    setData(null);
+    api.mogulLeaderboard(by).then(setData).catch(() => setData({ top: [], me: null }));
+  }, [by]);
   const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
-  const combo = (n) => (n > 0 ? <span className="mg-lvl" title="Beste Combo" style={{ color: '#ffb36b', borderColor: '#ff8a3d66', background: '#ff8a3d1a' }}>🔥 ×{n}</span> : null);
+  const comboBadge = (n) => (n > 0 ? <span className="mg-lvl" title="Beste Combo" style={{ color: '#ffb36b', borderColor: '#ff8a3d66', background: '#ff8a3d1a' }}>🔥 ×{fmt(n, 0)}</span> : null);
+  const value = (r) => (by === 'combo'
+    ? <b className="disp" style={{ color: '#ffb36b', fontSize: 20, fontWeight: 400 }}>🔥 ×{fmt(r.max_combo, 0)}</b>
+    : <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>);
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
-      <div className="mg-label">Rangliste · sortiert nach Ort, dann Gesamt verdient</div>
-      {data.me && !data.top.some(r => r.username === data.me.username) && (
+      <div className="mg-shop-tabs" style={{ marginBottom: 14 }}>
+        <button className={`mg-shop-tab ${by === 'money' ? 'active' : ''}`} onClick={() => setBy('money')}>💰 Vermögen</button>
+        <button className={`mg-shop-tab ${by === 'combo' ? 'active' : ''}`} onClick={() => setBy('combo')}>🔥 Combo-Rekord</button>
+      </div>
+      <div className="mg-label">{by === 'combo' ? 'Wer hat die meisten Münzen am Stück erwischt?' : 'Sortiert nach Ort, dann Gesamt verdient'}</div>
+      {!data && <div style={{ color: 'var(--muted)' }}>Lade…</div>}
+      {data && data.me && !data.top.some(r => r.username === data.me.username) && (
         <div className="mg-rank me">
           <span style={{ width: 36, textAlign: 'center', fontWeight: 800 }}>#{data.me.rank}</span>
           <div style={{ flex: 1, fontWeight: 700 }}>{data.me.username} (du)</div>
-          <span>{LOCATIONS[data.me.location]?.icon}</span>
-          {combo(data.me.max_combo)}
-          <b>{fmtMoney(data.me.earned)}</b>
+          {by === 'money' && <span>{LOCATIONS[data.me.location]?.icon}</span>}
+          {by === 'money' && comboBadge(data.me.max_combo)}
+          {value(data.me)}
         </div>
       )}
-      {(data.top || []).map((r, i) => (
-        <div key={r.username} className={`mg-rank ${r.username === user.username ? 'me' : ''}`}>
+      {data && (data.top || []).map((r, i) => (
+        <div key={r.username} className={`mg-rank ${r.username === user.username ? 'me' : ''}`} style={by === 'combo' && i === 0 ? { borderColor: '#ff8a3d', boxShadow: '0 4px 0 var(--shadow), 0 0 24px rgba(255,138,61,.35)' } : undefined}>
           <span style={{ width: 36, textAlign: 'center', fontSize: 18, fontWeight: 800 }}>{medal(i)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700 }}>{r.username}{r.username === user.username && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (du)</span>}</div>
             <div style={{ color: 'var(--muted)', fontSize: 12 }}>{LOCATIONS[r.location]?.icon} {LOCATIONS[r.location]?.name}</div>
           </div>
-          {combo(r.max_combo)}
-          <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>
+          {by === 'money' && comboBadge(r.max_combo)}
+          {value(r)}
         </div>
       ))}
-      {data.top?.length === 0 && <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 20 }}>Noch niemand da – sei der Erste!</div>}
+      {data && data.top?.length === 0 && <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 20 }}>Noch niemand da – sei der Erste!</div>}
     </div>
   );
 }
@@ -362,7 +371,7 @@ export function StatsView({ state, onReset }) {
     ['⏱️ Spielzeit', fmtTime(st.playTime)],
     ['🪙 Münzen aufgehoben', fmt(st.finds, 0)],
     ['🥇 Goldmünzen', fmt(st.goldChips, 0)],
-    ['🔥 Beste Combo', `×${st.maxCombo || 0}${(st.maxCombo || 0) >= 20 ? ' (Maximum!)' : ''}`],
+    ['🔥 Beste Combo', `×${fmt(st.maxCombo || 0, 0)}`],
     ['🎰 Casino-Runden', fmt(st.bets, 0)],
     ['📈 Casino-Bilanz', (st.gambleProfit >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.gambleProfit))],
   ];
