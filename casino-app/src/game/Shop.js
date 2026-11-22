@@ -14,7 +14,7 @@ const TOOL_EFFECT = {
   all: (x) => `ALLES ×${x}`,
 };
 
-function Helpers({ state, derived, onBuy }) {
+function Helpers({ state, derived, onBuy, hl }) {
   const [qty, setQty] = useState(1);
   const visible = HELPERS.filter(h => h.loc <= state.location);
   const teaser = HELPERS.find(h => h.loc > state.location);
@@ -36,7 +36,7 @@ function Helpers({ state, derived, onBuy }) {
         const rate = derived.helperRates[h.id];
         const each = h.speed * derived.helperMult;
         return (
-          <button key={h.id} className={`mg-item ${can ? 'can' : 'poor'}`} onClick={() => can && onBuy(h.id, n)}>
+          <button key={h.id} className={`mg-item ${can ? 'can' : 'poor'}${hl === `helper-${h.id}` ? ' mg-hl' : ''}`} onClick={() => can && onBuy(h.id, n)}>
             <div className="ic">{h.icon}</div>
             <div className="body">
               <div className="name">{h.name}</div>
@@ -73,7 +73,7 @@ function Helpers({ state, derived, onBuy }) {
   );
 }
 
-function Tools({ state, onBuy }) {
+function Tools({ state, onBuy, hl }) {
   const available = TOOLS.filter(t => t.loc <= state.location && !state.tools.includes(t.id)).sort((a, b) => a.cost - b.cost);
   const owned = TOOLS.filter(t => state.tools.includes(t.id));
   const lockedCount = TOOLS.filter(t => t.loc > state.location).length;
@@ -87,7 +87,7 @@ function Tools({ state, onBuy }) {
       {available.map(t => {
         const can = state.money >= t.cost;
         return (
-          <button key={t.id} className={`mg-item ${can ? 'can' : 'poor'}`} onClick={() => can && onBuy(t.id)}>
+          <button key={t.id} className={`mg-item ${can ? 'can' : 'poor'}${hl === `tool-${t.id}` ? ' mg-hl' : ''}`} onClick={() => can && onBuy(t.id)}>
             <div className="ic">{t.icon}</div>
             <div className="body">
               <div className="name">{t.name}</div>
@@ -121,7 +121,7 @@ function Tools({ state, onBuy }) {
   );
 }
 
-export default function Shop({ state, derived, onBuyHelper, onBuyTool }) {
+export default function Shop({ state, derived, onBuyHelper, onBuyTool, hl = '' }) {
   const [tab, setTab] = useState('helpers');
   const canHelpers = HELPERS.filter(h => h.loc <= state.location && state.money >= helperCostN(h, state.helpers[h.id] || 0, 1)).length;
   const canTools = TOOLS.filter(t => t.loc <= state.location && !state.tools.includes(t.id) && state.money >= t.cost).length;
@@ -129,16 +129,16 @@ export default function Shop({ state, derived, onBuyHelper, onBuyTool }) {
   return (
     <div className="mg-panel mg-shop">
       <div className="mg-shop-tabs">
-        <button className={`mg-shop-tab ${tab === 'helpers' ? 'active' : ''}`} onClick={() => setTab('helpers')}>
+        <button className={`mg-shop-tab ${tab === 'helpers' ? 'active' : ''}${tab !== 'helpers' && hl.startsWith('helper-') ? ' mg-hl' : ''}`} onClick={() => setTab('helpers')}>
           👥 Helfer {canHelpers > 0 && <span className="badge">{canHelpers}</span>}
         </button>
-        <button className={`mg-shop-tab ${tab === 'tools' ? 'active' : ''}`} onClick={() => setTab('tools')}>
+        <button className={`mg-shop-tab ${tab === 'tools' ? 'active' : ''}${tab !== 'tools' && hl.startsWith('tool-') ? ' mg-hl' : ''}`} onClick={() => setTab('tools')}>
           🛠️ Werkzeuge {canTools > 0 && <span className="badge">{canTools}</span>}
         </button>
       </div>
       {tab === 'helpers'
-        ? <Helpers state={state} derived={derived} onBuy={onBuyHelper} />
-        : <Tools state={state} onBuy={onBuyTool} />}
+        ? <Helpers state={state} derived={derived} onBuy={onBuyHelper} hl={hl} />
+        : <Tools state={state} onBuy={onBuyTool} hl={hl} />}
     </div>
   );
 }

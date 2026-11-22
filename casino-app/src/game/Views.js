@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, VIP_MAX, VIP_NAMES, vipCost, coinById, fmt, fmtMoney, fmtTime } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime } from './economy';
 import { sfx } from './sound';
+import { SLOT_THEMES } from './slotThemes';
 
 export const GAME_INFO = {
-  slots:     { name: 'Mogul Slots', icon: '🎰', desc: '3 Walzen · Jackpot ×250', bg: 'linear-gradient(160deg, #ff3ea5, #7c1d9e)', tag: 'hot' },
   dice:      { name: 'Dice',      icon: '🎲', desc: 'Roll über oder unter', bg: 'linear-gradient(160deg, #3b82f6, #1e3a8a)' },
   mines:     { name: 'Mines',     icon: '💣', desc: 'Vermeide die Minen', bg: 'linear-gradient(160deg, #ef4444, #7f1d1d)' },
   plinko:    { name: 'Plinko',    icon: '🎯', desc: 'Lass den Ball fallen', bg: 'linear-gradient(160deg, #a855f7, #4c1d95)' },
@@ -14,7 +14,12 @@ export const GAME_INFO = {
   chicken:   { name: 'Chicken',   icon: '🐔', desc: 'Über die Straße', bg: 'linear-gradient(160deg, #84cc16, #365314)' },
   pump:      { name: 'Pump',      icon: '🎈', desc: 'Pump bis es knallt', bg: 'linear-gradient(160deg, #06b6d4, #164e63)' },
 };
-const ALL_GAMES = Object.keys(GAME_INFO);
+// Ein Automat pro Ort (vorne), danach die Tischspiele
+LOCATIONS.slice().reverse().forEach(l => {
+  const t = SLOT_THEMES[l.id];
+  GAME_INFO[`slots-${l.id}`] = { name: t.name, icon: t.icon, desc: `Automat · ${t.scatter}×3 = Freispiele`, bg: `linear-gradient(160deg, ${t.c1}, ${t.c2})`, slot: l.id };
+});
+const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_INFO).filter(g => !g.startsWith('slots-'))];
 export const coinRange = (loc) => {
   const a = coinById(loc.coins[0]); const b = coinById(loc.coins[3]);
   return `${a.label} ${a.unit} – ${b.label} ${b.unit}`;
@@ -31,7 +36,7 @@ export function LocationsView({ state, onMove }) {
         const can = isNext && state.money >= l.cost;
         const newTools = TOOLS.filter(t => t.loc === i);
         const newHelpers = HELPERS.filter(h => h.loc === i);
-        const newGames = l.games.filter(g => !(LOCATIONS[i - 1]?.games || []).includes(g));
+        const newGames = l.games;
         const hidden = i > state.location + 1;
         return (
           <div key={l.id} className={`mg-stop ${status}`}>
@@ -64,7 +69,6 @@ export function LocationsView({ state, onMove }) {
                   {newGames.map(g => <span key={g} className="mg-lvl" style={{ color: 'var(--blue)', borderColor: '#60a5fa44', background: '#60a5fa1a' }}>{GAME_INFO[g].icon} {GAME_INFO[g].name}</span>)}
                   {newHelpers.map(h => <span key={h.id} className="mg-lvl">{h.icon} {status === 'future' ? 'Neuer Helfer' : h.name}</span>)}
                   {newTools.length > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>🛠️ {newTools.length} Werkzeuge</span>}
-                  {l.maxBet > 0 && <span className="mg-lvl" style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'transparent' }}>Max-Einsatz {fmtMoney(l.maxBet)}</span>}
                 </div>
               )}
             </div>
@@ -105,7 +109,7 @@ function LiveFeed({ maxBet, games }) {
   );
 }
 
-export function Wheel({ state, onSpin }) {
+export function Wheel({ state, onSpin, hl }) {
   const [rot, setRot] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState('');
@@ -146,43 +150,48 @@ export function Wheel({ state, onSpin }) {
         <div className="hub">🎩</div>
       </div>
       <div className="cs-wheel-result">{result || (ready ? 'Gratis-Dreh bereit!' : `Nächster Dreh in ${fmtTime(left)}`)}</div>
-      <button className="mg-btn pink" disabled={!ready || spinning} onClick={spin}>{spinning ? 'Dreht…' : ready ? '🎡 Gratis drehen!' : '⏳ Warten'}</button>
+      <button className={`mg-btn pink${hl ? ' mg-hl' : ''}`} disabled={!ready || spinning} onClick={spin}>{spinning ? 'Dreht…' : ready ? '🎡 Gratis drehen!' : '⏳ Warten'}</button>
     </div>
   );
 }
 
 export function VipCard({ state, derived, onBuy, compact }) {
   const lvl = state.vip || 0;
-  const maxed = lvl >= VIP_MAX;
-  const cost = maxed ? 0 : vipCost(state);
-  const can = !maxed && state.money >= cost;
+  const cost = vipCost(state);
+  const can = state.money >= cost;
+  const many = vipAffordable(state);
+  const tier = vipTierIndex(lvl);
   return (
-    <div className="cs-vip" data-lvl={lvl}>
+    <div className="cs-vip" data-lvl={Math.min(tier, 6)}>
       <div className="card">
-        <div className="tier">🎫 VIP · {VIP_NAMES[lvl]}</div>
-        <div className="pips">{Array.from({ length: VIP_MAX }, (_, i) => <span key={i} className={i < lvl ? 'on' : ''} />)}</div>
+        <div className="tier">🎫 VIP · {vipName(lvl)}</div>
+        <div style={{ fontSize: 11, fontWeight: 900, opacity: .8 }}>Stufe {lvl}</div>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 150 }}>
         <div style={{ fontWeight: 900 }}>Max-Einsatz {fmtMoney(derived.maxBet)}</div>
-        {!compact && <div style={{ color: 'var(--muted)', fontSize: 12 }}>Wächst mit deinem Einkommen (≈ 1 Minute). Jede VIP-Stufe verdoppelt ihn.</div>}
+        <div style={{ color: 'var(--muted)', fontSize: 12 }}>
+          {compact ? <>Nächste Stufe: {fmtMoney(vipLimit(lvl + 1))}</> : <>Steigt nur durch Kaufen. Jede Stufe verdoppelt dein Limit (nächste: {fmtMoney(vipLimit(lvl + 1))}).</>}
+        </div>
       </div>
-      {maxed
-        ? <span className="mg-lvl" style={{ color: 'var(--gold)' }}>MAX</span>
-        : <button className={can ? 'mg-btn' : 'mg-btn-ghost'} disabled={!can} onClick={onBuy} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
-            ⬆️ {VIP_NAMES[lvl + 1]} · {fmtMoney(cost)}
-          </button>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className={can ? 'mg-btn' : 'mg-btn-ghost'} disabled={!can} onClick={() => onBuy(1)} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
+          ⬆️ +1 Stufe · {fmtMoney(cost)}
+        </button>
+        {many > 1 && (
+          <button className="mg-btn green" onClick={() => onBuy(many)} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
+            ⏫ Max (+{many})
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', jackpot }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
-  const [jp, setJp] = useState(() => derived.maxBet * 180);
-  useEffect(() => {
-    setJp(derived.maxBet * 180);
-    const id = setInterval(() => setJp(v => v + derived.maxBet * (0.05 + Math.random() * 0.3)), 120);
-    return () => clearInterval(id);
-  }, [derived.maxBet]);
+  const jp = jackpot ? jackpot.pool : jackpotPool(state);
+  const online = jackpot && jackpot.online;
+  const oneIn = Math.round(1 / jackpotChance(state, derived.maxBet));
 
   return (
     <div>
@@ -192,6 +201,12 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           <h1>CASINO</h1>
           <div className="sub">Verdopple dein Geld – oder verlier alles. Jede Runde gibt Zocken-XP.</div>
           <div className="cs-jackpot"><span className="lbl">💰 JACKPOT</span><span className="val">{fmtMoney(jp)}</span></div>
+          <div className="cs-jp-info">
+            {online ? <><b style={{ color: '#fff' }}>Ein Topf für alle Spieler!</b> </> : null}
+            Jede Wette füllt den Topf (2 % vom Einsatz). Jede Runde in jedem Spiel kann ihn knacken – mit vollem Max-Einsatz
+            1 : {oneIn.toLocaleString('de-DE')}, mit weniger Einsatz seltener. <b>Das Top-Symbol 3× am Automaten knackt ihn immer!</b>
+            {online && <> Auszahlung bis zum 500-Fachen deines Max-Einsatzes, der Rest bleibt im Topf.</>}
+          </div>
           <VipCard state={state} derived={derived} onBuy={onBuyVip} />
           <div className="cs-chips">
             <div className="mg-stat"><div className="k">Gewinnbonus</div><div className="v" style={{ color: 'var(--green)' }}>+{(derived.winBonus * 100).toFixed(1)}%</div></div>
@@ -200,7 +215,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
         </div>
         <div className="mg-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="mg-label" style={{ marginBottom: 0 }}>🎡 Glücksrad · alle 8 Minuten gratis</div>
-          <Wheel state={state} onSpin={onSpin} />
+          <Wheel state={state} onSpin={onSpin} hl={hl === 'wheel'} />
         </div>
       </div>
 
@@ -211,7 +226,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           const info = GAME_INFO[g];
           const l = LOCATIONS[firstLoc(g)];
           return (
-            <button key={g} className="cs-game" disabled={!unlocked} onClick={() => onPick(g)}>
+            <button key={g} className={`cs-game${hl === `game-${g}` ? ' mg-hl' : ''}`} disabled={!unlocked} onClick={() => onPick(g)}>
               {unlocked && info.tag && <span className={`tag ${info.tag}`}>{info.tag === 'hot' ? '🔥 HOT' : '✨ NEU'}</span>}
               <div className="art" style={{ background: info.bg }}>{unlocked ? info.icon : '🔒'}</div>
               <div className="info">
@@ -222,6 +237,21 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
           );
         })}
       </div>
+
+      {online && jackpot.wins && jackpot.wins.length > 0 && (
+        <div className="mg-panel" style={{ marginTop: 18 }}>
+          <div className="mg-label">💰 Letzte Jackpot-Gewinner</div>
+          <div className="cs-feed">
+            {jackpot.wins.slice(0, 5).map(w => (
+              <div key={w.id} className="cs-feed-row big">
+                <span>🎉</span>
+                <span><b style={{ color: 'var(--text)', marginLeft: 0 }}>{w.username}</b> · {GAME_INFO[w.game]?.name || w.game}</span>
+                <b>+{fmtMoney(w.amount)}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mg-panel" style={{ marginTop: 18 }}>
         <div className="mg-label">📡 Live-Gewinne</div>
@@ -290,6 +320,7 @@ export function LeaderboardView({ user }) {
   }, []);
   if (!data) return <div style={{ color: 'var(--muted)' }}>Lade…</div>;
   const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
+  const combo = (n) => (n > 0 ? <span className="mg-lvl" title="Beste Combo" style={{ color: '#ffb36b', borderColor: '#ff8a3d66', background: '#ff8a3d1a' }}>🔥 ×{n}</span> : null);
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <div className="mg-label">Rangliste · sortiert nach Ort, dann Gesamt verdient</div>
@@ -298,6 +329,7 @@ export function LeaderboardView({ user }) {
           <span style={{ width: 36, textAlign: 'center', fontWeight: 800 }}>#{data.me.rank}</span>
           <div style={{ flex: 1, fontWeight: 700 }}>{data.me.username} (du)</div>
           <span>{LOCATIONS[data.me.location]?.icon}</span>
+          {combo(data.me.max_combo)}
           <b>{fmtMoney(data.me.earned)}</b>
         </div>
       )}
@@ -308,6 +340,7 @@ export function LeaderboardView({ user }) {
             <div style={{ fontWeight: 700 }}>{r.username}{r.username === user.username && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (du)</span>}</div>
             <div style={{ color: 'var(--muted)', fontSize: 12 }}>{LOCATIONS[r.location]?.icon} {LOCATIONS[r.location]?.name}</div>
           </div>
+          {combo(r.max_combo)}
           <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>
         </div>
       ))}
@@ -329,6 +362,7 @@ export function StatsView({ state, onReset }) {
     ['⏱️ Spielzeit', fmtTime(st.playTime)],
     ['🪙 Münzen aufgehoben', fmt(st.finds, 0)],
     ['🥇 Goldmünzen', fmt(st.goldChips, 0)],
+    ['🔥 Beste Combo', `×${st.maxCombo || 0}${(st.maxCombo || 0) >= 20 ? ' (Maximum!)' : ''}`],
     ['🎰 Casino-Runden', fmt(st.bets, 0)],
     ['📈 Casino-Bilanz', (st.gambleProfit >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.gambleProfit))],
   ];

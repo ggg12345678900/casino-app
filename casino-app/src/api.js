@@ -145,6 +145,23 @@ export const api = {
       body: JSON.stringify(data)
     }).then(r => r.json()),
 
+  jackpot: () =>
+    fetch(`${BASE}/jackpot`, { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()),
+
+  jackpotContribute: (amount) =>
+    fetch(`${BASE}/jackpot/contribute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ amount })
+    }).then(r => r.json()),
+
+  jackpotClaim: (game, maxBet) =>
+    fetch(`${BASE}/jackpot/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ game, maxBet })
+    }).then(r => r.json()),
+
   getSave: () =>
     fetch(`${BASE}/save`, {
       headers: { Authorization: `Bearer ${getToken()}` }

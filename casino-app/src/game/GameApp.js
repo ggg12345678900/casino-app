@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone } from './economy';
+import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard } from './Views';
@@ -17,11 +17,34 @@ import Blackjack from '../Blackjack';
 import Chicken from '../Chicken';
 import Pump from '../Pump';
 
-const GAME_COMPONENTS = { slots: Slots, dice: Dice, mines: Mines, plinko: Plinko, crash: Crash, roulette: Roulette, blackjack: Blackjack, chicken: Chicken, pump: Pump };
+const GAME_COMPONENTS = { dice: Dice, mines: Mines, plinko: Plinko, crash: Crash, roulette: Roulette, blackjack: Blackjack, chicken: Chicken, pump: Pump };
 // Pump hatte eigene, kaufbare Schwierigkeitsstufen – im Mogul-Modus sind alle frei
 const PUMP_USER = { unlocked_diffs: JSON.stringify(['easy', 'medium', 'hard', 'expert']) };
 
 let toastId = 0;
+
+// Tutorial-Aufgabe oben im Spiel
+function QuestTracker({ state, onClaim }) {
+  const i = state.quest || 0;
+  if (i >= QUESTS.length) return null;
+  const q = QUESTS[i];
+  const p = Math.min(1, q.progress(state));
+  const done = questDone(state);
+  return (
+    <div className="mg-quest">
+      <div className="ic">{q.icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="h">AUFGABE {i + 1}/{QUESTS.length}</div>
+        <div className="t">{q.title}</div>
+        <div className="h">{q.hint}</div>
+        <div className="bar"><div style={{ width: `${p * 100}%` }} /></div>
+      </div>
+      {done
+        ? <button className="mg-btn green mg-hl" onClick={onClaim} style={{ whiteSpace: 'nowrap' }}>🎁 +{fmtMoney(q.reward)} abholen</button>
+        : <div className="rw">🎁 +{fmtMoney(q.reward)}</div>}
+    </div>
+  );
+}
 
 // Geldanzeige rollt weich zum echten Wert und hüpft bei Gewinnen
 function MoneyCounter({ value }) {
@@ -78,15 +101,15 @@ function BigWin({ win, onClose }) {
     const close = setTimeout(onClose, 4200);
     return () => { cancelAnimationFrame(raf); clearTimeout(close); };
   }, [win, onClose]);
-  const tier = win.multiplier >= 200 ? 'epic' : win.multiplier >= 50 ? 'mega' : 'big';
-  const title = { big: 'BIG WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' }[tier];
+  const tier = win.jackpot ? 'epic' : win.multiplier >= 200 ? 'epic' : win.multiplier >= 50 ? 'mega' : 'big';
+  const title = win.jackpot ? '💰 JACKPOT! 💰' : { big: 'BIG WIN!', mega: 'MEGA WIN!', epic: 'EPIC WIN!' }[tier];
   const rain = useRef(Array.from({ length: 36 }, (_, i) => ({ id: i, left: Math.random() * 100, dur: 1.6 + Math.random() * 2, delay: Math.random() * 1.5, e: ['🪙', '💰', '💵', '💎'][i % 4] }))).current;
   return (
     <div className={`mg-bigwin ${tier}`} onClick={onClose}>
       {rain.map(r => <div key={r.id} className="mg-rain" style={{ left: `${r.left}%`, animationDuration: `${r.dur}s`, animationDelay: `${r.delay}s` }}>{r.e}</div>)}
       <div className="title">{title}</div>
       <div className="amt">+{fmtMoney(shown)}</div>
-      <div className="mult">×{fmt(win.multiplier, 1)} · {GAME_INFO[win.game]?.name || 'Casino'}</div>
+      <div className="mult">{win.jackpot ? `Progressiver Jackpot geknackt · ${GAME_INFO[win.game]?.name || 'Casino'}` : `×${fmt(win.multiplier, 1)} · ${GAME_INFO[win.game]?.name || 'Casino'}`}</div>
     </div>
   );
 }
@@ -106,6 +129,9 @@ export default function GameApp({ user, onLogout }) {
   const game = useGame(user, {
     onAchievement: (a) => { sfx.achievement(); toast({ kind: 'ach', icon: a.icon, title: 'ERFOLG FREIGESCHALTET', text: `${a.name} · +2% auf alles` }); },
     onBigWin: (w) => { sfx.bigWin(); setBigWin(w); },
+    onJackpotNews: (w) => { sfx.win(); toast({ kind: 'ach', icon: '🎉', title: 'JACKPOT GEKNACKT', text: `${w.username} hat ${fmtMoney(w.amount)} bei ${GAME_INFO[w.game]?.name || 'einem Spiel'} geknackt!` }); },
+    onJackpotCooldown: (min) => toast({ icon: '⏳', title: 'JACKPOT GESPERRT', text: `Du hast vor Kurzem schon geknackt. Wieder möglich in ${min} min.` }),
+    onJackpot: (w) => { sfx.bigWin(); setTimeout(() => sfx.bigWin(), 900); setConfetti(c => c + 1); setBigWin({ ...w, jackpot: true, multiplier: 0 }); },
   });
   const [tab, setTab] = useState('search');
   const [activeGame, setActiveGame] = useState(null);
@@ -129,7 +155,7 @@ export default function GameApp({ user, onLogout }) {
   }, [game, state, toast]);
 
   const buyTool = useCallback((id) => { if (game.buyTool(id)) sfx.buy(); else sfx.nope(); }, [game]);
-  const buyVip = useCallback(() => { if (game.buyVip()) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
+  const buyVip = useCallback((n = 1) => { if (game.buyVip(n)) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
 
   const move = useCallback(() => {
     const target = LOCATIONS[state.location + 1];
@@ -137,6 +163,14 @@ export default function GameApp({ user, onLogout }) {
   }, [game, state]);
 
   const onCharm = useCallback((c) => { setConfetti(x => x + 1); setCharmModal(c); }, []);
+  const claimQuest = useCallback(() => {
+    const q = QUESTS[state.quest || 0];
+    if (game.claimQuest()) {
+      sfx.achievement(); setConfetti(x => x + 1);
+      toast({ kind: 'ach', icon: q.icon, title: 'AUFGABE ERLEDIGT', text: `${q.title} · +${fmtMoney(q.reward)}` });
+      if ((state.quest || 0) + 1 >= QUESTS.length) setTimeout(() => toast({ kind: 'ach', icon: '🎓', title: 'TUTORIAL GESCHAFFT', text: 'Jetzt bist du bereit für den Aufstieg zum Mogul!' }), 600);
+    }
+  }, [game, state, toast]);
   const closeBigWin = useCallback(() => setBigWin(null), []);
 
   if (!state) {
@@ -151,12 +185,16 @@ export default function GameApp({ user, onLogout }) {
   const nextLoc = LOCATIONS[state.location + 1];
   const canMove = nextLoc && state.money >= nextLoc.cost;
   const casinoOpen = derived.games.length > 0;
+  // Was soll aufleuchten? (nur solange die aktuelle Aufgabe nicht erledigt ist)
+  const quest = (state.quest || 0) < QUESTS.length ? QUESTS[state.quest || 0] : null;
+  const hl = quest && !questDone(state) ? quest.hl : '';
+  const casinoHl = hl === 'wheel' || hl.startsWith('game-');
   const wheelReady = casinoOpen && (state.wheelReadyAt || 0) <= Date.now();
 
   const TABS = [
-    { id: 'search', label: '🔍 Sammeln' },
+    { id: 'search', label: '🔍 Sammeln', hl: !casinoHl && hl !== '' },
     { id: 'locations', label: '🗺️ Orte', badge: canMove ? '!' : null },
-    { id: 'casino', label: casinoOpen ? '🎰 Casino' : '🔒 Casino', disabled: !casinoOpen, badge: wheelReady ? '🎡' : null },
+    { id: 'casino', label: casinoOpen ? '🎰 Casino' : '🔒 Casino', disabled: !casinoOpen, badge: wheelReady ? '🎡' : null, hl: casinoHl },
     { id: 'collection', label: '🏆 Erfolge' },
     { id: 'leaderboard', label: '👑 Rangliste' },
     { id: 'stats', label: '📊 Statistik' },
@@ -167,7 +205,8 @@ export default function GameApp({ user, onLogout }) {
       case 'locations': return <LocationsView state={state} onMove={move} />;
       case 'casino': {
         if (activeGame && derived.games.includes(activeGame)) {
-          const G = GAME_COMPONENTS[activeGame];
+          const isSlot = activeGame.startsWith('slots-');
+          const G = isSlot ? Slots : GAME_COMPONENTS[activeGame];
           return (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -175,15 +214,16 @@ export default function GameApp({ user, onLogout }) {
                 <span className="disp" style={{ fontSize: 20 }}>{GAME_INFO[activeGame].icon} {GAME_INFO[activeGame].name}</span>
               </div>
               <div style={{ marginBottom: 10 }}><VipCard state={state} derived={derived} onBuy={buyVip} compact /></div>
-              <div className={activeGame === 'slots' ? '' : 'mg-game-wrap'}>
+              <div className={isSlot ? '' : 'mg-game-wrap'}>
                 <G balance={state.money} setBalance={game.setBalance} addResult={game.addResult}
                   maxBet={derived.maxBet} winBonus={derived.winBonus} prestigeMult={1} globalMult={1} autoSpeed={500}
-                  user={PUMP_USER} setUser={() => {}} />
+                  user={PUMP_USER} setUser={() => {}} jackpot={game.jackpot.pool}
+                  key={activeGame} themeId={isSlot ? activeGame.slice(6) : undefined} gameId={activeGame} />
               </div>
             </div>
           );
         }
-        return <CasinoView state={state} derived={derived} onPick={setActiveGame} onSpin={game.spinWheel} onBuyVip={buyVip} />;
+        return <CasinoView state={state} derived={derived} onPick={setActiveGame} onSpin={game.spinWheel} onBuyVip={buyVip} hl={hl} jackpot={game.jackpot} />;
       }
       case 'collection': return <CollectionView state={state} />;
       case 'leaderboard': return <LeaderboardView user={user} />;
@@ -191,8 +231,8 @@ export default function GameApp({ user, onLogout }) {
       default:
         return (
           <div className="mg-split">
-            <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} />
-            <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} />
+            <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl} />
+            <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} hl={hl} />
           </div>
         );
     }
@@ -222,7 +262,7 @@ export default function GameApp({ user, onLogout }) {
 
       <nav className="mg-tabs">
         {TABS.map(t => (
-          <button key={t.id} className={`mg-tab ${tab === t.id ? 'active' : ''}`} disabled={t.disabled}
+          <button key={t.id} className={`mg-tab ${tab === t.id ? 'active' : ''}${t.hl && tab !== t.id ? ' mg-hl' : ''}`} disabled={t.disabled}
             title={t.disabled ? 'Freigeschaltet in der Eckkneipe' : undefined}
             onClick={() => { setTab(t.id); if (t.id !== 'casino') setActiveGame(null); }}>
             {t.label}{t.badge && <span className="badge">{t.badge}</span>}
@@ -230,7 +270,10 @@ export default function GameApp({ user, onLogout }) {
         ))}
       </nav>
 
-      <main className="mg-main">{renderTab()}</main>
+      <main className="mg-main">
+        <QuestTracker state={state} onClaim={claimQuest} />
+        {renderTab()}
+      </main>
 
       {/* Willkommen zurück */}
       {game.welcome && (
@@ -239,8 +282,11 @@ export default function GameApp({ user, onLogout }) {
             <div className="rays" />
             <div className="big">💤</div>
             <h2>Willkommen zurück!</h2>
-            <p>Während du {fmtTime(game.welcome.seconds)} weg warst, haben deine Helfer gesammelt:</p>
+            <p>Während du {fmtTime(game.welcome.away || game.welcome.seconds)} weg warst, haben deine Helfer gesammelt:</p>
             <div className="disp" style={{ fontSize: 38, color: 'var(--green)', marginBottom: 20 }}>+{fmtMoney(game.welcome.earned)}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: -12, marginBottom: 18 }}>
+              Offline arbeiten deine Helfer mit 20 % Tempo{(game.welcome.away || 0) > OFFLINE_CAP_SEC ? ' · nur die ersten 8 Stunden zählen' : ' · max. 8 Stunden'}
+            </div>
             <button className="mg-btn green" onClick={() => { sfx.gold(); game.dismissWelcome(); }}>Einsammeln</button>
           </div>
         </div>
@@ -272,7 +318,6 @@ export default function GameApp({ user, onLogout }) {
             <p>{moveModal.desc}</p>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
               <span className="mg-lvl" style={{ color: 'var(--gold)' }}>🪙 {coinRange(moveModal)}</span>
-              {moveModal.maxBet > 0 && <span className="mg-lvl">Max-Einsatz {fmt(moveModal.maxBet)} €</span>}
             </div>
             <button className="mg-btn green" onClick={() => setMoveModal(null)}>Los geht's!</button>
           </div>
