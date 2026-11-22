@@ -6,7 +6,8 @@ export const BASE = process.env.REACT_APP_API_URL
 const getToken = () => localStorage.getItem('token');
 
 // Weckt den Render-Server auf (schläft im Gratis-Tarif nach ~15 min ohne Besucher)
-export const wakeServer = () => fetch(`${BASE}/mogul-leaderboard`).catch(() => {});
+export const wakeServer = () => fetch(`${BASE}/health`).catch(() => {});
+export const hasToken = () => !!getToken();
 
 export const api = {
   register: (username, password) =>
