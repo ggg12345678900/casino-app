@@ -45,6 +45,7 @@ export const sfx = {
   tick: () => tone(1200, { dur: 0.025, type: 'square', vol: 0.04 }),
   win: () => [784, 1046].forEach((f, i) => tone(f, { at: i * 0.08, dur: 0.15, type: 'triangle', vol: 0.1 })),
   bigWin: () => [523, 659, 784, 1046, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, { at: i * 0.09, dur: 0.22, type: 'square', vol: 0.07 })),
+  firework: () => { [0, 0.35, 0.7, 1.1].forEach((at, i) => { tone(180 + i * 40, { at, dur: 0.18, type: 'sawtooth', vol: 0.05, slide: 4 }); tone(1600 + i * 200, { at: at + 0.18, dur: 0.25, type: 'triangle', vol: 0.06, slide: 0.5 }); }); },
   move: () => [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, { at: i * 0.1, dur: 0.3, type: 'triangle', vol: 0.12 })),
 };
 

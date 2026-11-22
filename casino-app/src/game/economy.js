@@ -105,18 +105,26 @@ export const TOOLS = [
   { id: 'magnet',     name: 'Magnet',              icon: '🧲', cost: 40,   loc: 1, type: 'value',  x: 2,   desc: 'Zieht die Münzen aus jeder Ritze.' },
   { id: 'dienstplan', name: 'Dienstplan',          icon: '📋', cost: 150,  loc: 1, type: 'helper', x: 2,   desc: 'Alle Helfer arbeiten doppelt so schnell.' },
   { id: 'detektor',   name: 'Metalldetektor',      icon: '📡', cost: 600,  loc: 1, type: 'spawn',  x: 1.5, desc: 'Piep. Piep. PIEEEP!' },
+  { id: 'klebe',      name: 'Klebehandschuhe',     icon: '🧤', cost: 150,   loc: 1, type: 'pickPct', x: 0.1,  desc: 'An dir bleibt jede Münze kleben – jeder Klick wächst mit deinem Imperium mit.' },
   { id: 'sauger',     name: 'Industriesauger',     icon: '🌪️', cost: 32000, loc: 2, type: 'pick',   x: 3,   desc: 'Jeder Klick saugt 3× so viel auf.' },
   { id: 'roentgen',   name: 'Röntgenbrille',       icon: '🕶️', cost: 1.2e5,  loc: 2, type: 'value',  x: 2.5, desc: 'Sieht Münzen sogar in Hosentaschen.' },
   { id: 'rede',       name: 'Motivationsrede',     icon: '📢', cost: 4e5,  loc: 2, type: 'helper', x: 2,   desc: '„Wir sind eine Familie!“ – Helfer ×2.' },
-  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 3.2e7,  loc: 3, type: 'pickPct', x: 0.5, desc: 'Jede aufgehobene Münze bringt zusätzlich 0,5 Sekunden Helfer-Einkommen.' },
+  { id: 'zange',      name: 'Münzzange',           icon: '🗜️', cost: 3000,  loc: 2, type: 'pickPct', x: 0.1,  desc: 'Profi-Werkzeug: Klicken bleibt auch mit vielen Helfern stark.' },
+  { id: 'saugrohr',   name: 'Münz-Saugrohr',       icon: '🧪', cost: 1.5e5, loc: 2, type: 'pick',    x: 2,    desc: 'Schlürft Münzen direkt vom Teppich. Aufheben ×2.' },
+  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 3.2e7,  loc: 3, type: 'pickPct', x: 0.05, desc: 'Fliegt dir voraus und zeigt dir die besten Münzen.' },
   { id: 'satellit',   name: 'Satelliten-Scan',     icon: '🛰️', cost: 1.6e8,  loc: 3, type: 'spawn',  x: 1.5, desc: 'Mehr Münzen – aus dem All entdeckt.' },
   { id: 'firmenwagen',name: 'Firmenwagen',         icon: '🚗', cost: 8e8,  loc: 3, type: 'helper', x: 2,   desc: 'Helfer kommen schneller zur Arbeit. ×2' },
+  { id: 'pfanne',     name: 'Goldgräberpfanne',    icon: '🍳', cost: 3e7,   loc: 3, type: 'pick',    x: 3,    desc: 'Gold waschen wie 1849. Aufheben ×3.' },
   { id: 'ki',         name: 'KI-Analyse',          icon: '🧠', cost: 2.4e10,  loc: 4, type: 'value',  x: 3,   desc: 'Berechnet, wo die wertvollsten Chips fallen.' },
   { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 1.44e11,  loc: 4, type: 'pick',   x: 10,  desc: 'Jeder Klick ×10.' },
+  { id: 'magnethand', name: 'Magnethandschuh',     icon: '🧲', cost: 1e10,  loc: 4, type: 'pick',    x: 3,    desc: 'Chips fliegen dir in die Hand. Aufheben ×3.' },
   { id: 'kredit',     name: 'Bankkredit',          icon: '🏦', cost: 7.2e11, loc: 4, type: 'helper', x: 2,   desc: 'Mehr Budget, mehr Leute. Helfer ×2.' },
   { id: 'kugel',      name: 'Kristallkugel',       icon: '🔮', cost: 3e13, loc: 5, type: 'value',  x: 4,   desc: 'Du weißt, wo der nächste Chip fällt.' },
   { id: 'zeit',       name: 'Zeitmaschine',        icon: '⏳', cost: 3e14, loc: 5, type: 'helper', x: 3,   desc: 'Helfer arbeiten in mehreren Zeitlinien. ×3' },
+  { id: 'diamantgreifer', name: 'Diamantgreifer',  icon: '💍', cost: 8e12,  loc: 5, type: 'pick',    x: 3,    desc: 'Der edelste Griff der Riviera. Aufheben ×3.' },
+  { id: 'zeitlupe',   name: 'Zeitlupe',            icon: '🐌', cost: 6e13,  loc: 5, type: 'pick',    x: 3,    desc: 'Für dich vergeht die Zeit langsamer. Aufheben ×3.' },
   { id: 'meteor',     name: 'Meteoriten-Detektor', icon: '☄️', cost: 6.68e16, loc: 6, type: 'value',  x: 5,   desc: 'Findet Chips aus Sternenstaub.' },
+  { id: 'quantenhand',name: 'Quantenhand',         icon: '🫳', cost: 2e16,  loc: 6, type: 'pick',    x: 5,    desc: 'Deine Hand ist an mehreren Orten gleichzeitig. Aufheben ×5.' },
   { id: 'krone',      name: 'Mogul-Krone',         icon: '👑', cost: 6.68e17, loc: 6, type: 'all',    x: 10,  desc: 'Du bist der Casino-Mogul. Alles ×10.' },
 ];
 
@@ -153,7 +161,8 @@ export const OFFLINE_CAP_SEC = 8 * 3600; // max. 8 h werden angerechnet
 export const OFFLINE_RATE = 0.2;         // offline verdienen Helfer 20 % ihres normalen Einkommens
 export const COMBO_WINDOW_MS = 1600;  // so schnell muss die nächste Münze folgen
 export const COMBO_STEP = 0.05;       // +5% pro Combo-Stufe
-export const COMBO_MAX = 20;          // max. ×2
+export const COMBO_MAX = 20;          // Bonus wächst bis Combo 20 (= +100 %), die Combo selbst zählt unbegrenzt weiter
+export const COMBO_MILESTONES = [50, 100, 250, 500, 1000, 2500, 5000];
 export const FRENZY_MULT = 5;         // Geldregen: 5× so viele Münzen
 export const FRENZY_SEC = 20;
 export const SACK_MIN_SEC = 75;       // Geldsack erscheint alle 75–150 s
@@ -172,7 +181,9 @@ export const ACHIEVEMENTS = [
   { id: 'gold1',    icon: '🥇', name: 'Goldrausch',          desc: 'Erste Goldmünze erwischt',         test: s => s.stats.goldChips >= 1 },
   { id: 'gold50',   icon: '👑', name: 'Goldfinger',          desc: '50 Goldmünzen erwischt',           test: s => s.stats.goldChips >= 50 },
   { id: 'combo10',  icon: '🔥', name: 'Flinke Finger',       desc: 'Combo ×10 erreicht',               test: s => (s.stats.maxCombo || 0) >= 10 },
-  { id: 'combo20',  icon: '⚡', name: 'Unaufhaltsam',        desc: 'Maximale Combo ×20 erreicht',      test: s => (s.stats.maxCombo || 0) >= 20 },
+  { id: 'combo20',  icon: '⚡', name: 'Unaufhaltsam',        desc: 'Combo ×20 – voller +100 %-Bonus',  test: s => (s.stats.maxCombo || 0) >= 20 },
+  { id: 'combo100', icon: '☄️', name: 'Klick-Maschine',      desc: 'Combo ×100 erreicht',              test: s => (s.stats.maxCombo || 0) >= 100 },
+  { id: 'combo500', icon: '🌋', name: 'Combo-Legende',       desc: 'Combo ×500 erreicht',              test: s => (s.stats.maxCombo || 0) >= 500 },
   { id: 'earn100',  icon: '💶', name: 'Taschengeld',         desc: '100 € verdient',                   test: s => s.stats.totalEarned >= 100 },
   { id: 'earn1m',   icon: '💸', name: 'Millionär',           desc: '1 Mio € verdient',                 test: s => s.stats.totalEarned >= 1e6 },
   { id: 'earn1b',   icon: '🤑', name: 'Milliardär',          desc: '1 Mrd € verdient',                 test: s => s.stats.totalEarned >= 1e9 },

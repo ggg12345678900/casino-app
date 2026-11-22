@@ -175,8 +175,8 @@ export const api = {
       body: JSON.stringify({ save, reset })
     }).then(r => r.json()),
 
-  mogulLeaderboard: () =>
-    fetch(`${BASE}/mogul-leaderboard`, {
+  mogulLeaderboard: (by = 'money') =>
+    fetch(`${BASE}/mogul-leaderboard${by === 'combo' ? '?by=combo' : ''}`, {
       headers: { Authorization: `Bearer ${getToken()}` }
     }).then(r => r.json()),
 
