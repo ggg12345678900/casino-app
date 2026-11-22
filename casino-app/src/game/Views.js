@@ -185,6 +185,7 @@ export function StatsView({ state, onReset }) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [msg, setMsg] = useState('');
+  const [confirmReset, setConfirmReset] = useState(false);
   const st = state.stats;
   const rows = [
     ['💰 Gesamt verdient', fmtMoney(st.totalEarned)],
@@ -225,9 +226,17 @@ export function StatsView({ state, onReset }) {
           if (r.error) flash('❌ ' + r.error); else { flash('✅ Passwort geändert!'); setOldPassword(''); setNewPassword(''); }
         }}>Passwort ändern</button>
         <div className="mg-label">Gefahrenzone</div>
-        <button className="mg-btn red" style={{ width: '100%' }} onClick={() => {
-          if (window.confirm('Spielstand wirklich komplett löschen? Das kann nicht rückgängig gemacht werden!')) onReset();
-        }}>🗑️ Spielstand zurücksetzen</button>
+        {confirmReset ? (
+          <div>
+            <div style={{ fontSize: 13, marginBottom: 8 }}>Wirklich alles löschen? Das kann nicht rückgängig gemacht werden.</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="mg-btn red" style={{ flex: 1, background: 'var(--red)', color: '#1a0505' }} onClick={() => { setConfirmReset(false); onReset(); }}>Ja, löschen</button>
+              <button className="mg-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmReset(false)}>Abbrechen</button>
+            </div>
+          </div>
+        ) : (
+          <button className="mg-btn red" style={{ width: '100%' }} onClick={() => setConfirmReset(true)}>🗑️ Spielstand zurücksetzen</button>
+        )}
       </div>
     </div>
   );
