@@ -577,6 +577,16 @@ app.post('/api/idle/buy', auth, async (req, res) => {
 // Ortskosten gespiegelt aus casino-app/src/game/economy.js (für Plausibilitäts-Check)
 const MOGUL_LOCATION_COSTS = [0, 25, 1e4, 8e6, 4.8e9, 3e12, 4e15];
 const MOGUL_MIN_SAVE_INTERVAL_MS = 3000;
+// Wachstums-Grenze gegen gefälschte Spielstände. Ehrliche Spieler wachsen laut Simulation
+// in 30 s höchstens ≈ ×9 (Glücksrad-Jackpot); erlaubt sind ×20 pro 30 s, die Grenze verdoppelt
+// sich zusätzlich alle 3 Minuten seit dem letzten Speichern (Offline-Pausen, Neustarts).
+const GROWTH_PER_30S = 20;
+const GROWTH_DOUBLING_SEC = 180;
+const GROWTH_FREE = 10000; // Startfreibetrag
+const growthLimit = (prev, sinceSec) => {
+  const sec = Math.max(30, Math.min(sinceSec, 24 * 3600));
+  return Math.max(prev, 1) * GROWTH_PER_30S * Math.pow(2, (sec - 30) / GROWTH_DOUBLING_SEC) + GROWTH_FREE;
+};
 
 app.get('/api/save', auth, async (req, res) => {
   const r = await pool.query(`SELECT save_data FROM users WHERE id = $1`, [req.user.id]);
@@ -606,12 +616,30 @@ app.post('/api/save', auth, async (req, res) => {
     return res.status(400).json({ error: 'Spielstand unplausibel' });
 
   const prev = await pool.query(
-    `SELECT mogul_location, mogul_earned, EXTRACT(EPOCH FROM (NOW() - save_at)) * 1000 AS since FROM users WHERE id = $1`,
+    `SELECT mogul_location, mogul_earned, save_data, EXTRACT(EPOCH FROM (NOW() - save_at)) * 1000 AS since,
+       EXTRACT(EPOCH FROM (NOW() - created_at)) AS age FROM users WHERE id = $1`,
     [req.user.id]);
   const p = prev.rows[0];
   if (!p) return res.status(404).json({ error: 'User nicht gefunden' });
   if (!reset && p.since !== null && parseFloat(p.since) < MOGUL_MIN_SAVE_INTERVAL_MS)
     return res.json({ success: true, skipped: true });
+
+  // Wachstums-Grenze (nicht beim Zurücksetzen). Ohne bisherigen Spielstand zählt ab Account-Erstellung,
+  // höchstens 10 Minuten – so kann auch ein frischer Account nicht sofort Billionen melden.
+  if (!reset) {
+    let prevStats = {};
+    try { prevStats = (p.save_data && JSON.parse(p.save_data).stats) || {}; } catch {}
+    const hasPrev = p.since !== null && !!p.save_data;
+    const prevEarned = hasPrev ? Number(prevStats.totalEarned) || 0 : 0;
+    const prevGamble = hasPrev ? Number(prevStats.gambleWon) || 0 : 0;
+    const sinceSec = hasPrev ? parseFloat(p.since) / 1000 : Math.min(600, parseFloat(p.age) || 0);
+    const tooFast = earned > growthLimit(prevEarned, sinceSec)
+      || gambleWon > Math.max(growthLimit(prevGamble, sinceSec), earned * 30 + GROWTH_FREE);
+    if (tooFast) {
+      console.warn(`⚠️ Spielstand abgelehnt (zu schnelles Wachstum): ${req.user.username} ${prevEarned} -> ${earned} in ${Math.round(sinceSec)} s`);
+      return res.status(400).json({ error: 'Spielstand unplausibel (zu schnelles Wachstum)' });
+    }
+  }
 
   // Beste Combo: zählt unbegrenzt, kann aber nie höher sein als alle aufgehobenen Münzen
   const finds = Math.max(0, Math.floor(Number(save.stats && save.stats.finds) || 0));
