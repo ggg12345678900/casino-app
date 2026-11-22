@@ -216,7 +216,7 @@ export const ACHIEVEMENTS = [
 // hl: welches Element aufleuchtet. progress: 0..1. reward: Bonus in €.
 export const QUESTS = [
   { id: 'coins',  icon: '🪙', title: 'Heb 10 Münzen auf',                  hint: 'Klick die Münzen auf dem Boden an, bevor sie verschwinden.', hl: 'floor',            reward: 0.3, progress: s => s.stats.finds / 10 },
-  { id: 'brille', icon: '👓', title: 'Kauf die Brille',                     hint: 'Im Shop rechts unter „Werkzeuge“ – damit siehst du mehr Münzen.', hl: 'tool-brille',   reward: 0.5, progress: s => (s.tools.includes('brille') ? 1 : Math.min(0.99, s.money / 0.1)) },
+  { id: 'brille', icon: '👓', title: 'Kauf die Brille',                     hint: 'Im Shop unter „Werkzeuge“ – damit siehst du mehr Münzen.', hl: 'tool-brille',   reward: 0.5, progress: s => (s.tools.includes('brille') ? 1 : Math.min(0.99, s.money / 0.1)) },
   { id: 'helfer', icon: '🧹', title: 'Stell eine Putzkraft ein',            hint: 'Unter „Helfer“ – sie sammelt automatisch für dich, auch wenn du nicht klickst.', hl: 'helper-putzkraft', reward: 1, progress: s => ((s.helpers.putzkraft || 0) >= 1 ? 1 : Math.min(0.99, s.money / 0.5)) },
   { id: 'combo',  icon: '🔥', title: 'Schaff eine Combo ×3',                hint: 'Heb Münzen schnell hintereinander auf – jede Combo-Stufe gibt +5 % Wert.', hl: 'floor', reward: 1.5, progress: s => (s.stats.maxCombo || 0) / 3 },
   { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten',       hint: 'Im Casino wartet die Kronkorken-Kiste. Schon ab 5 Cent Einsatz!', hl: 'game-slots-hinterhof', reward: 3, progress: s => (s.stats.bets >= 1 ? 1 : 0) },

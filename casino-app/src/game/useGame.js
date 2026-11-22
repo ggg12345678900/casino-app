@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { api } from '../api';
+import { api, hasToken } from '../api';
 import * as E from './economy';
 
 const LOCAL_KEY = (userId) => `mogul_save_${userId}`;
@@ -38,7 +38,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
       const local = readLocal(user.id);
       let remote = null;
       try {
-        const res = await api.getSave();
+        const res = hasToken() ? await api.getSave() : null;
         if (res && res.save) remote = res.save;
       } catch {}
       if (cancelled) return;
@@ -70,7 +70,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     if (!s) return;
     const snap = { ...s, savedAt: Date.now() };
     writeLocal(user.id, snap);
-    api.putSave(snap, keepalive).catch(() => {});
+    if (hasToken()) api.putSave(snap, keepalive).catch(() => {});
   }, [user.id]);
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   // Gemeinsamer Jackpot: Einzahlungen melden (10 s) und Topf + Gewinner abfragen (15 s)
   useEffect(() => {
     if (!ONLINE || !state) return undefined;
-    const poll = () => api.jackpot().then(res => {
+    const poll = () => hasToken() && api.jackpot().then(res => {
       if (!res || res.error) return;
       const wins = res.wins || [];
       const maxId = wins.reduce((m, w) => Math.max(m, w.id), 0);
@@ -199,7 +199,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     }).catch(() => {});
     const flush = () => {
       const amount = pendingRef.current;
-      if (amount <= 0) return;
+      if (amount <= 0 || !hasToken()) return;
       pendingRef.current = 0;
       api.jackpotContribute(amount).then(res => { if (res && res.pool) setGlobalJp(g => ({ ...g, pool: res.pool })); })
         .catch(() => { pendingRef.current += amount; });
@@ -229,7 +229,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     stateRef.current = fresh;
     setState(fresh);
     writeLocal(user.id, fresh);
-    api.putSave(fresh, false, true).catch(() => {});
+    if (hasToken()) api.putSave(fresh, false, true).catch(() => {});
   }, [user.id]);
 
   return {

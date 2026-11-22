@@ -154,6 +154,9 @@ const adminAuth = (req, res, next) => {
   });
 };
 
+// Lebenszeichen (ohne Login) – weckt den Server auf, z. B. beim Öffnen der Login-Seite
+app.get('/api/health', (req, res) => res.json({ ok: true }));
+
 // Register
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
@@ -169,8 +172,10 @@ app.post('/api/register', async (req, res) => {
     );
     const token = jwt.sign({ id: result.rows[0].id, username, is_admin: 0 }, SECRET, { expiresIn: '7d' });
     res.json({ token, username, balance: 1000, is_admin: 0, id: result.rows[0].id });
-  } catch {
-    res.status(400).json({ error: 'Benutzername bereits vergeben' });
+  } catch (e) {
+    if (e && e.code === '23505') return res.status(400).json({ error: 'Benutzername bereits vergeben' });
+    console.error('Registrierung fehlgeschlagen:', e && e.message);
+    res.status(503).json({ error: 'Server-Problem – bitte in ein paar Sekunden nochmal versuchen.' });
   }
 });
 
@@ -853,8 +858,9 @@ app.post('/api/change-username', auth, async (req, res) => {
   try {
     await pool.query(`UPDATE users SET username = $1 WHERE id = $2`, [newUsername, req.user.id]);
     res.json({ success: true });
-  } catch {
-    res.status(400).json({ error: 'Benutzername bereits vergeben' });
+  } catch (e) {
+    if (e && e.code === '23505') return res.status(400).json({ error: 'Benutzername bereits vergeben' });
+    res.status(503).json({ error: 'Server-Problem – bitte gleich nochmal versuchen.' });
   }
 });
 
