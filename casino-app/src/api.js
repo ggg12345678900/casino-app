@@ -131,6 +131,49 @@ export const api = {
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(r => r.json()),
 
+  sendFeedback: (data) =>
+    fetch(`${BASE}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  getSave: () =>
+    fetch(`${BASE}/save`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(r => r.json()),
+
+  putSave: (save, keepalive = false, reset = false) =>
+    fetch(`${BASE}/save`, {
+      method: 'POST',
+      keepalive,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ save, reset })
+    }).then(r => r.json()),
+
+  mogulLeaderboard: () =>
+    fetch(`${BASE}/mogul-leaderboard`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(r => r.json()),
+
+  idle: () =>
+    fetch(`${BASE}/idle`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    }).then(r => r.json()),
+
+  idleClaim: () =>
+    fetch(`${BASE}/idle/claim`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    }).then(r => r.json()),
+
+  idleBuy: (businessId) =>
+    fetch(`${BASE}/idle/buy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ businessId })
+    }).then(r => r.json()),
+
   upgradeGlobal: (upgradeId) =>
     fetch(`${BASE}/upgrade-global`, {
       method: 'POST',

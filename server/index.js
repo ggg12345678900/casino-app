@@ -52,6 +52,13 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS prestige_count INTEGER DEFAULT 0`);
   await pool.query(`UPDATE users SET prestige_count = 0 WHERE prestige_count IS NULL`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS global_upgrade_levels TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_levels TEXT DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_last_claim TIMESTAMP DEFAULT NULL`);
+  // Casino-Mogul Spielstand
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS save_data TEXT DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS save_at TIMESTAMP DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_location INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_earned DOUBLE PRECISION DEFAULT 0`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS game_history (
@@ -75,6 +82,19 @@ const initDB = async () => {
       completed INTEGER DEFAULT 0,
       claimed INTEGER DEFAULT 0,
       UNIQUE(user_id, challenge_id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      username TEXT,
+      rating INTEGER,
+      category TEXT,
+      message TEXT,
+      context TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -180,13 +200,14 @@ const GAMES_META = {
   roulette: { cost: 1000000,    prestigeReq: 1 },
   chicken:  { cost: 10000000,   prestigeReq: 2 },
   pump:     { cost: 100000000,  prestigeReq: 2 },
+  blackjack:{ cost: 1000000000, prestigeReq: 3 },
 };
 const MAX_BET_VALUES = [50, 200, 1000, 5000, 25000, 100000];
 const MB_BASE = [200, 1000, 5000, 25000, 150000];
-const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
+const MB_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 const maxBetCosts = (g) => MB_BASE.map(c => Math.round(c * (MB_MULT[g]||1)));
 const WR_BASE = [100, 500, 2500, 12000, 60000];
-const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500 };
+const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 const winrateCosts = (g) => WR_BASE.map(c => Math.round(c * (WR_MULT[g]||1)));
 const prestigeCostFn = (count) => Math.round(50000 * Math.pow(10, count));
 
@@ -278,6 +299,8 @@ app.post('/api/prestige', auth, async (req, res) => {
       unlocked_games = '["dice"]',
       max_bet_levels = '{}',
       winrate_levels = '{}',
+      idle_levels = '{}',
+      idle_last_claim = NOW(),
       prestige_count = $2
     WHERE id = $3
   `, [startBal, newPrestige, req.user.id]);
@@ -423,6 +446,225 @@ app.post('/api/upgrade-global', auth, async (req, res) => {
   res.json({ balance: newBalance, global_upgrade_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
 });
 
+// ─── Idle-Business (passives Einkommen) ──────────────────────────────────────
+// Gespiegelt aus casino-app/src/progression.js
+const IDLE_BUSINESSES = {
+  slot:   { baseCost: 500,       income: 1 },
+  table:  { baseCost: 6000,      income: 8 },
+  bar:    { baseCost: 70000,     income: 60 },
+  hotel:  { baseCost: 800000,    income: 450 },
+  yacht:  { baseCost: 10000000,  income: 3500 },
+  island: { baseCost: 150000000, income: 30000 },
+};
+const IDLE_COST_GROWTH = 1.15;
+const IDLE_OFFLINE_CAP_SEC = 8 * 3600;
+const idleCost = (id, owned) => Math.round(IDLE_BUSINESSES[id].baseCost * Math.pow(IDLE_COST_GROWTH, owned));
+
+// Einkommen pro Sekunde inkl. Prestige- und Global-Multiplikator
+const idleRate = (u) => {
+  const levels = JSON.parse(u.idle_levels || '{}');
+  const g = JSON.parse(u.global_upgrade_levels || '{}');
+  const base = Object.entries(IDLE_BUSINESSES).reduce((s, [id, b]) => s + (levels[id] || 0) * b.income, 0);
+  return base * Math.pow(2, u.prestige_count || 0) * (1 + (g.global_mult || 0) * 0.03);
+};
+
+// Liest den User gesperrt (FOR UPDATE) und berechnet die offenen Einnahmen
+const loadIdle = async (client, userId) => {
+  const r = await client.query(
+    `SELECT balance, COALESCE(prestige_count, 0) AS prestige_count,
+       COALESCE(idle_levels, '{}') AS idle_levels,
+       COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels,
+       COALESCE(EXTRACT(EPOCH FROM (NOW() - idle_last_claim)), 0) AS elapsed
+     FROM users WHERE id = $1 FOR UPDATE`, [userId]);
+  const u = r.rows[0];
+  if (!u) return null;
+  const rate = idleRate(u);
+  const seconds = Math.min(Math.max(parseFloat(u.elapsed) || 0, 0), IDLE_OFFLINE_CAP_SEC);
+  return { u, rate, pending: parseFloat((rate * seconds).toFixed(2)), seconds };
+};
+
+const withTx = async (fn) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const out = await fn(client);
+    await client.query('COMMIT');
+    return out;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+};
+
+app.get('/api/idle', auth, async (req, res) => {
+  try {
+    const out = await withTx(async (c) => loadIdle(c, req.user.id));
+    if (!out) return res.status(404).json({ error: 'User nicht gefunden' });
+    res.json({ idle_levels: out.u.idle_levels, rate: out.rate, pending: out.pending, seconds: out.seconds, cap: IDLE_OFFLINE_CAP_SEC });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
+app.post('/api/idle/claim', auth, async (req, res) => {
+  try {
+    const out = await withTx(async (c) => {
+      const d = await loadIdle(c, req.user.id);
+      if (!d) return { status: 404, body: { error: 'User nicht gefunden' } };
+      const newBalance = parseFloat((d.u.balance + d.pending).toFixed(2));
+      await c.query(`UPDATE users SET balance = $1, idle_last_claim = NOW() WHERE id = $2`, [newBalance, req.user.id]);
+      return { body: { balance: newBalance, claimed: d.pending, rate: d.rate } };
+    });
+    res.status(out.status || 200).json(out.body);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
+app.post('/api/idle/buy', auth, async (req, res) => {
+  const { businessId } = req.body;
+  if (!IDLE_BUSINESSES[businessId]) return res.status(400).json({ error: 'Unbekanntes Business' });
+  try {
+    const out = await withTx(async (c) => {
+      const d = await loadIdle(c, req.user.id);
+      if (!d) return { status: 404, body: { error: 'User nicht gefunden' } };
+      // Offene Einnahmen zuerst gutschreiben, dann kaufen (Rate ändert sich)
+      const levels = JSON.parse(d.u.idle_levels || '{}');
+      const owned = levels[businessId] || 0;
+      const cost = idleCost(businessId, owned);
+      const available = d.u.balance + d.pending;
+      if (available < cost) return { status: 400, body: { error: 'Nicht genug Guthaben' } };
+      levels[businessId] = owned + 1;
+      const newBalance = parseFloat((available - cost).toFixed(2));
+      await c.query(
+        `UPDATE users SET balance = $1, idle_levels = $2, idle_last_claim = NOW() WHERE id = $3`,
+        [newBalance, JSON.stringify(levels), req.user.id]);
+      const rate = idleRate({ ...d.u, idle_levels: JSON.stringify(levels) });
+      return { body: { balance: newBalance, idle_levels: JSON.stringify(levels), rate, claimed: d.pending } };
+    });
+    res.status(out.status || 200).json(out.body);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
+});
+
+// ─── Casino-Mogul: Spielstand ────────────────────────────────────────────────
+// Ortskosten gespiegelt aus casino-app/src/game/economy.js (für Plausibilitäts-Check)
+const MOGUL_LOCATION_COSTS = [0, 25, 1e4, 8e6, 4.8e9, 3e12, 4e15];
+const MOGUL_MIN_SAVE_INTERVAL_MS = 3000;
+
+app.get('/api/save', auth, async (req, res) => {
+  const r = await pool.query(`SELECT save_data FROM users WHERE id = $1`, [req.user.id]);
+  if (!r.rows[0]) return res.status(404).json({ error: 'User nicht gefunden' });
+  let save = null;
+  try { save = r.rows[0].save_data ? JSON.parse(r.rows[0].save_data) : null; } catch {}
+  res.json({ save });
+});
+
+app.post('/api/save', auth, async (req, res) => {
+  const { save, reset } = req.body || {};
+  if (!save || typeof save !== 'object') return res.status(400).json({ error: 'Kein Spielstand' });
+  const raw = JSON.stringify(save);
+  if (raw.length > 100000) return res.status(400).json({ error: 'Spielstand zu groß' });
+
+  const location = save.location;
+  const earned = save.stats && save.stats.totalEarned;
+  const money = save.money;
+  const gambleWon = (save.stats && Number.isFinite(save.stats.gambleWon) && save.stats.gambleWon > 0) ? save.stats.gambleWon : 0;
+  if (!Number.isInteger(location) || location < 0 || location >= MOGUL_LOCATION_COSTS.length)
+    return res.status(400).json({ error: 'Ungültiger Ort' });
+  if (![earned, money].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0))
+    return res.status(400).json({ error: 'Ungültige Werte' });
+  // Wer an Ort X ist, muss mindestens die Kosten aller Orte bis X verdient haben
+  const minEarned = MOGUL_LOCATION_COSTS.slice(0, location + 1).reduce((a, b) => a + b, 0);
+  if (earned < minEarned * 0.999 || money > (earned + gambleWon) * 1.0001 + 1)
+    return res.status(400).json({ error: 'Spielstand unplausibel' });
+
+  const prev = await pool.query(
+    `SELECT mogul_location, mogul_earned, EXTRACT(EPOCH FROM (NOW() - save_at)) * 1000 AS since FROM users WHERE id = $1`,
+    [req.user.id]);
+  const p = prev.rows[0];
+  if (!p) return res.status(404).json({ error: 'User nicht gefunden' });
+  if (!reset && p.since !== null && parseFloat(p.since) < MOGUL_MIN_SAVE_INTERVAL_MS)
+    return res.json({ success: true, skipped: true });
+
+  await pool.query(
+    `UPDATE users SET save_data = $1, save_at = NOW(), mogul_location = $2, mogul_earned = $3 WHERE id = $4`,
+    [raw, location, earned, req.user.id]);
+  res.json({ success: true });
+});
+
+app.get('/api/mogul-leaderboard', auth, async (req, res) => {
+  const top = await pool.query(
+    `SELECT username, mogul_location AS location, mogul_earned AS earned
+     FROM users WHERE is_admin = 0 AND save_data IS NOT NULL
+     ORDER BY mogul_location DESC, mogul_earned DESC LIMIT 50`);
+  const me = await pool.query(
+    `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned,
+       (SELECT COUNT(*) FROM users o WHERE o.is_admin = 0 AND o.save_data IS NOT NULL AND
+          (o.mogul_location > u.mogul_location OR (o.mogul_location = u.mogul_location AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
+     FROM users u WHERE u.id = $1`, [req.user.id]);
+  res.json({ top: top.rows, me: me.rows[0] || null });
+});
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+// Wird gespeichert und – falls konfiguriert – per E-Mail verschickt (Resend).
+// Render-Umgebungsvariablen: RESEND_API_KEY, FEEDBACK_EMAIL (Empfänger), optional FEEDBACK_FROM
+const FEEDBACK_CATEGORIES = ['bug', 'idee', 'balancing', 'lob', 'sonstiges'];
+
+const sendFeedbackMail = async (fb) => {
+  const key = process.env.RESEND_API_KEY;
+  const to = process.env.FEEDBACK_EMAIL;
+  if (!key || !to || typeof fetch !== 'function') return false;
+  const stars = '★'.repeat(fb.rating) + '☆'.repeat(5 - fb.rating);
+  const text = [
+    `Neues Feedback von ${fb.username}`,
+    `Bewertung: ${stars} (${fb.rating}/5)`,
+    `Kategorie: ${fb.category}`,
+    '',
+    fb.message,
+    '',
+    `Spielstand: ${fb.context}`,
+  ].join('\n');
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.FEEDBACK_FROM || 'Casino-Mogul <onboarding@resend.dev>',
+        to: [to],
+        subject: `🎰 Feedback (${fb.category}, ${fb.rating}/5) von ${fb.username}`,
+        text,
+      }),
+    });
+    if (!res.ok) console.error('Feedback-Mail fehlgeschlagen:', res.status, await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error('Feedback-Mail fehlgeschlagen:', e.message);
+    return false;
+  }
+};
+
+app.post('/api/feedback', auth, async (req, res) => {
+  const { rating, category, message, context } = req.body || {};
+  const msg = typeof message === 'string' ? message.trim() : '';
+  if (msg.length < 3) return res.status(400).json({ error: 'Bitte schreib ein paar Worte' });
+  if (msg.length > 2000) return res.status(400).json({ error: 'Maximal 2000 Zeichen' });
+  const stars = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : 3;
+  const cat = FEEDBACK_CATEGORIES.includes(category) ? category : 'sonstiges';
+  const ctx = typeof context === 'string' ? context.slice(0, 300) : '';
+  const recent = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM feedback WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour'`, [req.user.id]);
+  if (recent.rows[0].n >= 5) return res.status(429).json({ error: 'Danke! Du hast schon viel Feedback geschickt – bitte später wieder.' });
+  const fb = { username: req.user.username, rating: stars, category: cat, message: msg, context: ctx };
+  await pool.query(
+    `INSERT INTO feedback (user_id, username, rating, category, message, context) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [req.user.id, fb.username, stars, cat, msg, ctx]);
+  const mailed = await sendFeedbackMail(fb);
+  res.json({ success: true, mailed });
+});
+
+app.get('/api/admin/feedback', adminAuth, async (req, res) => {
+  const r = await pool.query(`SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200`);
+  res.json(r.rows);
+});
+
 // Leaderboard
 app.get('/api/leaderboard', auth, async (req, res) => {
   const result = await pool.query(
@@ -493,15 +735,6 @@ app.post('/api/change-password', auth, async (req, res) => {
   const hash = bcrypt.hashSync(newPassword, 10);
   await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [hash, req.user.id]);
   res.json({ success: true });
-});
-
-// Admin setup
-app.post('/api/setup-admin', async (req, res) => {
-  const { username, setupKey } = req.body;
-  if (setupKey !== 'casino-setup-2024')
-    return res.status(403).json({ error: 'Falscher Key' });
-  await pool.query(`UPDATE users SET is_admin = 1 WHERE username = $1`, [username]);
-  res.json({ success: true, message: `${username} ist jetzt Admin!` });
 });
 
 // Admin routes

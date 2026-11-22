@@ -44,7 +44,7 @@ let nextId = 0;
 
 function Plinko({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const ePMult = pMult * globalMult;
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [rows, setRows] = useState(12);
   const [risk, setRisk] = useState('medium');
   const [activeBalls, setActiveBalls] = useState([]);

@@ -19,7 +19,7 @@ document.head.appendChild(style);
 
 function Dice({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const ePMult = pMult * globalMult;
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [slider, setSlider] = useState(50.5);
   const [mode, setMode] = useState('over');
   const [rolling, setRolling] = useState(false);
