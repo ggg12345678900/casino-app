@@ -4,7 +4,7 @@ import useGame from './useGame';
 import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
-import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange } from './Views';
+import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard } from './Views';
 import Slots from './Slots';
 import Feedback from './Feedback';
 import { sfx, isMuted, setMuted } from './sound';
@@ -129,6 +129,7 @@ export default function GameApp({ user, onLogout }) {
   }, [game, state, toast]);
 
   const buyTool = useCallback((id) => { if (game.buyTool(id)) sfx.buy(); else sfx.nope(); }, [game]);
+  const buyVip = useCallback(() => { if (game.buyVip()) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
 
   const move = useCallback(() => {
     const target = LOCATIONS[state.location + 1];
@@ -172,8 +173,8 @@ export default function GameApp({ user, onLogout }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
                 <button className="mg-btn-ghost" onClick={() => setActiveGame(null)}>← Zurück zur Lobby</button>
                 <span className="disp" style={{ fontSize: 20 }}>{GAME_INFO[activeGame].icon} {GAME_INFO[activeGame].name}</span>
-                <span style={{ color: 'var(--muted)', fontSize: 13 }}>Max-Einsatz {fmtMoney(derived.maxBet)}</span>
               </div>
+              <div style={{ marginBottom: 10 }}><VipCard state={state} derived={derived} onBuy={buyVip} compact /></div>
               <div className={activeGame === 'slots' ? '' : 'mg-game-wrap'}>
                 <G balance={state.money} setBalance={game.setBalance} addResult={game.addResult}
                   maxBet={derived.maxBet} winBonus={derived.winBonus} prestigeMult={1} globalMult={1} autoSpeed={500}
@@ -182,7 +183,7 @@ export default function GameApp({ user, onLogout }) {
             </div>
           );
         }
-        return <CasinoView state={state} derived={derived} onPick={setActiveGame} onSpin={game.spinWheel} />;
+        return <CasinoView state={state} derived={derived} onPick={setActiveGame} onSpin={game.spinWheel} onBuyVip={buyVip} />;
       }
       case 'collection': return <CollectionView state={state} />;
       case 'leaderboard': return <LeaderboardView user={user} />;

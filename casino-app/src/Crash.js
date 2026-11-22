@@ -45,7 +45,7 @@ function generateCrashPoint() {
 
 function Crash({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const ePMult = pMult * globalMult;
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [autoCashoutVal, setAutoCashoutVal] = useState(2.0);
   const MIN_AUTOCASHOUT = 1.1;
   const [useAutoCashout, setUseAutoCashout] = useState(false);

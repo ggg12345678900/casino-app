@@ -53,7 +53,7 @@ document.head.appendChild(style);
 function Blackjack({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const ePMult = pMult * globalMult;
   const wMult = parseFloat((1 + winBonus).toFixed(4));
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [player, setPlayer] = useState([]);
   const [dealer, setDealer] = useState([]);
   const [phase, setPhase] = useState('idle'); // idle | player | done

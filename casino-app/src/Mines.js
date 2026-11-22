@@ -5,7 +5,7 @@ const GRID_SIZE = 25;
 
 function Mines({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const ePMult = pMult * globalMult;
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [mineCount, setMineCount] = useState(3);
   const [gameActive, setGameActive] = useState(false);
   const [grid, setGrid] = useState(Array(GRID_SIZE).fill(null)); // null=hidden, 'gem'=safe, 'mine'=mine

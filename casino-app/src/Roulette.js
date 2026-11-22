@@ -4,8 +4,19 @@ import UpgradePanel from './UpgradePanel';
 const NUMBERS = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 const getColor = (n) => n === 0 ? '#00a550' : RED_NUMBERS.includes(n) ? '#c0392b' : '#111111';
-const CHIP_VALUES = [1, 5, 10, 50, 100, 500];
-const CHIP_COLORS = {1:'#3498db',5:'#2ecc71',10:'#c0392b',50:'#9b59b6',100:'#f39c12',500:'#2c3e50'};
+const CHIP_STEPS = [1, 5, 10, 50, 100, 500];
+const CHIP_COLORS = ['#3498db', '#2ecc71', '#c0392b', '#9b59b6', '#f39c12', '#2c3e50'];
+// Chips wachsen mit dem Max-Einsatz: der größte Chip liegt etwa beim Max-Einsatz
+const chipValuesFor = (maxBet) => {
+  const scale = Math.pow(10, Math.floor(Math.log10(Math.max(maxBet, 0.05) / 500)));
+  return CHIP_STEPS.map(v => +(v * scale).toPrecision(3));
+};
+const short = (n) => {
+  if (n >= 1e9) return +(n / 1e9).toPrecision(3) + 'Mrd';
+  if (n >= 1e6) return +(n / 1e6).toPrecision(3) + 'M';
+  if (n >= 1e3) return +(n / 1e3).toPrecision(3) + 'K';
+  return String(+n.toPrecision(3));
+};
 const SLICE_DEG = 360 / NUMBERS.length;
 
 const checkWin = (betKey, num) => {
@@ -181,7 +192,9 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
   const [spinDuration, setSpinDuration] = useState(6000);
   const [result, setResult] = useState(null);
   const [bets, setBets] = useState({});
-  const [selectedChip, setSelectedChip] = useState(10);
+  const CHIP_VALUES = chipValuesFor(maxBet);
+  const [chipIdx, setChipIdx] = useState(2);
+  const selectedChip = CHIP_VALUES[chipIdx];
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState([]);
   const [winAmt, setWinAmt] = useState(0);
@@ -282,11 +295,11 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
           <div style={{
             position: 'absolute', top: -7, right: -7,
             width: 16, height: 16,
-            backgroundColor: CHIP_COLORS[selectedChip],
+            backgroundColor: CHIP_COLORS[chipIdx],
             borderRadius: '50%', fontSize: '8px', fontWeight: 'bold',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '1px solid white', zIndex: 5, color: 'white'
-          }}>{bets[betKey]}</div>
+          }}>{short(bets[betKey])}</div>
         )}
       </div>
     );
@@ -303,19 +316,19 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
           <div style={{ flex: 1, backgroundColor: '#1a2c38', borderRadius: '10px', padding: '12px' }}>
             <div style={{ color: '#8a9bb0', fontSize: '10px', letterSpacing: '1px', marginBottom: '8px' }}>CHIP WÄHLEN</div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              {CHIP_VALUES.map(v => (
-                <div key={v} onClick={() => setSelectedChip(v)} style={{
+              {CHIP_VALUES.map((v, i) => (
+                <div key={v} onClick={() => setChipIdx(i)} style={{
                   width: 40, height: 40, borderRadius: '50%',
-                  backgroundColor: CHIP_COLORS[v],
+                  backgroundColor: CHIP_COLORS[i],
                   border: `3px solid ${selectedChip === v ? '#FFD700' : 'transparent'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', color: 'white',
                   boxShadow: selectedChip === v ? '0 0 10px #FFD700' : 'none',
                   flexShrink: 0, transition: 'all 0.15s'
-                }}>{v}</div>
+                }}>{short(v)}</div>
               ))}
               <div style={{ marginLeft: 'auto', color: '#8a9bb0', fontSize: '13px' }}>
-                Gesamt: <span style={{ color: '#00e701', fontWeight: 'bold' }}>{totalBet}€</span>
+                Gesamt: <span style={{ color: '#00e701', fontWeight: 'bold' }}>{short(totalBet)}€</span>
               </div>
             </div>
           </div>

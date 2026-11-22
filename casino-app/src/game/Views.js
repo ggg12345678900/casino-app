@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, coinById, fmt, fmtMoney, fmtTime } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, VIP_MAX, VIP_NAMES, vipCost, coinById, fmt, fmtMoney, fmtTime } from './economy';
 import { sfx } from './sound';
 
 export const GAME_INFO = {
@@ -151,7 +151,31 @@ export function Wheel({ state, onSpin }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin }) {
+export function VipCard({ state, derived, onBuy, compact }) {
+  const lvl = state.vip || 0;
+  const maxed = lvl >= VIP_MAX;
+  const cost = maxed ? 0 : vipCost(state);
+  const can = !maxed && state.money >= cost;
+  return (
+    <div className="cs-vip" data-lvl={lvl}>
+      <div className="card">
+        <div className="tier">🎫 VIP · {VIP_NAMES[lvl]}</div>
+        <div className="pips">{Array.from({ length: VIP_MAX }, (_, i) => <span key={i} className={i < lvl ? 'on' : ''} />)}</div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 900 }}>Max-Einsatz {fmtMoney(derived.maxBet)}</div>
+        {!compact && <div style={{ color: 'var(--muted)', fontSize: 12 }}>Wächst mit deinem Einkommen (≈ 1 Minute). Jede VIP-Stufe verdoppelt ihn.</div>}
+      </div>
+      {maxed
+        ? <span className="mg-lvl" style={{ color: 'var(--gold)' }}>MAX</span>
+        : <button className={can ? 'mg-btn' : 'mg-btn-ghost'} disabled={!can} onClick={onBuy} style={{ whiteSpace: 'nowrap', padding: '10px 14px', fontSize: 15 }}>
+            ⬆️ {VIP_NAMES[lvl + 1]} · {fmtMoney(cost)}
+          </button>}
+    </div>
+  );
+}
+
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const [jp, setJp] = useState(() => derived.maxBet * 180);
   useEffect(() => {
@@ -168,8 +192,8 @@ export function CasinoView({ state, derived, onPick, onSpin }) {
           <h1>CASINO</h1>
           <div className="sub">Verdopple dein Geld – oder verlier alles. Jede Runde gibt Zocken-XP.</div>
           <div className="cs-jackpot"><span className="lbl">💰 JACKPOT</span><span className="val">{fmtMoney(jp)}</span></div>
+          <VipCard state={state} derived={derived} onBuy={onBuyVip} />
           <div className="cs-chips">
-            <div className="mg-stat"><div className="k">Max-Einsatz</div><div className="v">{fmtMoney(derived.maxBet)}</div></div>
             <div className="mg-stat"><div className="k">Gewinnbonus</div><div className="v" style={{ color: 'var(--green)' }}>+{(derived.winBonus * 100).toFixed(1)}%</div></div>
             {state.stats.bets > 0 && <div className="mg-stat"><div className="k">Bilanz</div><div className="v" style={{ color: state.stats.gambleProfit >= 0 ? 'var(--green)' : 'var(--red)' }}>{state.stats.gambleProfit >= 0 ? '+' : '−'}{fmtMoney(Math.abs(state.stats.gambleProfit))}</div></div>}
           </div>

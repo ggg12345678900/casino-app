@@ -491,3 +491,18 @@
 .mg-game-wrap button[style*="rgb(0, 231, 1)"]:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--green-d) !important; }
 .mg-game-wrap input { font-family: var(--f-display) !important; }
 .mg-game-wrap h2, .mg-game-wrap h3 { font-family: var(--f-display); font-weight: 400; }
+
+/* VIP-Karte */
+.cs-vip { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; text-align: left; margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: rgba(8,4,24,.55); border: 2px solid var(--border); }
+.cs-vip .card { width: 132px; padding: 8px 10px; border-radius: 10px; color: #fff; flex-shrink: 0; box-shadow: 0 4px 0 rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.3);
+  background: linear-gradient(135deg, #6b7280, #374151); }
+.cs-vip[data-lvl="1"] .card { background: linear-gradient(135deg, #d08a4c, #7c4317); }
+.cs-vip[data-lvl="2"] .card { background: linear-gradient(135deg, #e5e7eb, #8b93a1); color: #1f2937; }
+.cs-vip[data-lvl="3"] .card { background: linear-gradient(135deg, #ffe58a, #c58a00); color: #3a1d00; }
+.cs-vip[data-lvl="4"] .card { background: linear-gradient(135deg, #e0f2fe, #7dd3fc 50%, #a5b4fc); color: #1e1b4b; }
+.cs-vip[data-lvl="5"] .card { background: linear-gradient(135deg, #a5f3fc, #22d3ee 40%, #c084fc); color: #1e1b4b; box-shadow: 0 0 18px rgba(34,211,238,.6), 0 4px 0 rgba(0,0,0,.4); }
+.cs-vip[data-lvl="6"] .card { background: linear-gradient(135deg, #1f2937, #000); border: 1px solid var(--gold); box-shadow: 0 0 18px rgba(255,200,60,.5), 0 4px 0 rgba(0,0,0,.4); }
+.cs-vip .tier { font-family: var(--f-display); font-size: 14px; letter-spacing: .4px; }
+.cs-vip .pips { display: flex; gap: 3px; margin-top: 6px; }
+.cs-vip .pips span { flex: 1; height: 5px; border-radius: 3px; background: rgba(0,0,0,.35); }
+.cs-vip .pips span.on { background: currentColor; }

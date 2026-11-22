@@ -112,6 +112,7 @@ export default function useGame(user, { onAchievement, onBigWin } = {}) {
   }, []);
 
   const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
+  const buyVip = useCallback(() => apply(s => E.buyVip(s)), [apply]);
   const buyHelper = useCallback((id, n) => apply(s => E.buyHelper(s, id, n)), [apply]);
   const buyTool = useCallback((id) => apply(s => E.buyTool(s, id)), [apply]);
   const moveLocation = useCallback(() => {
@@ -181,6 +182,6 @@ export default function useGame(user, { onAchievement, onBigWin } = {}) {
 
   return {
     state, derived: state ? E.derive(state) : null, welcome, dismissWelcome: () => setWelcome(null),
-    pickup, pickCharm, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    pickup, pickCharm, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

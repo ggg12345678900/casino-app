@@ -208,7 +208,7 @@ function FinishZone({ reached }) {
 export default function Chicken({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, prestigeMult: pMult = 1, globalMult = 1, maxBetLevels, winrateLevels, onUpgradeMaxbet, onUpgradeWinrate }) {
   const ePMult = pMult * globalMult;
   const [phase, setPhase] = useState('idle');     // idle | playing | hopping | dead | won
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [difficulty, setDifficulty] = useState('medium');
   const [currentLane, setCurrentLane] = useState(0);  // lanes successfully crossed
   const [laneResults, setLaneResults] = useState([]);  // true = safe, false = hit

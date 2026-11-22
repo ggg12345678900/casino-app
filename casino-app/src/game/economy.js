@@ -248,6 +248,7 @@ export const newGame = () => ({
   tools: [],
   charms: {},
   achievements: [],
+  vip: 0,          // VIP-Stufe: jede Stufe verdoppelt den Max-Einsatz
   frenzyUntil: 0,   // Geldregen aktiv bis (ms)
   boostUntil: 0,    // doppeltes Helfer-Einkommen bis (ms)
   wheelReadyAt: 0,  // Glücksrad wieder drehbar ab (ms)
@@ -323,13 +324,37 @@ export const derive = (s, now = Date.now()) => {
   const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1)) + pickPct * incomePerSec;
   const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble'));
   const loc = LOCATIONS[s.location];
+  // Max-Einsatz: mindestens der Ortswert, sonst ca. 1 Minute Einkommen – mal VIP-Stufe
+  const baseBet = loc.maxBet > 0 ? Math.max(loc.maxBet, niceRound((incomePerSec + spawnRate * pickEV * 0.5) * 60)) : 0;
+  const maxBet = baseBet * Math.pow(2, s.vip || 0);
 
   return {
     spawnRate, valueMult, avgCoin: avg, coins: loc.coins.map(coinById),
     autoCoins, helperRates, helperIncome, helperMult, incomePerSec,
     pickMult, pickPct, pickEV, manualPerSec: spawnRate * pickEV, frenzy, boost,
-    winBonus, maxBet: loc.maxBet, games: loc.games,
+    winBonus, maxBet, baseBet, games: loc.games,
   };
+};
+
+// Auf „runde“ Beträge abrunden: 1, 2, 5, 10, 20, 50 …
+export const niceRound = (x) => {
+  if (!(x > 0)) return 0;
+  const p = Math.pow(10, Math.floor(Math.log10(x)));
+  const m = x / p;
+  return (m >= 5 ? 5 : m >= 2 ? 2 : 1) * p;
+};
+
+// ─── VIP-Karte ─────────────────────────────────────────────────────────────
+export const VIP_MAX = 6;
+export const VIP_NAMES = ['Gast', 'Bronze', 'Silber', 'Gold', 'Platin', 'Diamant', 'Black Card'];
+// Kosten: so viel, wie du in 4, 8, 16 … Minuten verdienst
+export const vipCost = (s) => earningsFor(s, 240 * Math.pow(2, s.vip || 0));
+export const buyVip = (s) => {
+  const lvl = s.vip || 0;
+  if (lvl >= VIP_MAX || LOCATIONS[s.location].games.length === 0) return null;
+  const cost = vipCost(s);
+  if (s.money < cost) return null;
+  return { ...s, money: s.money - cost, vip: lvl + 1 };
 };
 
 // Was erscheint als Nächstes auf dem Boden? (Münze, Goldmünze oder Glücksbringer)
@@ -444,7 +469,7 @@ export const offlineProgress = (s, now = Date.now()) => {
 const SUFFIX = ['', 'K', 'Mio', 'Mrd', 'Bio', 'Brd', 'Trio', 'Trd', 'Qua'];
 export const fmt = (n, dec = 2) => {
   if (!isFinite(n)) return '∞';
-  if (Math.abs(n) < 1000) return n.toFixed(Math.abs(n) < 100 ? dec : Math.min(dec, 1)).replace('.', ',');
+  if (Math.abs(n) < 1000) return n.toFixed(Math.abs(n) < 100 ? dec : 0).replace('.', ',');
   const i = Math.min(SUFFIX.length - 1, Math.floor(Math.log10(Math.abs(n)) / 3));
   const v = n / Math.pow(1000, i);
   return v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0).replace('.', ',') + ' ' + SUFFIX[i];

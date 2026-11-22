@@ -148,7 +148,7 @@ export default function Pump({ balance, setBalance, addResult, user, setUser, ma
   })();
   const [mode, setMode] = useState('manual');
   const [difficulty, setDifficulty] = useState('medium');
-  const [bet, setBet] = useState(10);
+  const [bet, setBet] = useState(() => Math.max(0.01, +(maxBet * 0.1).toPrecision(2)));
   const [autoCashAt, setAutoCashAt] = useState(2.0);
   const [phase, setPhase] = useState('idle');
   const [pumps, setPumps] = useState(0);
