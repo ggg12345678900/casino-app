@@ -3,3 +3,8 @@ server/casino.db
 server/.env
 casino-app/node_modules/
 casino-app/build/
+.neon
+.env.local
+
+.env.local
+.env*.local

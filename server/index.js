@@ -1,4 +1,6 @@
-require('dotenv').config();
+const path = require('path');
+// Lokal: server/.env und die von `neon deploy` erzeugte ../.env.local. Auf Render kommen die Werte aus dem Dashboard.
+require('dotenv').config({ path: [path.join(__dirname, '.env'), path.join(__dirname, '..', '.env.local')], quiet: true });
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -12,10 +14,19 @@ if (!SECRET) { console.error('❌ JWT_SECRET fehlt in .env!'); process.exit(1); 
 app.use(cors());
 app.use(express.json());
 
+if (!process.env.DATABASE_URL) { console.error('❌ DATABASE_URL fehlt!'); process.exit(1); }
+
+// Neon: gepoolte Verbindung (Host mit -pooler) für den laufenden Server.
+// Neon schaltet die Datenbank bei Inaktivität ab (Scale-to-Zero) – getrennte Leerlauf-Verbindungen
+// dürfen den Server nicht abstürzen lassen; die nächste Anfrage weckt die Datenbank wieder.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 15000,
 });
+pool.on('error', (err) => console.error('⚠️ Datenbank-Verbindung getrennt (wird neu aufgebaut):', err.message));
 
 // Tabellen erstellen
 const initDB = async () => {
@@ -109,7 +120,10 @@ const initDB = async () => {
   console.log('✅ Datenbank bereit!');
 };
 
-initDB();
+initDB().catch((err) => {
+  console.error('❌ Datenbank nicht erreichbar:', err.message);
+  process.exit(1);
+});
 
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
