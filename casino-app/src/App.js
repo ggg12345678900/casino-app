@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Login from './Login';
 import GameApp from './game/GameApp';
+import { LoadingScreen } from './game/Menus';
 import { api } from './api';
 
 // Demo-Build (REACT_APP_DEMO=true): kein Server, kein Login, Spielstand nur im Browser
@@ -28,7 +29,7 @@ function App() {
   };
 
   if (DEMO) return <GameApp user={DEMO_USER} onLogout={() => window.location.reload()} />;
-  if (checking) return <div style={{ background: '#0b1118', minHeight: '100vh' }} />;
+  if (checking) return <LoadingScreen text="Anmelden…" />;
   if (!user) return <Login onLogin={setUser} />;
   return <GameApp key={user.id} user={user} onLogout={logout} />;
 }

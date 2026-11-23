@@ -37,32 +37,32 @@ export const LOCATIONS = [
     desc: 'Ein dreckiger Hinterhof. Zwischen dem Müll liegt hier und da ein Cent.',
   },
   {
-    id: 'kneipe', name: 'Eckkneipe', icon: '🍺', cost: 25, coins: ['c5', 'c10', 'c20', 'c50'], games: ['slots-kneipe', 'dice', 'mines'],
+    id: 'kneipe', name: 'Eckkneipe', icon: '🍺', cost: 40, coins: ['c5', 'c10', 'c20', 'c50'], games: ['slots-kneipe', 'dice', 'mines'],
     junk: ['Bierdeckel', 'Erdnussschale', 'Feuerzeug', 'Klebriger Fleck', 'Dartpfeil', 'Leeres Glas', 'Bierflaschendeckel'],
     desc: 'Klebriger Boden, betrunkene Gäste – hier fällt öfter mal Kleingeld runter. Würfeln erlaubt!',
   },
   {
-    id: 'spielhalle', name: 'Stadt-Spielhalle', icon: '🕹️', cost: 10000, coins: ['c20', 'c50', 'e1', 'e2'], games: ['slots-spielhalle', 'plinko', 'crash'],
+    id: 'spielhalle', name: 'Stadt-Spielhalle', icon: '🕹️', cost: 3e5, coins: ['c20', 'c50', 'e1', 'e2'], games: ['slots-spielhalle', 'plinko', 'crash'],
     junk: ['Popcorn', 'Token-Attrappe', 'Kaputter Joystick', 'Gewinnlos (Niete)', 'Strohhalm', 'Kassenzettel'],
     desc: 'Neonlicht und blinkende Automaten. Hier rollen Euro-Münzen. Mines und Plinko warten.',
   },
   {
-    id: 'casino', name: 'Stadt-Casino', icon: '🏛️', cost: 8e6, coins: ['e1', 'e2', 'k5', 'k10'], games: ['slots-casino', 'roulette', 'blackjack'],
+    id: 'casino', name: 'Stadt-Casino', icon: '🏛️', cost: 3e8, coins: ['e1', 'e2', 'k5', 'k10'], games: ['slots-casino', 'roulette', 'blackjack'],
     junk: ['Visitenkarte', 'Manschettenknopf', 'Olive', 'Cocktailschirmchen', 'Verlorener Ohrring', 'Zahnstocher'],
     desc: 'Roter Teppich, Smoking-Pflicht. Die ersten echten Casino-Chips liegen herum.',
   },
   {
-    id: 'vegas', name: 'Las Vegas', icon: '🌴', cost: 4.8e9, coins: ['k5', 'k10', 'k25', 'k100'], games: ['slots-vegas', 'chicken'],
+    id: 'vegas', name: 'Las Vegas', icon: '🌴', cost: 6e9, coins: ['k5', 'k10', 'k25', 'k100'], games: ['slots-vegas', 'chicken'],
     junk: ['Elvis-Perücke', 'Hochzeitsring (Plastik)', 'Show-Ticket', 'Sonnenbrille', 'Federboa', 'Glitzerkonfetti'],
     desc: 'Die Stadt, die niemals schläft. Chips bis 100 €. Blackjack und Chicken freigeschaltet.',
   },
   {
-    id: 'monaco', name: 'Monaco', icon: '🛥️', cost: 3e12, coins: ['k25', 'k100', 'k500', 'k1k'], games: ['slots-monaco', 'pump'],
+    id: 'monaco', name: 'Monaco', icon: '🛥️', cost: 3e11, coins: ['k25', 'k100', 'k500', 'k1k'], games: ['slots-monaco', 'pump'],
     junk: ['Kaviar-Löffel', 'Yachtschlüssel (Attrappe)', 'Champagnerkorken', 'Rolex-Box (leer)', 'Seidentuch'],
     desc: 'Yachten, Adel und Milliardäre. Hier liegen 1000-€-Chips unterm Tisch.',
   },
   {
-    id: 'mond', name: 'Mond-Casino', icon: '🌙', cost: 4e15, coins: ['k500', 'k1k', 'k5k', 'k25k'], games: ['slots-mond'],
+    id: 'mond', name: 'Mond-Casino', icon: '🌙', cost: 1.5e16, coins: ['k500', 'k1k', 'k5k', 'k25k'], games: ['slots-mond'],
     junk: ['Mondstaub', 'Astronautennahrung', 'Kleiner Krater', 'Verlorene Antenne', 'Mondgestein'],
     desc: 'Das exklusivste Casino des Universums. Schwerelose 25.000-€-Chips.',
   },
@@ -83,12 +83,12 @@ export const avgCoin = (locIdx) => {
 export const HELPERS = [
   { id: 'putzkraft', name: 'Putzkraft',    icon: '🧹', baseCost: 0.5,  speed: 0.1,  loc: 0, desc: 'Fegt den Boden und behält nichts für sich.' },
   { id: 'detektiv',  name: 'Detektiv',     icon: '🕵️', baseCost: 6,    speed: 0.6,  loc: 0, desc: 'Findet Spuren, wo andere nichts sehen.' },
-  { id: 'spuerhund', name: 'Spürhund',     icon: '🐕', baseCost: 120,  speed: 3,    loc: 1, desc: 'Riecht Kleingeld aus zehn Metern.' },
-  { id: 'tuersteher',name: 'Türsteher',    icon: '🕴️', baseCost: 32000, speed: 15,   loc: 2, desc: 'Kassiert verlorene Münzen am Eingang ein.' },
-  { id: 'croupier',  name: 'Croupier',     icon: '🎩', baseCost: 3.2e7,  speed: 70,   loc: 3, desc: 'Lässt beim Abräumen „versehentlich“ Chips fallen.' },
-  { id: 'insider',   name: 'Insider',      icon: '🦹', baseCost: 1.92e10,  speed: 350,  loc: 4, desc: 'Kennt jede Ritze im Casino.' },
-  { id: 'fee',       name: 'Glücksfee',    icon: '🧚', baseCost: 1.2e13, speed: 1800, loc: 5, desc: 'Zaubert Chips aus dem Nichts.' },
-  { id: 'alien',     name: 'Alien-Scout',  icon: '👽', baseCost: 2e16, speed: 9000, loc: 6, desc: 'Scannt den Boden aus dem Orbit.' },
+  { id: 'spuerhund', name: 'Spürhund',     icon: '🐕', baseCost: 660,  speed: 2,    loc: 1, desc: 'Riecht Kleingeld aus zehn Metern.' },
+  { id: 'tuersteher',name: 'Türsteher',    icon: '🕴️', baseCost: 1e6, speed: 15,   loc: 2, desc: 'Kassiert verlorene Münzen am Eingang ein.' },
+  { id: 'croupier',  name: 'Croupier',     icon: '🎩', baseCost: 1e9,  speed: 70,   loc: 3, desc: 'Lässt beim Abräumen „versehentlich“ Chips fallen.' },
+  { id: 'insider',   name: 'Insider',      icon: '🦹', baseCost: 2.5e10,  speed: 350,  loc: 4, desc: 'Kennt jede Ritze im Casino.' },
+  { id: 'fee',       name: 'Glücksfee',    icon: '🧚', baseCost: 1.5e12, speed: 1800, loc: 5, desc: 'Zaubert Chips aus dem Nichts.' },
+  { id: 'alien',     name: 'Alien-Scout',  icon: '👽', baseCost: 6e16, speed: 9000, loc: 6, desc: 'Scannt den Boden aus dem Orbit.' },
 ];
 export const HELPER_COST_GROWTH = 1.2;
 // Bei diesen Stückzahlen verdoppelt sich das Tempo eines Helfers
@@ -99,36 +99,36 @@ export const HELPER_MILESTONES = [25, 50, 100, 200, 400];
 //       | helper | all   (der Münzwert hängt nur von Werkzeugen ab, nie von Helfern)
 export const TOOLS = [
   { id: 'brille',     name: 'Brille',              icon: '👓', cost: 0.1, loc: 0, type: 'spawn',  x: 1.3, desc: 'Endlich scharf sehen – du entdeckst mehr Münzen.' },
-  { id: 'handschuhe', name: 'Handschuhe',          icon: '🧤', cost: 0.4, loc: 0, type: 'value',  x: 2,   desc: 'Du traust dich jetzt auch in die Ecken.' },
-  { id: 'lampe',      name: 'Taschenlampe',        icon: '🔦', cost: 1.5, loc: 0, type: 'spawn',  x: 1.3, desc: 'Licht unter den Automaten.' },
-  { id: 'schaufel',   name: 'Kehrschaufel',        icon: '🥄', cost: 6,    loc: 0, type: 'pick',   x: 2,   desc: 'Du schaufelst mehrere Münzen auf einmal auf.' },
-  { id: 'magnet',     name: 'Magnet',              icon: '🧲', cost: 40,   loc: 1, type: 'value',  x: 2,   desc: 'Zieht die Münzen aus jeder Ritze.' },
-  { id: 'dienstplan', name: 'Dienstplan',          icon: '📋', cost: 150,  loc: 1, type: 'helper', x: 2,   desc: 'Alle Helfer arbeiten doppelt so schnell.' },
-  { id: 'detektor',   name: 'Metalldetektor',      icon: '📡', cost: 600,  loc: 1, type: 'spawn',  x: 1.5, desc: 'Piep. Piep. PIEEEP!' },
-  { id: 'klebe',      name: 'Klebehandschuhe',     icon: '🧤', cost: 150,   loc: 1, type: 'pick',    x: 3,    desc: 'An dir bleibt jede Münze kleben. Aufheben ×3.' },
-  { id: 'finger',     name: 'Fingerfertigkeit',    icon: '🤌', cost: 60,    loc: 1, type: 'pick',    x: 2.5,  desc: 'Jahrelanges Kronkorken-Schnippen zahlt sich aus. Aufheben ×2,5.' },
-  { id: 'sauger',     name: 'Industriesauger',     icon: '🌪️', cost: 32000, loc: 2, type: 'pick',   x: 3,   desc: 'Jeder Klick saugt 3× so viel auf.' },
-  { id: 'roentgen',   name: 'Röntgenbrille',       icon: '🕶️', cost: 1.2e5,  loc: 2, type: 'value',  x: 2.5, desc: 'Sieht Münzen sogar in Hosentaschen.' },
-  { id: 'rede',       name: 'Motivationsrede',     icon: '📢', cost: 4e5,  loc: 2, type: 'helper', x: 2,   desc: '„Wir sind eine Familie!“ – Helfer ×2.' },
-  { id: 'zange',      name: 'Münzzange',           icon: '🗜️', cost: 3000,  loc: 2, type: 'pick',    x: 2,    desc: 'Profi-Werkzeug für Kleingeld. Aufheben ×2.' },
-  { id: 'turbofinger',name: 'Turbo-Finger',        icon: '⚡', cost: 5000,  loc: 2, type: 'pick',    x: 3,    desc: 'Arcade-Reflexe: schneller als jeder Joystick. Aufheben ×3.' },
-  { id: 'saugrohr',   name: 'Münz-Saugrohr',       icon: '🧪', cost: 4e4, loc: 2, type: 'pick',    x: 2,    desc: 'Schlürft Münzen direkt vom Teppich. Aufheben ×2.' },
-  { id: 'rechen',     name: 'Münzrechen',          icon: '🧹', cost: 1.5e5,   loc: 2, type: 'pick',    x: 2,    desc: 'Harkt ganze Münzhaufen auf einmal zusammen. Aufheben ×2.' },
-  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 3.2e7,  loc: 3, type: 'pick',    x: 1.5,    desc: 'Fliegt dir voraus und zeigt dir die besten Münzen. Aufheben ×1,5.' },
-  { id: 'satellit',   name: 'Satelliten-Scan',     icon: '🛰️', cost: 1.6e8,  loc: 3, type: 'spawn',  x: 1.5, desc: 'Mehr Münzen – aus dem All entdeckt.' },
-  { id: 'firmenwagen',name: 'Firmenwagen',         icon: '🚗', cost: 8e8,  loc: 3, type: 'helper', x: 2,   desc: 'Helfer kommen schneller zur Arbeit. ×2' },
-  { id: 'pfanne',     name: 'Goldgräberpfanne',    icon: '🍳', cost: 3e7,   loc: 3, type: 'pick',    x: 1.5,    desc: 'Gold waschen wie 1849. Aufheben ×1,5.' },
-  { id: 'ki',         name: 'KI-Analyse',          icon: '🧠', cost: 2.4e10,  loc: 4, type: 'value',  x: 3,   desc: 'Berechnet, wo die wertvollsten Chips fallen.' },
-  { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 1.44e11,  loc: 4, type: 'pick',   x: 3,  desc: 'Greift jeden Chip millimetergenau. Aufheben ×3.' },
-  { id: 'magnethand', name: 'Magnethandschuh',     icon: '🧲', cost: 1e10,  loc: 4, type: 'pick',    x: 3,    desc: 'Chips fliegen dir in die Hand. Aufheben ×3.' },
-  { id: 'kredit',     name: 'Bankkredit',          icon: '🏦', cost: 7.2e11, loc: 4, type: 'helper', x: 2,   desc: 'Mehr Budget, mehr Leute. Helfer ×2.' },
-  { id: 'kugel',      name: 'Kristallkugel',       icon: '🔮', cost: 3e13, loc: 5, type: 'value',  x: 4,   desc: 'Du weißt, wo der nächste Chip fällt.' },
-  { id: 'zeit',       name: 'Zeitmaschine',        icon: '⏳', cost: 3e14, loc: 5, type: 'helper', x: 3,   desc: 'Helfer arbeiten in mehreren Zeitlinien. ×3' },
+  { id: 'handschuhe', name: 'Handschuhe',          icon: '🧤', cost: 1, loc: 0, type: 'value',  x: 2,   desc: 'Du traust dich jetzt auch in die Ecken.' },
+  { id: 'lampe',      name: 'Taschenlampe',        icon: '🔦', cost: 4, loc: 0, type: 'spawn',  x: 1.3, desc: 'Licht unter den Automaten.' },
+  { id: 'schaufel',   name: 'Kehrschaufel',        icon: '🥄', cost: 15,    loc: 0, type: 'pick',   x: 2,   desc: 'Du schaufelst mehrere Münzen auf einmal auf.' },
+  { id: 'magnet',     name: 'Magnet',              icon: '🧲', cost: 500,   loc: 1, type: 'value',  x: 2,   desc: 'Zieht die Münzen aus jeder Ritze.' },
+  { id: 'dienstplan', name: 'Dienstplan',          icon: '📋', cost: 2000,  loc: 1, type: 'helper', x: 2,   desc: 'Alle Helfer arbeiten doppelt so schnell.' },
+  { id: 'detektor',   name: 'Metalldetektor',      icon: '📡', cost: 8000,  loc: 1, type: 'spawn',  x: 1.5, desc: 'Piep. Piep. PIEEEP!' },
+  { id: 'klebe',      name: 'Klebehandschuhe',     icon: '🧤', cost: 3000,   loc: 1, type: 'pick',    x: 2.5,    desc: 'An dir bleibt jede Münze kleben. Aufheben ×2,5.' },
+  { id: 'finger',     name: 'Fingerfertigkeit',    icon: '🤌', cost: 800,    loc: 1, type: 'pick',    x: 2,  desc: 'Jahrelanges Kronkorken-Schnippen zahlt sich aus. Aufheben ×2.' },
+  { id: 'sauger',     name: 'Industriesauger',     icon: '🌪️', cost: 9.6e5, loc: 2, type: 'pick',   x: 3,   desc: 'Jeder Klick saugt 3× so viel auf.' },
+  { id: 'roentgen',   name: 'Röntgenbrille',       icon: '🕶️', cost: 3.6e6,  loc: 2, type: 'value',  x: 2.5, desc: 'Sieht Münzen sogar in Hosentaschen.' },
+  { id: 'rede',       name: 'Motivationsrede',     icon: '📢', cost: 1.2e7,  loc: 2, type: 'helper', x: 2,   desc: '„Wir sind eine Familie!“ – Helfer ×2.' },
+  { id: 'zange',      name: 'Münzzange',           icon: '🗜️', cost: 90000,  loc: 2, type: 'pick',    x: 2,    desc: 'Profi-Werkzeug für Kleingeld. Aufheben ×2.' },
+  { id: 'turbofinger',name: 'Turbo-Finger',        icon: '⚡', cost: 1.5e5,  loc: 2, type: 'pick',    x: 3,    desc: 'Arcade-Reflexe: schneller als jeder Joystick. Aufheben ×3.' },
+  { id: 'saugrohr',   name: 'Münz-Saugrohr',       icon: '🧪', cost: 1.2e6, loc: 2, type: 'pick',    x: 2,    desc: 'Schlürft Münzen direkt vom Teppich. Aufheben ×2.' },
+  { id: 'rechen',     name: 'Münzrechen',          icon: '🧹', cost: 4.5e6,   loc: 2, type: 'pick',    x: 2,    desc: 'Harkt ganze Münzhaufen auf einmal zusammen. Aufheben ×2.' },
+  { id: 'drohne',     name: 'Such-Drohne',         icon: '🚁', cost: 1.2e9,  loc: 3, type: 'pick',    x: 1.5,    desc: 'Fliegt dir voraus und zeigt dir die besten Münzen. Aufheben ×1,5.' },
+  { id: 'satellit',   name: 'Satelliten-Scan',     icon: '🛰️', cost: 6e9,  loc: 3, type: 'spawn',  x: 1.5, desc: 'Mehr Münzen – aus dem All entdeckt.' },
+  { id: 'firmenwagen',name: 'Firmenwagen',         icon: '🚗', cost: 3e10,  loc: 3, type: 'helper', x: 3,   desc: 'Helfer kommen schneller zur Arbeit. ×3' },
+  { id: 'pfanne',     name: 'Goldgräberpfanne',    icon: '🍳', cost: 1.1e9,   loc: 3, type: 'pick',    x: 1.5,    desc: 'Gold waschen wie 1849. Aufheben ×1,5.' },
+  { id: 'ki',         name: 'KI-Analyse',          icon: '🧠', cost: 3e10,  loc: 4, type: 'value',  x: 4,   desc: 'Berechnet, wo die wertvollsten Chips fallen.' },
+  { id: 'greifer',    name: 'Präzisionsgreifer',   icon: '🦾', cost: 1.8e11,  loc: 4, type: 'pick',   x: 3,  desc: 'Greift jeden Chip millimetergenau. Aufheben ×3.' },
+  { id: 'magnethand', name: 'Magnethandschuh',     icon: '🧲', cost: 1.3e10,  loc: 4, type: 'pick',    x: 3,    desc: 'Chips fliegen dir in die Hand. Aufheben ×3.' },
+  { id: 'kredit',     name: 'Bankkredit',          icon: '🏦', cost: 9e11, loc: 4, type: 'helper', x: 3,   desc: 'Mehr Budget, mehr Leute. Helfer ×3.' },
+  { id: 'kugel',      name: 'Kristallkugel',       icon: '🔮', cost: 2e13, loc: 5, type: 'value',  x: 2,   desc: 'Du weißt, wo der nächste Chip fällt.' },
+  { id: 'zeit',       name: 'Zeitmaschine',        icon: '⏳', cost: 5e13, loc: 5, type: 'helper', x: 2,   desc: 'Helfer arbeiten in mehreren Zeitlinien. ×2' },
   { id: 'diamantgreifer', name: 'Diamantgreifer',  icon: '💍', cost: 8e12,  loc: 5, type: 'pick',    x: 3,    desc: 'Der edelste Griff der Riviera. Aufheben ×3.' },
-  { id: 'zeitlupe',   name: 'Zeitlupe',            icon: '🐌', cost: 6e13,  loc: 5, type: 'pick',    x: 3,    desc: 'Für dich vergeht die Zeit langsamer. Aufheben ×3.' },
-  { id: 'meteor',     name: 'Meteoriten-Detektor', icon: '☄️', cost: 6.68e16, loc: 6, type: 'value',  x: 5,   desc: 'Findet Chips aus Sternenstaub.' },
-  { id: 'quantenhand',name: 'Quantenhand',         icon: '🫳', cost: 2e16,  loc: 6, type: 'pick',    x: 5,    desc: 'Deine Hand ist an mehreren Orten gleichzeitig. Aufheben ×5.' },
-  { id: 'krone',      name: 'Mogul-Krone',         icon: '👑', cost: 6.68e17, loc: 6, type: 'all',    x: 10,  desc: 'Du bist der Casino-Mogul. Alles ×10.' },
+  { id: 'zeitlupe',   name: 'Zeitlupe',            icon: '🐌', cost: 3e13,  loc: 5, type: 'pick',    x: 3,    desc: 'Für dich vergeht die Zeit langsamer. Aufheben ×3.' },
+  { id: 'meteor',     name: 'Meteoriten-Detektor', icon: '☄️', cost: 2.5e17, loc: 6, type: 'value',  x: 5,   desc: 'Findet Chips aus Sternenstaub.' },
+  { id: 'quantenhand',name: 'Quantenhand',         icon: '🫳', cost: 7.5e16,  loc: 6, type: 'pick',    x: 5,    desc: 'Deine Hand ist an mehreren Orten gleichzeitig. Aufheben ×5.' },
+  { id: 'krone',      name: 'Mogul-Krone',         icon: '👑', cost: 2.5e18, loc: 6, type: 'all',    x: 10,  desc: 'Du bist der Casino-Mogul. Alles ×10.' },
 ];
 
 // ─── Glücksbringer (tauchen selten als Objekt auf dem Boden auf) ──────────
@@ -213,16 +213,26 @@ export const ACHIEVEMENTS = [
   { id: 'vip10',    icon: '💳', name: 'Platin-Kunde',        desc: 'VIP-Stufe 10 erreicht',            test: s => (s.vip || 0) >= 10 },
 ];
 // ─── Tutorial-Aufgaben ─────────────────────────────────────────────────────
-// hl: welches Element aufleuchtet. progress: 0..1. reward: Bonus in €.
+// hl: Ziel des Spotlights. tip: kurzer Satz in der Sprechblase. guide: Spotlight sperrt den Rest
+// (nur für kurze Klick-Schritte, nicht für Schritte, bei denen man länger spielen muss).
 export const QUESTS = [
-  { id: 'coins',  icon: '🪙', title: 'Heb 10 Münzen auf',                  hint: 'Klick die Münzen auf dem Boden an, bevor sie verschwinden.', hl: 'floor',            reward: 0.3, progress: s => s.stats.finds / 10 },
-  { id: 'brille', icon: '👓', title: 'Kauf die Brille',                     hint: 'Im Shop unter „Werkzeuge“ – damit siehst du mehr Münzen.', hl: 'tool-brille',   reward: 0.5, progress: s => (s.tools.includes('brille') ? 1 : Math.min(0.99, s.money / 0.1)) },
-  { id: 'helfer', icon: '🧹', title: 'Stell eine Putzkraft ein',            hint: 'Unter „Helfer“ – sie sammelt automatisch für dich, auch wenn du nicht klickst.', hl: 'helper-putzkraft', reward: 1, progress: s => ((s.helpers.putzkraft || 0) >= 1 ? 1 : Math.min(0.99, s.money / 0.5)) },
-  { id: 'combo',  icon: '🔥', title: 'Schaff eine Combo ×3',                hint: 'Heb Münzen schnell hintereinander auf – jede Combo-Stufe gibt +5 % Wert.', hl: 'floor', reward: 1.5, progress: s => (s.stats.maxCombo || 0) / 3 },
-  { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten',       hint: 'Im Casino wartet die Kronkorken-Kiste. Schon ab 5 Cent Einsatz!', hl: 'game-slots-hinterhof', reward: 3, progress: s => (s.stats.bets >= 1 ? 1 : 0) },
-  { id: 'wheel',  icon: '🎡', title: 'Dreh das Glücksrad',                  hint: 'Im Casino – alle 8 Minuten ein Gratis-Dreh.', hl: 'wheel', reward: 2, progress: s => ((s.stats.wheelSpins || 0) >= 1 ? 1 : 0) },
-  { id: 'kneipe', icon: '🍺', title: 'Zieh in die Eckkneipe',               hint: 'Spar 25 € und klick oben auf „Umziehen“. Dort warten neue Spiele und mehr Geld.', hl: 'goal', reward: 10, progress: s => (s.location >= 1 ? 1 : Math.min(0.99, s.money / 25)) },
+  { id: 'coins',  icon: '🪙', title: 'Heb 5 Münzen auf',          tip: 'Tippe die Münzen an, bevor sie verschwinden!', hint: 'Münzen tauchen auf dem Boden auf und verschwinden nach ein paar Sekunden.', hl: 'floor', guide: true, reward: 0.2, progress: s => s.stats.finds / 5 },
+  { id: 'brille', icon: '👓', title: 'Kauf die Brille',           tip: 'Kauf die Brille – damit siehst du mehr Münzen.', hint: 'Werkzeuge machen dein Sammeln besser.', hl: 'tool-brille', guide: true, reward: 0.3, progress: s => (s.tools.includes('brille') ? 1 : Math.min(0.99, s.money / 0.1)) },
+  { id: 'helfer', icon: '🧹', title: 'Stell eine Putzkraft ein',  tip: 'Stell eine Putzkraft ein – sie sammelt für dich, auch wenn du nicht tippst.', hint: 'Helfer sammeln automatisch Münzen für dich.', hl: 'helper-putzkraft', guide: true, reward: 0.5, progress: s => ((s.helpers.putzkraft || 0) >= 1 ? 1 : Math.min(0.99, s.money / 0.5)) },
+  { id: 'combo',  icon: '🔥', title: 'Schaff eine Combo ×3',      tip: 'Tippe 3 Münzen schnell hintereinander – das gibt Combo-Bonus!', hint: 'Jede Combo-Stufe gibt +5 % Wert.', hl: 'floor', guide: true, reward: 1, progress: s => (s.stats.maxCombo || 0) / 3 },
+  { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten', tip: 'Dein erster Automat! Dreh eine Runde.', hint: 'Im Casino kannst du dein Geld vermehren – oder verlieren.', hl: 'game-slots-hinterhof', guide: true, reward: 2, progress: s => (s.stats.bets >= 1 ? 1 : 0) },
+  { id: 'wheel',  icon: '🎡', title: 'Dreh das Glücksrad',        tip: 'Alle 8 Minuten gratis: Dreh das Glücksrad!', hint: 'Das Glücksrad findest du in der Casino-Lobby.', hl: 'wheel', guide: true, reward: 2, progress: s => ((s.stats.wheelSpins || 0) >= 1 ? 1 : 0) },
+  { id: 'kneipe', icon: '🍺', title: 'Zieh in die Eckkneipe',     tip: 'Spar 40 € und zieh um!', hint: 'Spar 40 € und tippe dann auf „Umziehen“. Dort gibt es mehr Geld und neue Spiele.', hl: 'goal', guide: false, reward: 10, progress: s => (s.location >= 1 ? 1 : Math.min(0.99, s.money / 40)) },
 ];
+// Was ist schon sichtbar? Schritt für Schritt mit dem Tutorial (Wert = nötige Zahl erledigter Aufgaben)
+export const UNLOCK_AT = { tools: 1, helpers: 2, casino: 4, wheel: 5, vip: 5, locations: 6, extras: 6 };
+export const UNLOCK_INFO = {
+  tools: { icon: '🛠️', name: 'Werkzeuge' }, helpers: { icon: '👥', name: 'Helfer' }, casino: { icon: '🎰', name: 'Casino' },
+  wheel: { icon: '🎡', name: 'Glücksrad & VIP-Karte' }, locations: { icon: '🗺️', name: 'Orte' }, extras: { icon: '🏆', name: 'Erfolge, Rangliste & Statistik' },
+};
+export const isUnlocked = (s, key) => !!s.tutorialSkipped || (s.quest || 0) >= (UNLOCK_AT[key] ?? 0) || (s.location || 0) > 0;
+// Diese Funktionen werden durch die erledigte Aufgabe i freigeschaltet
+export const unlocksAfter = (i) => Object.keys(UNLOCK_AT).filter(k => UNLOCK_AT[k] === i + 1);
 export const questDone = (s, i = s.quest) => i < QUESTS.length && QUESTS[i].progress(s) >= 1;
 export const claimQuest = (s) => {
   const i = s.quest || 0;
@@ -292,6 +302,7 @@ export const newGame = () => ({
   boostUntil: 0,    // doppeltes Helfer-Einkommen bis (ms)
   wheelReadyAt: 0,  // Glücksrad wieder drehbar ab (ms)
   quest: 0,         // Tutorial-Aufgabe (Index in QUESTS)
+  tutorialSkipped: false,
   skills: { suchen: { level: 0, xp: 0 }, management: { level: 0, xp: 0 }, zocken: { level: 0, xp: 0 } },
   stats: {
     totalEarned: 0, clicks: 0, searches: 0, finds: 0, goldChips: 0, maxCombo: 0, sacks: 0, wheelSpins: 0,
@@ -558,13 +569,21 @@ export const offlineProgress = (s, now = Date.now()) => {
 };
 
 // ─── Zahlenformat ──────────────────────────────────────────────────────────
-const SUFFIX = ['', 'K', 'Mio', 'Mrd', 'Bio', 'Brd', 'Trio', 'Trd', 'Qua'];
+const SUFFIX = {
+  de: ['', 'K', 'Mio', 'Mrd', 'Bio', 'Brd', 'Trio', 'Trd', 'Qua'],
+  short: ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'],
+};
+let numberFormat = 'de'; // 'de' = 1,25 Mio · 'short' = 1.25M (Einstellungen)
+export const setNumberFormat = (f) => { numberFormat = SUFFIX[f] ? f : 'de'; };
 export const fmt = (n, dec = 2) => {
   if (!isFinite(n)) return '∞';
-  if (Math.abs(n) < 1000) return n.toFixed(Math.abs(n) < 100 ? dec : 0).replace('.', ',');
-  const i = Math.min(SUFFIX.length - 1, Math.floor(Math.log10(Math.abs(n)) / 3));
+  const de = numberFormat === 'de';
+  const dot = (x) => (de ? x.replace('.', ',') : x);
+  if (Math.abs(n) < 1000) return dot(n.toFixed(Math.abs(n) < 100 ? dec : 0));
+  const list = SUFFIX[numberFormat];
+  const i = Math.min(list.length - 1, Math.floor(Math.log10(Math.abs(n)) / 3));
   const v = n / Math.pow(1000, i);
-  return v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0).replace('.', ',') + ' ' + SUFFIX[i];
+  return dot(v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0)) + (de ? ' ' : '') + list[i];
 };
 export const fmtMoney = (n) => fmt(n) + ' €';
 export const fmtTime = (sec) => {

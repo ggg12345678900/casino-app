@@ -211,8 +211,8 @@
 
 .mg-coin.copper { background: radial-gradient(circle at 35% 30%, #f8cfa8, #c97a43 45%, #7c3f17 100%); color: #4a1f05; }
 .mg-coin.brass { background: radial-gradient(circle at 35% 30%, #fff5c2, #e2b93f 45%, #8f6c12 100%); color: #4d3700; }
-.mg-coin.bimetal { background: radial-gradient(circle at 50% 50%, #f5e39c 0 44%, #b8932c 45% 48%, #e4e8ec 50%, #a3acb6 88%, #6b7480 100%); color: #3d2e00; }
-.mg-coin.bimetal2 { background: radial-gradient(circle at 50% 50%, #eef1f4 0 44%, #9aa3ad 45% 48%, #f3dc8a 50%, #c9a23a 88%, #8a6a14 100%); color: #2b2f36; }
+.mg-coin.bimetal { background: radial-gradient(circle at 50% 50%, #eef1f4 0 44%, #9aa3ad 45% 48%, #f3dc8a 50%, #c9a23a 88%, #8a6a14 100%); color: #2b2f36; } /* 1 €: Silberkern, Goldring */
+.mg-coin.bimetal2 { background: radial-gradient(circle at 50% 50%, #f5e39c 0 44%, #b8932c 45% 48%, #e4e8ec 50%, #a3acb6 88%, #6b7480 100%); color: #3d2e00; } /* 2 €: Goldkern, Silberring */
 .mg-coin[class*='chip-'] { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6);
   background: radial-gradient(circle, var(--c) 0 48%, rgba(255,255,255,.92) 49% 53%, var(--c) 54% 66%, transparent 67%),
               repeating-conic-gradient(#f8fafc 0 14deg, var(--c) 14deg 45deg); }
@@ -561,3 +561,166 @@
 .sl-fw span { position: absolute; left: 0; top: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c), 0 0 16px var(--c);
   opacity: 0; transform: rotate(var(--a)) translateX(0); animation: slFw 1.3s cubic-bezier(.2,.7,.3,1) forwards; }
 @keyframes slFw { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.2); } 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(90px) translateY(25px) scale(.4); } }
+
+/* ═══ Großes Update: Menüs, Spotlight-Tutorial, Handy-Layout ═════════════ */
+.mg-hl::after { content: none !important; }
+.mg-center { align-items: center; justify-content: center; padding: 24px; text-align: center; }
+
+/* Logo & Startbildschirm */
+.mg-title-logo { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mg-title-logo .hat { font-size: 64px; filter: drop-shadow(0 5px 0 rgba(0,0,0,.5)); animation: mgWobble 4s ease-in-out infinite; }
+.mg-title-logo .word { font-family: var(--f-display); font-size: clamp(38px, 10vw, 64px); line-height: 1; text-align: center; background: linear-gradient(180deg, #fff6c9 0%, #ffd34d 45%, #ff9d1c 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 0 #7a3b00) drop-shadow(0 0 24px rgba(255,180,40,.4)); }
+.mg-title-logo.big .hat { font-size: 84px; }
+.mg-title { position: fixed; inset: 0; z-index: 110; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px;
+  background: radial-gradient(900px 600px at 50% 20%, #4b1d8f 0%, transparent 65%), linear-gradient(180deg, #160b33, #07040f); animation: mgFade .3s; text-align: center; }
+.mg-title-bg { position: absolute; inset: 0; pointer-events: none; opacity: .35; background: repeating-conic-gradient(from 0deg at 50% 30%, rgba(255,200,60,.18) 0 8deg, transparent 8deg 22deg);
+  mask-image: radial-gradient(circle at 50% 30%, #000 0%, transparent 60%); -webkit-mask-image: radial-gradient(circle at 50% 30%, #000 0%, transparent 60%); animation: mgSpinBg 40s linear infinite; }
+@keyframes mgSpinBg { to { transform: rotate(360deg); } }
+.mg-title-tag { color: var(--muted); font-weight: 800; font-size: 15px; margin-top: -4px; position: relative; }
+.mg-title-menu { display: flex; flex-direction: column; gap: 12px; width: min(320px, 100%); margin-top: 18px; position: relative; }
+.mg-title-menu .mg-btn-ghost { padding: 12px; font-size: 15px; }
+.mg-btn.big { font-size: 26px; padding: 16px 24px; animation: mgPulse 1.6s ease-in-out infinite; }
+.mg-title-user { color: var(--dim); font-size: 13px; position: relative; margin-top: 8px; }
+.mg-title-user b { color: var(--muted); }
+.mg-title-foot { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom)); color: var(--dim); font-size: 12px; }
+
+/* Ladebildschirm */
+.mg-loader { display: flex; gap: 10px; margin: 26px 0 14px; }
+.mg-loader span { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 12px var(--gold); animation: mgLoad 1s ease-in-out infinite; }
+.mg-loader span:nth-child(2) { animation-delay: .15s; } .mg-loader span:nth-child(3) { animation-delay: .3s; }
+@keyframes mgLoad { 0%, 100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-12px); opacity: 1; } }
+.mg-loading-text { font-family: var(--f-display); font-size: 20px; color: var(--muted); }
+.mg-loading-sub { color: var(--dim); font-size: 13px; margin-top: 8px; max-width: 320px; }
+
+/* Einstellungen */
+.mg-x { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border); background: var(--panel-2); color: var(--muted); font-size: 16px; cursor: pointer; }
+.mg-settings { text-align: left; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.mg-settings h2 { text-align: center; margin-top: 0; }
+.mg-set-group { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.mg-set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 12px; border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--border); font-weight: 800; }
+.mg-set-row small { display: block; color: var(--dim); font-size: 11px; font-weight: 700; }
+.mg-range { -webkit-appearance: none; appearance: none; width: 140px; height: 10px; border-radius: 6px; outline: none; cursor: pointer;
+  background: linear-gradient(90deg, var(--gold) var(--p), #0c0720 var(--p)); border: 1px solid var(--border); }
+.mg-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--gold-d); box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.mg-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--gold-d); }
+.mg-toggle { width: 54px; height: 30px; border-radius: 15px; border: 2px solid var(--border); background: #0c0720; position: relative; cursor: pointer; flex-shrink: 0; transition: background .2s; }
+.mg-toggle span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--dim); transition: left .2s, background .2s; }
+.mg-toggle.on { background: var(--green-d); border-color: var(--green); }
+.mg-toggle.on span { left: 27px; background: #fff; }
+.mg-seg { display: flex; gap: 4px; background: #0c0720; padding: 3px; border-radius: 10px; border: 1px solid var(--border); }
+.mg-seg button { border: none; background: transparent; color: var(--muted); padding: 6px 10px; border-radius: 8px; font-weight: 900; font-size: 12px; cursor: pointer; }
+.mg-seg button.active { background: linear-gradient(180deg, #ffe58a, #ffb72a); color: #3a1d00; }
+.mg-btn-ghost.wide { width: 100%; padding: 11px; font-size: 14px; text-align: left; }
+.mg-btn-ghost.danger { color: var(--red); }
+.mg-confirm { padding: 12px; border-radius: 14px; border: 2px solid var(--red); background: rgba(255,90,110,.1); font-weight: 800; }
+
+/* Tutorial-Spotlight */
+.mg-spot { position: fixed; inset: 0; z-index: 85; pointer-events: none; }
+.mg-spot-hole { position: fixed; border-radius: 16px; border: 3px solid #fff; pointer-events: none; transition: left .25s, top .25s, width .25s, height .25s;
+  box-shadow: 0 0 0 9999px rgba(6,2,18,.74), 0 0 24px 4px rgba(255,255,255,.6), inset 0 0 18px rgba(255,255,255,.35); animation: mgSpotPulse 1.3s ease-in-out infinite; }
+.mg-spot-hole.nudge { animation: mgSpotNudge .4s ease-out, mgSpotPulse 1.3s ease-in-out .4s infinite; }
+@keyframes mgSpotPulse { 0%, 100% { border-color: #fff; } 50% { border-color: #ffd34d; } }
+@keyframes mgSpotNudge { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.06); } }
+.mg-spot-block { position: fixed; pointer-events: auto; background: transparent; }
+.mg-spot-arrow { position: fixed; width: 48px; text-align: center; font-size: 42px; line-height: 48px; filter: drop-shadow(0 4px 0 rgba(0,0,0,.5)); animation: mgSpotArrow .8s ease-in-out infinite; }
+.mg-spot-arrow.up { animation-name: mgSpotArrowUp; }
+@keyframes mgSpotArrow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes mgSpotArrowUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(10px); } }
+.mg-spot-bubble { position: fixed; padding: 12px 14px; border-radius: 16px; background: #fff; color: #2a1660; font-weight: 900; font-size: 15px; text-align: center; line-height: 1.3;
+  box-shadow: 0 6px 0 rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.5); animation: mgPop .3s cubic-bezier(.2,1.5,.4,1); }
+.mg-spot-skip { position: fixed; bottom: calc(12px + env(safe-area-inset-bottom)); left: 10px; pointer-events: auto; z-index: 2; border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.45);
+  color: rgba(255,255,255,.75); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; }
+
+/* Toast „Neu freigeschaltet“ */
+.mg-toast.new { border-color: var(--cyan); background: linear-gradient(180deg, #123f5a, #0f2340); box-shadow: 0 5px 0 var(--shadow), 0 0 24px rgba(62,230,255,.35); }
+.mg-toast.new .t { color: var(--cyan); }
+
+/* Unter-Reiter (Mehr) & Spiel-Leiste */
+.mg-subtabs { display: flex; gap: 6px; margin-bottom: 14px; background: #0c0720; padding: 4px; border-radius: 14px; border: 2px solid var(--border); }
+.mg-subtabs button { flex: 1; border: none; background: transparent; color: var(--muted); padding: 9px 4px; border-radius: 10px; font-family: var(--f-display); font-size: 14px; cursor: pointer; }
+.mg-subtabs button.active { background: linear-gradient(180deg, #7c4dff, #5b2fd6); color: #fff; }
+.mg-gamebar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.mg-gamebar .disp { font-size: 20px; }
+.cs-hero.solo { grid-template-columns: 1fr; }
+
+/* Weniger Effekte */
+.mg.lowfx .mg-floor-ambient, .mg.lowfx .mg-title-bg, .mg.lowfx .mg-item.can::before { animation: none !important; display: none; }
+.mg.lowfx ~ .mg-confetti, .mg.lowfx .mg-confetti, .mg.lowfx .mg-rain, .mg.lowfx .sl-fw, .mg.lowfx .mg-chip { display: none !important; }
+.mg.lowfx .mg-logo .hat, .mg.lowfx .mg-money .coin3d, .mg.lowfx .mg-goal .icon, .mg.lowfx .mg-quest .ic { animation: none !important; }
+
+/* ─── Handy ─────────────────────────────────────────────────────────────── */
+.mg-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: space-around; gap: 2px;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(28,16,64,.97), rgba(14,8,34,.99)); border-top: 3px solid var(--border);
+  box-shadow: 0 -6px 20px rgba(0,0,0,.45); backdrop-filter: blur(6px); }
+.mg-bn { position: relative; flex: 1; max-width: 96px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border: none; border-radius: 14px;
+  background: transparent; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mg-bn .i { font-size: 24px; line-height: 1.1; transition: transform .15s; }
+.mg-bn .l { font-family: var(--f-display); font-size: 12px; letter-spacing: .3px; }
+.mg-bn.active { color: #3a1d00; background: linear-gradient(180deg, #ffe58a, #ffb72a); box-shadow: 0 3px 0 var(--gold-d); }
+.mg-bn.active .i { transform: scale(1.1); }
+.mg-bn .badge { position: absolute; top: 0; right: 12%; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--pink); color: #fff; font-size: 11px; font-weight: 900;
+  line-height: 16px; border: 2px solid var(--bg); box-shadow: 0 0 10px var(--pink); }
+
+@media (max-width: 760px) {
+  .mg.has-nav .mg-main { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .mg-header { padding: calc(6px + env(safe-area-inset-top)) 10px 6px; gap: 8px; }
+  .mg-logo .word, .mg-user .name { display: none; }
+  .mg-logo .hat { font-size: 26px; }
+  .mg-money { padding: 4px 14px 4px 5px; }
+  .mg-icon-btn { width: 36px; height: 36px; font-size: 16px; }
+  .mg-main { padding: 8px 10px 16px; }
+  /* Aufgabe kompakt */
+  .mg-quest { padding: 8px 10px; gap: 10px; margin-bottom: 10px; border-radius: 14px; }
+  .mg-quest .ic { font-size: 24px; }
+  .mg-quest .t { font-size: 15px; }
+  .mg-quest .h.hint { display: none; }
+  .mg-quest .mg-btn { padding: 9px 14px; font-size: 15px; }
+  /* Ziel & Münzfeld füllen den Bildschirm */
+  .mg-goal { padding: 10px 12px; margin-bottom: 10px; gap: 10px; }
+  .mg-goal .icon { font-size: 28px; }
+  .mg-floor { height: max(320px, calc(100dvh - 300px)); border-radius: 18px; }
+  .mg:not(.has-nav) .mg-floor { height: max(340px, calc(100dvh - 190px)); }
+  /* Shop-Einträge kompakt */
+  .mg-item { padding: 8px 10px; gap: 10px; margin-bottom: 8px; border-radius: 14px; }
+  .mg-item .ic { font-size: 28px; width: 36px; }
+  .mg-item .name { font-size: 15px; }
+  .mg-item .count { font-size: 22px; }
+  /* Casino-Lobby als 2er-Raster */
+  .cs-games { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .cs-game .art { height: 86px !important; font-size: 40px !important; }
+  .cs-game .info { padding: 8px 10px !important; }
+  .cs-game .nm { font-size: 15px !important; }
+  .cs-game .ds { font-size: 11px !important; }
+  .cs-sign h1 { font-size: 40px; }
+  .mg-gamebar { position: sticky; top: 58px; z-index: 30; margin: -8px -10px 10px; padding: 8px 10px; background: rgba(18,10,42,.95); border-bottom: 2px solid var(--border); }
+  .mg-gamebar .mg-btn-ghost { width: 40px; height: 40px; padding: 0; font-size: 18px; }
+  .mg-gamebar .disp { font-size: 18px; }
+  /* Meldungen über der Leiste, volle Breite */
+  .mg-toasts { left: 10px; right: 10px; bottom: calc(84px + env(safe-area-inset-bottom)); align-items: center; }
+  .mg:not(.has-nav) .mg-toasts { bottom: 16px; }
+  .mg-toast { max-width: 100%; width: 100%; padding: 8px 12px; font-size: 13px; }
+  .mg-toast .ic { font-size: 22px; }
+  .mg-toasts .mg-toast:not(:last-child) { display: none; }
+  .mg-modal { padding: 22px 18px; }
+}
+
+/* Login */
+.mg-login .mg-modal { text-align: left; max-width: 400px; }
+.mg-field { display: block; margin-top: 12px; }
+.mg-field span { display: block; color: var(--muted); font-size: 12px; font-weight: 900; letter-spacing: .5px; margin-bottom: 6px; text-transform: uppercase; }
+.mg-field input { width: 100%; padding: 13px 14px; border-radius: 12px; border: 2px solid var(--border); background: #0c0720; color: var(--text); font-size: 16px; font-family: var(--f-body); font-weight: 700; outline: none; }
+.mg-field input:focus { border-color: var(--gold); }
+.mg-login-error { margin-top: 12px; padding: 10px; border-radius: 12px; border: 2px solid var(--red); background: rgba(255,90,110,.12); color: #ffb3bd; font-size: 13px; font-weight: 800; text-align: center; }
+
+/* Casino-Spiele am Handy */
+@media (max-width: 760px) {
+  .mg-gamevip { display: none; }
+  .mg-game-wrap.reorder > div > div:first-of-type { order: 2; }
+  .mg-game-wrap.game-plinko > div > div:nth-child(2) { min-height: 440px; }
+  .mg-game-wrap.game-chicken > div { flex-wrap: nowrap !important; min-height: 0 !important; }
+  .mg-game-wrap.game-chicken > div > div { flex-basis: auto !important; }
+  .mg-game-wrap.game-chicken > div > div:nth-of-type(2) { height: 50vh !important; flex-shrink: 0; }
+}
+.mg-spot-gear { position: fixed; bottom: calc(12px + env(safe-area-inset-bottom)); right: 10px; pointer-events: auto; z-index: 2; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.45); font-size: 16px; cursor: pointer; }

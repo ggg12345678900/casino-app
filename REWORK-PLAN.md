@@ -1,5 +1,7 @@
 # Großes Update – Plan
 
+> Stand: Schritte 1–7 umgesetzt (Sprache EN und Name noch offen).
+
 Umsetzung in großen Schritten. Nach jedem Schritt Test mit Screenshots, veröffentlicht wird erst am Ende.
 
 ## 0 – Neuer Name (Entscheidung durch dich)
@@ -18,21 +20,21 @@ Vor der Festlegung prüfen: Steam-Suche, App Stores, Markenregister (DPMA/EUIPO)
 Danach Name, Logo und Icon überall tauschen (`manifest.json`, `index.html`, `GameApp.js`, `Login.js`, Icons).
 
 ## 1 – Kleine Fehler
-- [ ] **Euro-Münzen richtig herum** (`game.css` `.bimetal` / `.bimetal2`): 1 € = Silberkern mit Goldring, 2 € = Goldkern mit Silberring
+- [x] **Euro-Münzen richtig herum** (`game.css` `.bimetal` / `.bimetal2`): 1 € = Silberkern mit Goldring, 2 € = Goldkern mit Silberring
 
 ## 2 – Ein „richtiges Game“: Rahmen
-- [ ] **Startbildschirm / Hauptmenü**: Logo, „Spielen“, „Einstellungen“, „Rangliste“, „Credits“, Login und Account
-- [ ] **Einstellungen**:
+- [x] **Startbildschirm / Hauptmenü**: Logo, „Spielen“, „Einstellungen“, „Rangliste“, „Credits“, Login und Account
+- [x] **Einstellungen** (Sprache EN steht noch aus):
   - Ton und Musik getrennt per Regler
   - Vibration am Handy
   - Effekte reduzieren (Akku/Leistung)
   - Zahlenformat (1,2 Mio / 1.2M)
   - Sprache (DE/EN, Grundlage für Steam)
   - Account: Logout und Spielstand zurücksetzen
-- [ ] **Pause-/Menü-Knopf** im Spiel (⚙️)
-- [ ] **Hintergrundmusik** (lizenzfrei oder selbst erzeugt), getrennt von den Soundeffekten
-- [ ] **Vibration** bei Münzen, Gewinnen und Jackpot (Handy)
-- [ ] **Ladebildschirm** statt leerer Seite, wenn der Server aufwacht
+- [x] **Pause-/Menü-Knopf** im Spiel (⚙️)
+- [x] **Hintergrundmusik** (lizenzfrei oder selbst erzeugt), getrennt von den Soundeffekten
+- [x] **Vibration** bei Münzen, Gewinnen und Jackpot (Handy)
+- [x] **Ladebildschirm** statt leerer Seite, wenn der Server aufwacht
 
 ## 3 – Sanfter Einstieg (nicht überfordern)
 UI wird Schritt für Schritt freigeschaltet, gesteuert über das Tutorial:
@@ -46,7 +48,7 @@ UI wird Schritt für Schritt freigeschaltet, gesteuert über das Tutorial:
 | nach Quest 4 | Casino (erst nur der Automat, weitere Spiele je Ort) |
 | später | Glücksrad, Erfolge, Rangliste, Statistik, VIP, Jackpot |
 
-- [ ] **Echtes Spotlight-Tutorial** wie in Handy-Games:
+- [x] **Echtes Spotlight-Tutorial** wie in Handy-Games:
   - Der ganze Bildschirm wird abgedunkelt bzw. ausgegraut.
   - **Nur das Ziel bleibt hell**, mit weißem, pulsierendem Rahmen und einem **animierten Pfeil 👇** darauf.
   - Daneben steht eine kurze Sprechblase mit Anweisung, z. B. „Tippe auf die Münze!“.
@@ -54,7 +56,7 @@ UI wird Schritt für Schritt freigeschaltet, gesteuert über das Tutorial:
   - Das Spotlight wandert mit, wenn sich das Ziel bewegt (Münzen) oder der Bildschirm scrollt bzw. die Größe ändert.
   - Ein „Überspringen“-Knopf ist klein in der Ecke.
   - Technik: eine eigene `Spotlight`-Komponente (Overlay mit Ausschnitt über `box-shadow`/SVG-Maske), die per `data-tut="…"`-Markierung das Ziel findet. Am Handy und am PC gleich.
-- [ ] Ablauf der ersten Minuten:
+- [x] Ablauf der ersten Minuten:
   1. 3 Münzen antippen
   2. Belohnung abholen
   3. Shop öffnen
@@ -63,12 +65,12 @@ UI wird Schritt für Schritt freigeschaltet, gesteuert über das Tutorial:
   6. Orte zeigen
   7. Casino und den ersten Automaten zeigen
   Danach läuft das freie Spiel, und spätere Freischaltungen kommen nur noch mit einem kurzen Spotlight und „Neu!“.
-- [ ] Bestehende Spieler bekommen alles sofort (kein Rückschritt)
-- [ ] Dateien: `economy.js` (Freischalt-Stufen), `GameApp.js`, `SearchView.js`, `Shop.js`, `Views.js`
+- [x] Bestehende Spieler bekommen alles sofort (kein Rückschritt)
+- [x] Dateien: `economy.js` (Freischalt-Stufen), `GameApp.js`, `SearchView.js`, `Shop.js`, `Views.js`
 
 ## 4 – Neues Tempo (Balancing)
 Ziel: Der Anfang ist etwas zäher, der Fortschritt wird gegen Ende immer schneller. Kein Sprung in Millionen oder Milliarden zu früh.
-- [ ] Zielkurve, grob:
+- [x] Zielkurve, grob:
 
   | Zeitpunkt | Kontostand |
   |---|---|
@@ -77,32 +79,32 @@ Ziel: Der Anfang ist etwas zäher, der Fortschritt wird gegen Ende immer schnell
   | 3 h | ~10 Mio |
   | danach | stärker beschleunigend bis zum Mond |
 
-- [ ] Hebel:
+- [x] Hebel:
   - Helfer-Startpreise und Kostenwachstum am Anfang höher
   - spätere Orte günstiger im Verhältnis zum Einkommen
   - stärkere Meilenstein-Boni spät im Spiel
-- [ ] Mit Bot-Simulationen prüfen (wie bisher), Kurve als Grafik an dich
-- [ ] Server-Schummelschutz an die neue Kurve anpassen (`server/index.js`)
+- [x] Mit Bot-Simulationen prüfen (wie bisher), Kurve als Grafik an dich
+- [x] Server-Schummelschutz an die neue Kurve anpassen (`server/index.js`)
 
 ## 5 – Handy-Layout (wie eine echte App)
 Am PC bleibt alles gleich, nur unter 760px Breite ändert sich das Layout.
-- [ ] Untere Navigationsleiste: 🪙 Sammeln · 🛒 Shop · 🎰 Casino · 🗺️ Orte · ☰ Mehr (mit iPhone-safe-area)
-- [ ] Kompakte Kopfzeile: groß das Geld und $/s, daneben ⚙️
-- [ ] Shop als eigener Reiter mit Zähler, kompakte Einträge in einer Zeile
-- [ ] Münzfeld füllt den Bildschirm, kein Scrollen beim Sammeln
-- [ ] Casino-Lobby als 2er-Kachelraster, Spiele im Vollbild mit ✕
-- [ ] Toasts und Live-Feed über der Leiste, maximal eine Zeile
+- [x] Untere Navigationsleiste: 🪙 Sammeln · 🛒 Shop · 🎰 Casino · 🗺️ Orte · ☰ Mehr (mit iPhone-safe-area)
+- [x] Kompakte Kopfzeile: groß das Geld und $/s, daneben ⚙️
+- [x] Shop als eigener Reiter mit Zähler, kompakte Einträge in einer Zeile
+- [x] Münzfeld füllt den Bildschirm, kein Scrollen beim Sammeln
+- [x] Casino-Lobby als 2er-Kachelraster, Spiele im Vollbild mit ✕
+- [x] Toasts und Live-Feed über der Leiste, maximal eine Zeile
 
 ## 6 – Casino-Spiele am Handy genauso gut wie am PC
 Jedes Spiel wird einzeln am Handy geprüft und angepasst. Bedienelemente kommen unten in den Daumenbereich, die Animation muss immer sichtbar sein.
-- [ ] **Chicken**: Animation am Handy fehlt bzw. ist nicht sichtbar, sie soll laufen wie am PC
-- [ ] Slots (alle 7), Dice, Mines, Plinko, Crash, Roulette, Blackjack, Pump: jeweils Animation, Größe und Knöpfe prüfen
-- [ ] Einheitliche Leiste für Einsatz und Spielen unten in allen Spielen
+- [x] **Chicken**: Animation am Handy fehlt bzw. ist nicht sichtbar, sie soll laufen wie am PC
+- [x] Slots (alle 7), Dice, Mines, Plinko, Crash, Roulette, Blackjack, Pump: jeweils Animation, Größe und Knöpfe prüfen
+- [x] Einheitliche Leiste für Einsatz und Spielen unten in allen Spielen
 
 ## 7 – Test und Veröffentlichung
-- [ ] Playwright: iPhone SE, iPhone 13, Android, Desktop. Kompletter Durchlauf vom Tutorial bis zum Casino.
-- [ ] Screenshots an dich zur Abnahme
-- [ ] Lint, Build, PR, Merge, dann online
+- [x] Playwright: iPhone SE, iPhone 13, Android, Desktop. Kompletter Durchlauf vom Tutorial bis zum Casino.
+- [x] Screenshots an dich zur Abnahme
+- [x] Lint, Build, PR, Merge, dann online
 
 ---
 

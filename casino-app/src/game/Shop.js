@@ -35,7 +35,7 @@ function Helpers({ state, derived, onBuy, hl }) {
         const rate = derived.helperRates[h.id];
         const each = h.speed * derived.helperMult;
         return (
-          <button key={h.id} className={`mg-item ${can ? 'can' : 'poor'}${hl === `helper-${h.id}` ? ' mg-hl' : ''}`} onClick={() => can && onBuy(h.id, n)}>
+          <button key={h.id} data-tut={`helper-${h.id}`} className={`mg-item ${can ? 'can' : 'poor'}${hl === `helper-${h.id}` ? ' mg-hl' : ''}`} onClick={() => can && onBuy(h.id, n)}>
             <div className="ic">{h.icon}</div>
             <div className="body">
               <div className="name">{h.name}</div>
@@ -86,7 +86,7 @@ function Tools({ state, onBuy, hl }) {
       {available.map(t => {
         const can = state.money >= t.cost;
         return (
-          <button key={t.id} className={`mg-item ${can ? 'can' : 'poor'}${hl === `tool-${t.id}` ? ' mg-hl' : ''}`} onClick={() => can && onBuy(t.id)}>
+          <button key={t.id} data-tut={`tool-${t.id}`} className={`mg-item ${can ? 'can' : 'poor'}${hl === `tool-${t.id}` ? ' mg-hl' : ''}`} onClick={() => can && onBuy(t.id)}>
             <div className="ic">{t.icon}</div>
             <div className="body">
               <div className="name">{t.name}</div>
@@ -120,18 +120,19 @@ function Tools({ state, onBuy, hl }) {
   );
 }
 
-export default function Shop({ state, derived, onBuyHelper, onBuyTool, hl = '' }) {
-  const [tab, setTab] = useState('helpers');
+export default function Shop({ state, derived, onBuyHelper, onBuyTool, hl = '', showHelpers = true }) {
+  const [tabSel, setTab] = useState('helpers');
+  const tab = showHelpers ? tabSel : 'tools';
   const canHelpers = HELPERS.filter(h => h.loc <= state.location && state.money >= helperCostN(h, state.helpers[h.id] || 0, 1)).length;
   const canTools = TOOLS.filter(t => t.loc <= state.location && !state.tools.includes(t.id) && state.money >= t.cost).length;
 
   return (
     <div className="mg-panel mg-shop">
       <div className="mg-shop-tabs">
-        <button className={`mg-shop-tab ${tab === 'helpers' ? 'active' : ''}${tab !== 'helpers' && hl.startsWith('helper-') ? ' mg-hl' : ''}`} onClick={() => setTab('helpers')}>
+        {showHelpers && <button data-tut="shoptab-helpers" className={`mg-shop-tab ${tab === 'helpers' ? 'active' : ''}${tab !== 'helpers' && hl.startsWith('helper-') ? ' mg-hl' : ''}`} onClick={() => setTab('helpers')}>
           👥 Helfer {canHelpers > 0 && <span className="badge">{canHelpers}</span>}
-        </button>
-        <button className={`mg-shop-tab ${tab === 'tools' ? 'active' : ''}${tab !== 'tools' && hl.startsWith('tool-') ? ' mg-hl' : ''}`} onClick={() => setTab('tools')}>
+        </button>}
+        <button data-tut="shoptab-tools" className={`mg-shop-tab ${tab === 'tools' ? 'active' : ''}${tab !== 'tools' && hl.startsWith('tool-') ? ' mg-hl' : ''}`} onClick={() => setTab('tools')}>
           🛠️ Werkzeuge {canTools > 0 && <span className="badge">{canTools}</span>}
         </button>
       </div>

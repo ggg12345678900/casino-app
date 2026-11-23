@@ -206,7 +206,7 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
           </div>
           <div className="sl-actions">
             <button className={`sl-auto${auto ? ' on' : ''}`} onClick={() => setAuto(a => !a)}>{auto ? '⏹ STOP' : '🔁 AUTO'}</button>
-            <button className="sl-spin" disabled={!canSpin} onClick={spin}>{inFree ? 'FREE' : spinning ? '…' : pause ? '🎆' : 'SPIN'}</button>
+            <button className="sl-spin" data-tut="spin" disabled={!canSpin} onClick={spin}>{inFree ? 'FREE' : spinning ? '…' : pause ? '🎆' : 'SPIN'}</button>
           </div>
           <div className="sl-betinfo">Einsatz <b>{fmtMoney(b)}</b>{bet > maxBet && ' (Max)'}</div>
         </div>
