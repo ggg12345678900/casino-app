@@ -46,3 +46,19 @@ Eine Codebasis für alles, keine zwei Spiele bauen.
 - Einnahmen deshalb über einen festen Kaufpreis, Werbung oder kosmetische Dinge, nicht über Spielgeld-Pakete.
 - Der Server muss dann dauerhaft laufen. Render kostet dafür etwa 7 $/Monat, weil der Gratis-Server einschläft.
 - Ein Impressum und eine Datenschutzerklärung werden nötig.
+
+---
+
+## Marketing (Shorts / Reels / TikTok)
+**Phase A – direkt nach dem Handy-Rework (gratis):**
+- [ ] Gameplay-Clips im Hochformat 9:16 automatisch aufnehmen (Playwright-Video auf Handy-Größe): Münzregen, Combo 500, Jackpot, Feuerwerk, Orts-Aufstieg
+- [ ] Untertitel und Hook einbrennen (z. B. „Von 1 Cent zum Casino-Mogul 🎩“, „Combo 1000 möglich?“)
+- [ ] Link in der Bio: die Web-Version, sofort spielbar und gratis
+- [ ] Rhythmus: 1 Clip pro Tag auf allen drei Plattformen, nach 2 Wochen auswerten
+
+**Phase B – Steam-Seite „Demnächst erhältlich“:**
+- [ ] Steamworks-Account mit 100 $ Gebühr, Identitäts- und Steuerprüfung (wenige Tage)
+- [ ] Shop-Grafiken (Kapsel-Bilder in mehreren Größen), mindestens 5 Screenshots, Trailer, Beschreibung
+- [ ] Valve prüft die Seite (2–5 Werktage). Danach sammelt man Wunschlisten-Einträge.
+- [ ] Regeln: Die Seite muss mindestens 2 Wochen vor Release sichtbar sein. Release frühestens 30 Tage nach der Gebühr.
+- [ ] Emojis als Grafik ersetzen (Apple-Emojis dürfen nicht verkauft werden): eigene Sprites oder Twemoji/Noto mit freier Lizenz
