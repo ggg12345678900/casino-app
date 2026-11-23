@@ -70,7 +70,7 @@ function GoalBanner({ state, onMove, hl }) {
   const pct = Math.min(1, state.money / next.cost);
   const ready = pct >= 1;
   return (
-    <div className={`mg-panel mg-goal${hl ? ' mg-hl' : ''}`}>
+    <div data-tut="goal" className={`mg-panel mg-goal${hl ? ' mg-hl' : ''}`}>
       <div className="icon">{next.icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}>
@@ -102,7 +102,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '' }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -113,6 +113,8 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   const frenzyRef = useRef(derived.frenzy);
   frenzyRef.current = derived.frenzy;
   const comboRef = useRef({ n: 0, last: 0 });
+  const allowSackRef = useRef(allowSack);
+  allowSackRef.current = allowSack;
   const [combo, setCombo] = useState(0);
   const [sack, setSack] = useState(null);
   const [shake, setShake] = useState(false);
@@ -139,7 +141,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       last = now;
       if (document.visibilityState === 'hidden') return;
       acc += rateRef.current * dt;
-      if (now >= nextSack) {
+      if (now >= nextSack && allowSackRef.current) {
         nextSack = now + (SACK_MIN_SEC + Math.random() * (SACK_MAX_SEC - SACK_MIN_SEC)) * 1000;
         setSack({ id: ++uid, born: now });
       }
@@ -242,9 +244,9 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
 
   return (
     <div>
-      <GoalBanner state={state} onMove={onMove} hl={hl === 'goal'} />
+      {showGoal && <GoalBanner state={state} onMove={onMove} hl={hl === 'goal'} />}
 
-      <div ref={floorRef} className={`mg-floor floor-${loc.id}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} onPointerDown={missClick}>
+      <div ref={floorRef} data-tut="floor" className={`mg-floor floor-${loc.id}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} onPointerDown={missClick}>
         <div className="mg-floor-ambient" />
         {deco.map((d, i) => (
           <div key={i} className="mg-floor-deco" style={{ left: `${d.x}%`, top: `${d.y}%`, transform: `rotate(${d.r}deg)` }}>{d.e}</div>
@@ -277,6 +279,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
         ))}
       </div>
 
+      {showExtras && <>
       <div className="mg-statrow">
         <div className="mg-stat"><div className="k">🪙 Neue Münzen</div><div className="v">{fmt(derived.spawnRate * 60, 0)}/min</div></div>
         <div className="mg-stat"><div className="k">💎 Münzwert</div><div className="v">×{fmt(derived.valueMult)}</div></div>
@@ -290,6 +293,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
         <Skill id="management" skill={sk.management} />
         <Skill id="zocken" skill={sk.zocken} />
       </div>
+      </>}
     </div>
   );
 }

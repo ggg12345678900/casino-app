@@ -153,7 +153,7 @@ export function Wheel({ state, onSpin, hl }) {
         <div className="hub">🎩</div>
       </div>
       <div className="cs-wheel-result">{result || (ready ? 'Gratis-Dreh bereit!' : `Nächster Dreh in ${fmtTime(left)}`)}</div>
-      <button className={`mg-btn pink${hl ? ' mg-hl' : ''}`} disabled={!ready || spinning} onClick={spin}>{spinning ? 'Dreht…' : ready ? '🎡 Gratis drehen!' : '⏳ Warten'}</button>
+      <button data-tut="wheel" className={`mg-btn pink${hl ? ' mg-hl' : ''}`} disabled={!ready || spinning} onClick={spin}>{spinning ? 'Dreht…' : ready ? '🎡 Gratis drehen!' : '⏳ Warten'}</button>
     </div>
   );
 }
@@ -190,7 +190,7 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', jackpot }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', jackpot, showExtras = true }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const jp = jackpot ? jackpot.pool : jackpotPool(state);
   const online = jackpot && jackpot.online;
@@ -198,7 +198,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', 
 
   return (
     <div>
-      <div className="cs-hero">
+      <div className={`cs-hero${showExtras ? '' : ' solo'}`}>
         <div className="cs-sign">
           <div className="bulbs" />
           <h1>CASINO</h1>
@@ -210,16 +210,18 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', 
             1 : {oneIn.toLocaleString('de-DE')}, mit weniger Einsatz seltener. <b>Das Top-Symbol 3× am Automaten knackt ihn immer!</b>
             {online && <> Auszahlung bis zum 500-Fachen deines Max-Einsatzes, der Rest bleibt im Topf.</>}
           </div>
-          <VipCard state={state} derived={derived} onBuy={onBuyVip} />
+          {showExtras && <VipCard state={state} derived={derived} onBuy={onBuyVip} />}
           <div className="cs-chips">
             <div className="mg-stat"><div className="k">Gewinnbonus</div><div className="v" style={{ color: 'var(--green)' }}>+{(derived.winBonus * 100).toFixed(1)}%</div></div>
             {state.stats.bets > 0 && <div className="mg-stat"><div className="k">Bilanz</div><div className="v" style={{ color: state.stats.gambleProfit >= 0 ? 'var(--green)' : 'var(--red)' }}>{state.stats.gambleProfit >= 0 ? '+' : '−'}{fmtMoney(Math.abs(state.stats.gambleProfit))}</div></div>}
           </div>
         </div>
-        <div className="mg-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="mg-label" style={{ marginBottom: 0 }}>🎡 Glücksrad · alle 8 Minuten gratis</div>
-          <Wheel state={state} onSpin={onSpin} hl={hl === 'wheel'} />
-        </div>
+        {showExtras && (
+          <div className="mg-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="mg-label" style={{ marginBottom: 0 }}>🎡 Glücksrad · alle 8 Minuten gratis</div>
+            <Wheel state={state} onSpin={onSpin} hl={hl === 'wheel'} />
+          </div>
+        )}
       </div>
 
       <div className="mg-label">🎮 Spiele</div>
@@ -229,7 +231,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', 
           const info = GAME_INFO[g];
           const l = LOCATIONS[firstLoc(g)];
           return (
-            <button key={g} className={`cs-game${hl === `game-${g}` ? ' mg-hl' : ''}`} disabled={!unlocked} onClick={() => onPick(g)}>
+            <button key={g} data-tut={`game-${g}`} className={`cs-game${hl === `game-${g}` ? ' mg-hl' : ''}`} disabled={!unlocked} onClick={() => onPick(g)}>
               {unlocked && info.tag && <span className={`tag ${info.tag}`}>{info.tag === 'hot' ? '🔥 HOT' : '✨ NEU'}</span>}
               <div className="art" style={{ background: info.bg }}>{unlocked ? info.icon : '🔒'}</div>
               <div className="info">

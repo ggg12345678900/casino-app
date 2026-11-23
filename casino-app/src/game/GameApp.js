@@ -1,13 +1,16 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone } from './economy';
+import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard } from './Views';
 import Slots from './Slots';
 import Feedback from './Feedback';
-import { sfx, isMuted, setMuted } from './sound';
+import { sfx } from './sound';
+import Spotlight from './Spotlight';
+import { TitleScreen, SettingsModal, CreditsModal, LoadingScreen, useSettings } from './Menus';
+import { GAME_NAME, GAME_ICON } from '../brand';
 import Dice from '../Dice';
 import Mines from '../Mines';
 import Plinko from '../Plinko';
@@ -17,6 +20,10 @@ import Blackjack from '../Blackjack';
 import Chicken from '../Chicken';
 import Pump from '../Pump';
 
+const TOOL_COUNT = (s) => TOOLS.filter(t => t.loc <= s.location && !s.tools.includes(t.id) && s.money >= t.cost).length;
+const HELPER_COUNT = (s) => HELPERS.filter(h => h.loc <= s.location && s.money >= helperCostN(h, s.helpers[h.id] || 0, 1)).length;
+// Am Handy: Spielfläche oben, Bedienung unten im Daumenbereich
+const REORDER = ['dice', 'mines', 'plinko', 'crash', 'pump'];
 const GAME_COMPONENTS = { dice: Dice, mines: Mines, plinko: Plinko, crash: Crash, roulette: Roulette, blackjack: Blackjack, chicken: Chicken, pump: Pump };
 // Pump hatte eigene, kaufbare Schwierigkeitsstufen – im Mogul-Modus sind alle frei
 const PUMP_USER = { unlocked_diffs: JSON.stringify(['easy', 'medium', 'hard', 'expert']) };
@@ -36,11 +43,11 @@ function QuestTracker({ state, onClaim }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="h">AUFGABE {i + 1}/{QUESTS.length}</div>
         <div className="t">{q.title}</div>
-        <div className="h">{q.hint}</div>
+        <div className="h hint">{q.hint}</div>
         <div className="bar"><div style={{ width: `${p * 100}%` }} /></div>
       </div>
       {done
-        ? <button className="mg-btn green mg-hl" onClick={onClaim} style={{ whiteSpace: 'nowrap' }}>🎁 +{fmtMoney(q.reward)} abholen</button>
+        ? <button data-tut="claim" className="mg-btn green mg-hl" onClick={onClaim} style={{ whiteSpace: 'nowrap' }}>🎁 +{fmtMoney(q.reward)}</button>
         : <div className="rw">🎁 +{fmtMoney(q.reward)}</div>}
     </div>
   );
@@ -114,11 +121,56 @@ function BigWin({ win, onClose }) {
   );
 }
 
+// Handy-Layout (schmaler Bildschirm)
+function useIsMobile() {
+  const q = '(max-width: 760px)';
+  const [m, setM] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const fn = () => setM(mq.matches);
+    mq.addEventListener ? mq.addEventListener('change', fn) : mq.addListener(fn);
+    return () => (mq.removeEventListener ? mq.removeEventListener('change', fn) : mq.removeListener(fn));
+  }, []);
+  return m;
+}
+
+// Wohin zeigt das Spotlight? Erst das eigentliche Ziel, sonst der Weg dorthin.
+function tutorialTargets(state, quest, done, activeGame, isMobile) {
+  if (done) return [{ id: 'claim', tip: 'Geschafft! Hol dir deine Belohnung 🎁' }];
+  const h = quest.hl;
+  // Kauf-Aufgabe, aber noch zu wenig Geld: erst sammeln schicken
+  const price = h.startsWith('tool-') ? (TOOLS.find(t => `tool-${t.id}` === h) || {}).cost
+    : h.startsWith('helper-') ? (() => { const x = HELPERS.find(y => `helper-${y.id}` === h); return x ? helperCostN(x, state.helpers[x.id] || 0, 1) : 0; })() : 0;
+  if (price && state.money < price) {
+    return [{ id: 'floor', tip: `Sammle noch ${fmtMoney(price - state.money)} – tippe auf die Münzen!` }, { id: 'nav-search', tip: 'Zurück zum Sammeln 🪙' }];
+  }
+  if (h.startsWith('game-') && activeGame === h.slice(5)) return [{ id: 'spin', tip: 'Tippe auf SPIN!' }];
+  const chain = [{ id: h, tip: quest.tip }];
+  if (h.startsWith('tool-')) chain.push({ id: 'shoptab-tools', tip: 'Wechsle zu den Werkzeugen 🛠️' });
+  if (h.startsWith('helper-')) chain.push({ id: 'shoptab-helpers', tip: 'Wechsle zu den Helfern 👥' });
+  if (h.startsWith('tool-') || h.startsWith('helper-')) {
+    chain.push({ id: 'nav-shop', tip: 'Öffne den Shop 🛒' });
+    if (!isMobile) chain.push({ id: 'nav-search', tip: 'Zurück zum Sammeln – dort ist der Shop' });
+  }
+  if (h === 'floor' || h === 'goal') chain.push({ id: 'nav-search', tip: 'Zurück zum Sammeln 🪙' });
+  if (h.startsWith('game-') || h === 'wheel') {
+    chain.push({ id: 'game-back', tip: 'Zurück zur Casino-Lobby' });
+    chain.push({ id: 'nav-casino', tip: 'Ab ins Casino! 🎰' });
+  }
+  return chain;
+}
+
 export default function GameApp({ user, onLogout }) {
   const [toasts, setToasts] = useState([]);
   const [bigWin, setBigWin] = useState(null);
   const [confetti, setConfetti] = useState(0);
-  const [muted, setMutedState] = useState(isMuted());
+  const settings = useSettings();
+  const isMobile = useIsMobile();
+  const [menu, setMenu] = useState('title'); // title | null
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [moreTab, setMoreTab] = useState('collection');
+  const extrasRef = useRef(false);
 
   const toast = useCallback((t) => {
     const id = ++toastId;
@@ -127,7 +179,7 @@ export default function GameApp({ user, onLogout }) {
   }, []);
 
   const game = useGame(user, {
-    onAchievement: (a) => { sfx.achievement(); toast({ kind: 'ach', icon: a.icon, title: 'ERFOLG FREIGESCHALTET', text: `${a.name} · +2% auf alles` }); },
+    onAchievement: (a) => { if (!extrasRef.current) return; sfx.achievement(); toast({ kind: 'ach', icon: a.icon, title: 'ERFOLG FREIGESCHALTET', text: `${a.name} · +2% auf alles` }); },
     onBigWin: (w) => { sfx.bigWin(); setBigWin(w); },
     onJackpotNews: (w) => { sfx.win(); toast({ kind: 'ach', icon: '🎉', title: 'JACKPOT GEKNACKT', text: `${w.username} hat ${fmtMoney(w.amount)} bei ${GAME_INFO[w.game]?.name || 'einem Spiel'} geknackt!` }); },
     onJackpotCooldown: (min) => toast({ icon: '⏳', title: 'JACKPOT GESPERRT', text: `Du hast vor Kurzem schon geknackt. Wieder möglich in ${min} min.` }),
@@ -165,56 +217,81 @@ export default function GameApp({ user, onLogout }) {
   const onCharm = useCallback((c) => { setConfetti(x => x + 1); setCharmModal(c); }, []);
   const claimQuest = useCallback(() => {
     const q = QUESTS[state.quest || 0];
+    const i = state.quest || 0;
     if (game.claimQuest()) {
       sfx.achievement(); setConfetti(x => x + 1);
       toast({ kind: 'ach', icon: q.icon, title: 'AUFGABE ERLEDIGT', text: `${q.title} · +${fmtMoney(q.reward)}` });
-      if ((state.quest || 0) + 1 >= QUESTS.length) setTimeout(() => toast({ kind: 'ach', icon: '🎓', title: 'TUTORIAL GESCHAFFT', text: 'Jetzt bist du bereit für den Aufstieg zum Mogul!' }), 600);
+      unlocksAfter(i).filter(k => UNLOCK_INFO[k] && !isUnlocked(state, k)).forEach((k, n) => setTimeout(() => {
+        sfx.levelUp();
+        toast({ kind: 'new', icon: UNLOCK_INFO[k].icon, title: 'NEU FREIGESCHALTET', text: UNLOCK_INFO[k].name });
+      }, 500 + n * 400));
+      if (i + 1 >= QUESTS.length) setTimeout(() => toast({ kind: 'ach', icon: '🎓', title: 'TUTORIAL GESCHAFFT', text: 'Ab jetzt bist du auf dich allein gestellt – viel Glück!' }), 600);
     }
   }, [game, state, toast]);
   const closeBigWin = useCallback(() => setBigWin(null), []);
 
-  if (!state) {
-    return (
-      <div className="mg" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 56 }}>🎩</div>
-        <div className="disp" style={{ color: 'var(--muted)', marginTop: 8, fontSize: 20 }}>Lade Spielstand…</div>
-      </div>
-    );
-  }
+  if (!state) return <LoadingScreen />;
 
   const nextLoc = LOCATIONS[state.location + 1];
   const canMove = nextLoc && state.money >= nextLoc.cost;
-  const casinoOpen = derived.games.length > 0;
+  const un = {
+    tools: isUnlocked(state, 'tools'), helpers: isUnlocked(state, 'helpers'), casino: isUnlocked(state, 'casino') && derived.games.length > 0,
+    wheel: isUnlocked(state, 'wheel'), locations: isUnlocked(state, 'locations'), extras: isUnlocked(state, 'extras'),
+  };
+  extrasRef.current = un.extras;
   // Was soll aufleuchten? (nur solange die aktuelle Aufgabe nicht erledigt ist)
   const quest = (state.quest || 0) < QUESTS.length ? QUESTS[state.quest || 0] : null;
-  const hl = quest && !questDone(state) ? quest.hl : '';
+  const qDone = quest ? questDone(state) : false;
+  const hl = quest && !qDone ? quest.hl : '';
   const casinoHl = hl === 'wheel' || hl.startsWith('game-');
-  const wheelReady = casinoOpen && (state.wheelReadyAt || 0) <= Date.now();
+  const shopHl = hl.startsWith('tool-') || hl.startsWith('helper-');
+  const wheelReady = un.wheel && (state.wheelReadyAt || 0) <= Date.now();
+  const canBuyCount = un.tools ? (TOOL_COUNT(state) + (un.helpers ? HELPER_COUNT(state) : 0)) : 0;
+  const curTab = (tab === 'shop' && !isMobile) ? 'search' : tab;
 
   const TABS = [
-    { id: 'search', label: '🔍 Sammeln', hl: !casinoHl && hl !== '' },
-    { id: 'locations', label: '🗺️ Orte', badge: canMove ? '!' : null },
-    { id: 'casino', label: casinoOpen ? '🎰 Casino' : '🔒 Casino', disabled: !casinoOpen, badge: wheelReady ? '🎡' : null, hl: casinoHl },
-    { id: 'collection', label: '🏆 Erfolge' },
-    { id: 'leaderboard', label: '👑 Rangliste' },
-    { id: 'stats', label: '📊 Statistik' },
-  ];
+    { id: 'search', label: '🪙 Sammeln', short: 'Sammeln', icon: '🪙', show: true, hl: (hl === 'floor' || hl === 'goal' || (shopHl && !isMobile)) },
+    { id: 'shop', label: '🛒 Shop', short: 'Shop', icon: '🛒', show: isMobile && un.tools, badge: canBuyCount > 0 ? canBuyCount : null, hl: shopHl },
+    { id: 'casino', label: '🎰 Casino', short: 'Casino', icon: '🎰', show: un.casino, badge: wheelReady ? '🎡' : null, hl: casinoHl },
+    { id: 'locations', label: '🗺️ Orte', short: 'Orte', icon: '🗺️', show: un.locations, badge: canMove ? '!' : null },
+    ...(isMobile
+      ? [{ id: 'more', label: '☰ Mehr', short: 'Mehr', icon: '☰', show: un.extras }]
+      : [
+        { id: 'collection', label: '🏆 Erfolge', show: un.extras },
+        { id: 'leaderboard', label: '👑 Rangliste', show: un.extras },
+        { id: 'stats', label: '📊 Statistik', show: un.extras },
+      ]),
+  ].filter(t => t.show);
+  const goTab = (id) => { sfx.click(); setTab(id); if (id !== 'casino') setActiveGame(null); window.scrollTo({ top: 0 }); };
 
   const renderTab = () => {
-    switch (tab) {
+    switch (curTab) {
       case 'locations': return <LocationsView state={state} onMove={move} />;
+      case 'shop': return <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} hl={hl} showHelpers={un.helpers} />;
+      case 'more': return (
+        <div>
+          <div className="mg-subtabs">
+            {[['collection', '🏆 Erfolge'], ['leaderboard', '👑 Rangliste'], ['stats', '📊 Statistik']].map(([id, l]) => (
+              <button key={id} className={moreTab === id ? 'active' : ''} onClick={() => { sfx.click(); setMoreTab(id); }}>{l}</button>
+            ))}
+          </div>
+          {moreTab === 'collection' && <CollectionView state={state} />}
+          {moreTab === 'leaderboard' && <LeaderboardView user={user} />}
+          {moreTab === 'stats' && <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />}
+        </div>
+      );
       case 'casino': {
         if (activeGame && derived.games.includes(activeGame)) {
           const isSlot = activeGame.startsWith('slots-');
           const G = isSlot ? Slots : GAME_COMPONENTS[activeGame];
           return (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                <button className="mg-btn-ghost" onClick={() => setActiveGame(null)}>← Zurück zur Lobby</button>
-                <span className="disp" style={{ fontSize: 20 }}>{GAME_INFO[activeGame].icon} {GAME_INFO[activeGame].name}</span>
+              <div className="mg-gamebar">
+                <button className="mg-btn-ghost" data-tut="game-back" onClick={() => { sfx.click(); setActiveGame(null); }}>{isMobile ? '✕' : '← Lobby'}</button>
+                <span className="disp">{GAME_INFO[activeGame].icon} {GAME_INFO[activeGame].name}</span>
               </div>
-              <div style={{ marginBottom: 10 }}><VipCard state={state} derived={derived} onBuy={buyVip} compact /></div>
-              <div className={isSlot ? '' : 'mg-game-wrap'}>
+              {un.wheel && <div className="mg-gamevip" style={{ marginBottom: 10 }}><VipCard state={state} derived={derived} onBuy={buyVip} compact /></div>}
+              <div className={isSlot ? '' : `mg-game-wrap game-${activeGame}${REORDER.includes(activeGame) ? ' reorder' : ''}`}>
                 <G balance={state.money} setBalance={game.setBalance} addResult={game.addResult}
                   maxBet={derived.maxBet} winBonus={derived.winBonus} prestigeMult={1} globalMult={1} autoSpeed={500}
                   user={PUMP_USER} setUser={() => {}} jackpot={game.jackpot.pool}
@@ -223,25 +300,29 @@ export default function GameApp({ user, onLogout }) {
             </div>
           );
         }
-        return <CasinoView state={state} derived={derived} onPick={setActiveGame} onSpin={game.spinWheel} onBuyVip={buyVip} hl={hl} jackpot={game.jackpot} />;
+        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} />;
       }
       case 'collection': return <CollectionView state={state} />;
       case 'leaderboard': return <LeaderboardView user={user} />;
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
-      default:
+      default: {
+        const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} />;
+        if (isMobile || !un.tools) return search;
         return (
           <div className="mg-split">
-            <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl} />
-            <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} hl={hl} />
+            {search}
+            <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} hl={hl} showHelpers={un.helpers} />
           </div>
         );
+      }
     }
   };
 
   return (
-    <div className="mg">
+    <div className={`mg${isMobile ? ' is-mobile' : ''}${TABS.length > 1 ? ' has-nav' : ''}${settings.lowFx ? ' lowfx' : ''}`}>
       <header className="mg-header">
-        <div className="mg-logo"><span className="hat">🎩</span><span className="word">Casino-Mogul</span></div>
+        <div className="mg-logo"><span className="hat">{GAME_ICON}</span><span className="word">{GAME_NAME}</span></div>
         <div className="mg-money">
           <div className="coin3d">€</div>
           <div style={{ lineHeight: 1.1 }}>
@@ -255,20 +336,21 @@ export default function GameApp({ user, onLogout }) {
         <div className="mg-user">
           <span className="name">👤 {user.username}</span>
           <button className="mg-icon-btn" title="Feedback geben" onClick={() => setFeedbackOpen(true)}>💬</button>
-          <button className="mg-icon-btn" title={muted ? 'Ton an' : 'Ton aus'} onClick={() => { setMuted(!muted); setMutedState(!muted); if (muted) sfx.coin(); }}>{muted ? '🔇' : '🔊'}</button>
-          <button className="mg-btn-ghost" onClick={() => { game.saveNow(); onLogout(); }}>Logout</button>
+          <button className="mg-icon-btn" title="Einstellungen" onClick={() => { sfx.click(); setSettingsOpen(true); }}>⚙️</button>
         </div>
       </header>
 
-      <nav className="mg-tabs">
-        {TABS.map(t => (
-          <button key={t.id} className={`mg-tab ${tab === t.id ? 'active' : ''}${t.hl && tab !== t.id ? ' mg-hl' : ''}`} disabled={t.disabled}
-            title={t.disabled ? 'Freigeschaltet in der Eckkneipe' : undefined}
-            onClick={() => { setTab(t.id); if (t.id !== 'casino') setActiveGame(null); }}>
-            {t.label}{t.badge && <span className="badge">{t.badge}</span>}
-          </button>
-        ))}
-      </nav>
+      {TABS.length > 1 && (
+        <nav className={isMobile ? 'mg-bottomnav' : 'mg-tabs'}>
+          {TABS.map(t => (
+            <button key={t.id} data-tut={`nav-${t.id}`} className={`${isMobile ? 'mg-bn' : 'mg-tab'} ${curTab === t.id ? 'active' : ''}${t.hl && curTab !== t.id ? ' mg-hl' : ''}`}
+              onClick={() => goTab(t.id)}>
+              {isMobile ? <><span className="i">{t.icon}</span><span className="l">{t.short}</span></> : t.label}
+              {t.badge && <span className="badge">{t.badge}</span>}
+            </button>
+          ))}
+        </nav>
+      )}
 
       <main className="mg-main">
         <QuestTracker state={state} onClaim={claimQuest} />
@@ -276,7 +358,7 @@ export default function GameApp({ user, onLogout }) {
       </main>
 
       {/* Willkommen zurück */}
-      {game.welcome && (
+      {game.welcome && !menu && (
         <div className="mg-modal-bg" onClick={game.dismissWelcome}>
           <div className="mg-modal" onClick={e => e.stopPropagation()}>
             <div className="rays" />
@@ -324,7 +406,23 @@ export default function GameApp({ user, onLogout }) {
         </div>
       )}
 
+      {quest && (quest.guide || qDone) && !state.tutorialSkipped && !menu && !settingsOpen && !feedbackOpen && !charmModal && !moveModal && !game.welcome && !bigWin && (
+        <Spotlight targets={tutorialTargets(state, quest, qDone, curTab === 'casino' ? activeGame : null, isMobile)} blocking
+          onSkip={(state.quest || 0) < 2 ? () => game.skipTutorial() : null} onSettings={() => setSettingsOpen(true)} />
+      )}
       {bigWin && <BigWin win={bigWin} onClose={closeBigWin} />}
+      {settingsOpen && (
+        <SettingsModal user={user} onClose={() => setSettingsOpen(false)}
+          onFeedback={() => { setSettingsOpen(false); setFeedbackOpen(true); }}
+          onMenu={() => { setSettingsOpen(false); game.saveNow(); setMenu('title'); }}
+          onLogout={() => { game.saveNow(); onLogout(); }}
+          onReset={() => { game.resetGame(); setTab('search'); setActiveGame(null); }} />
+      )}
+      {menu === 'title' && (
+        <TitleScreen user={user} onPlay={() => setMenu(null)} onSettings={() => setSettingsOpen(true)} onCredits={() => setCreditsOpen(true)}
+          onLogout={() => { game.saveNow(); onLogout(); }} />
+      )}
+      {creditsOpen && <CreditsModal onClose={() => setCreditsOpen(false)} />}
       {feedbackOpen && <Feedback state={state} onClose={() => setFeedbackOpen(false)} />}
       <Confetti burst={confetti} />
 

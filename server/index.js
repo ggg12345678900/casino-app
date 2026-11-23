@@ -580,7 +580,11 @@ app.post('/api/idle/buy', auth, async (req, res) => {
 
 // ─── Casino-Mogul: Spielstand ────────────────────────────────────────────────
 // Ortskosten gespiegelt aus casino-app/src/game/economy.js (für Plausibilitäts-Check)
-const MOGUL_LOCATION_COSTS = [0, 25, 1e4, 8e6, 4.8e9, 3e12, 4e15];
+const MOGUL_LOCATION_COSTS = [0, 40, 3e5, 3e8, 6e9, 3e11, 1.5e16];
+// Spielstände aus der Zeit vor dem Tempo-Update (andere Preise) sollen weiter speicherbar bleiben:
+// Für den Mindest-Check zählt deshalb je Ort der kleinere der alten und neuen Preise.
+const MOGUL_LOCATION_COSTS_OLD = [0, 25, 1e4, 8e6, 4.8e9, 3e12, 4e15];
+const MOGUL_MIN_COSTS = MOGUL_LOCATION_COSTS.map((c, i) => Math.min(c, MOGUL_LOCATION_COSTS_OLD[i]));
 const MOGUL_MIN_SAVE_INTERVAL_MS = 3000;
 // Wachstums-Grenze gegen gefälschte Spielstände. Ehrliche Spieler wachsen laut Simulation
 // in 30 s höchstens ≈ ×9 (Glücksrad-Jackpot); erlaubt sind ×20 pro 30 s, die Grenze verdoppelt
@@ -616,7 +620,7 @@ app.post('/api/save', auth, async (req, res) => {
   if (![earned, money].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0))
     return res.status(400).json({ error: 'Ungültige Werte' });
   // Wer an Ort X ist, muss mindestens die Kosten aller Orte bis X verdient haben
-  const minEarned = MOGUL_LOCATION_COSTS.slice(0, location + 1).reduce((a, b) => a + b, 0);
+  const minEarned = MOGUL_MIN_COSTS.slice(0, location + 1).reduce((a, b) => a + b, 0);
   if (earned < minEarned * 0.999 || money > (earned + gambleWon) * 1.0001 + 1)
     return res.status(400).json({ error: 'Spielstand unplausibel' });
 
