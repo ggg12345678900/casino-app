@@ -1,64 +1,126 @@
-# Casino-Mogul – Plan für das große Update
+# Großes Update – Plan
 
-Ziel: In wenigen großen Schritten umsetzen, jeweils testen und danach **einmal** veröffentlichen.
+Umsetzung in großen Schritten. Nach jedem Schritt Test mit Screenshots, veröffentlicht wird erst am Ende.
 
-## Schritt 1 – Kleine Fehler (≈ 5 min)
-- [ ] **Euro-Münzen richtig herum** (`src/game/game.css`, `.mg-coin.bimetal` / `.bimetal2`)
-  - 1 € = silberner Kern + goldener Ring
-  - 2 € = goldener Kern + silberner Ring
-  - (Im Moment ist es vertauscht.)
+## 0 – Neuer Name (Entscheidung durch dich)
+Der Name soll Casino und Incremental verbinden: klein anfangen, groß werden, zocken. Am besten Englisch, wegen Steam und TikTok.
 
-## Schritt 2 – Handy-Layout neu (Hauptarbeit)
-Problem: Auf dem Handy liegt alles untereinander. Die Reiter scrollen seitlich, der Shop liegt unter dem Spielfeld, der Kopf ist voll.
+Vorschläge:
+- **Penny to Jackpot**
+- **Coin Rush Casino**
+- **Pocket Change Casino**
+- **Idle Jackpot**
+- **Spare Change Tycoon**
+- **Cent to Casino**
 
-Neues Layout für Breiten unter 760px (am PC ändert sich nichts):
-- [ ] **Kopfzeile kompakt**: Logo nur 🎩, groß in der Mitte das Geld und darunter klein $/s. Ton, Feedback und Logout wandern in ein ⚙️-Menü. (`GameApp.js`, `game.css`)
-- [ ] **Untere Navigationsleiste wie in Apps**: 5 Symbole, fest am unteren Rand: 🪙 Sammeln · 🛒 Shop · 🎰 Casino · 🗺️ Orte · ☰ Mehr (Erfolge, Rangliste, Statistik). Mit Rücksicht auf die iPhone-Leiste unten (safe-area). (`GameApp.js`)
-- [ ] **Shop als eigener Reiter**: Auf dem Handy nicht mehr unter dem Spielfeld, sondern ein eigener Tab. Darauf zeigt ein roter Zähler, wie viele Käufe gerade möglich sind. (`GameApp.js`, `Shop.js`)
-- [ ] **Sammeln-Bildschirm ohne Scrollen**: Das Spielfeld füllt den Bildschirm, Quest und Ziel stehen als schmale Leiste darüber. (`SearchView.js`, `game.css`)
-- [ ] **Shop-Einträge kompakter**: eine Zeile mit Symbol, Name, Anzahl und Preis. Details stehen klein darunter. (`Shop.js`, `game.css`)
-- [ ] **Casino-Lobby als 2er-Raster mit Kacheln**, ein Spiel öffnet im Vollbild mit ✕ oben links (`Views.js`, `game.css`)
-- [ ] **Slots auf dem Handy**: Walzen oben, Einsatz und DREHEN-Knopf groß unten im Daumenbereich (`Slots.js`, `game.css`)
-- [ ] **Toasts und Live-Feed** über der Navigationsleiste, maximal eine Zeile (`game.css`)
-- [ ] **Tutorial-Markierungen** (`mg-hl`) zusätzlich an das Symbol in der Leiste unten hängen (`GameApp.js`)
+Vor der Festlegung prüfen: Steam-Suche, App Stores, Markenregister (DPMA/EUIPO) und ob die Domain bzw. der Social-Handle frei ist.
 
-## Schritt 3 – Test und Veröffentlichung
-- [ ] Playwright: iPhone SE (kleinstes Gerät), iPhone 13, Android und Desktop. Screenshots an dich zur Abnahme.
+Danach Name, Logo und Icon überall tauschen (`manifest.json`, `index.html`, `GameApp.js`, `Login.js`, Icons).
+
+## 1 – Kleine Fehler
+- [ ] **Euro-Münzen richtig herum** (`game.css` `.bimetal` / `.bimetal2`): 1 € = Silberkern mit Goldring, 2 € = Goldkern mit Silberring
+
+## 2 – Ein „richtiges Game“: Rahmen
+- [ ] **Startbildschirm / Hauptmenü**: Logo, „Spielen“, „Einstellungen“, „Rangliste“, „Credits“, Login und Account
+- [ ] **Einstellungen**:
+  - Ton und Musik getrennt per Regler
+  - Vibration am Handy
+  - Effekte reduzieren (Akku/Leistung)
+  - Zahlenformat (1,2 Mio / 1.2M)
+  - Sprache (DE/EN, Grundlage für Steam)
+  - Account: Logout und Spielstand zurücksetzen
+- [ ] **Pause-/Menü-Knopf** im Spiel (⚙️)
+- [ ] **Hintergrundmusik** (lizenzfrei oder selbst erzeugt), getrennt von den Soundeffekten
+- [ ] **Vibration** bei Münzen, Gewinnen und Jackpot (Handy)
+- [ ] **Ladebildschirm** statt leerer Seite, wenn der Server aufwacht
+
+## 3 – Sanfter Einstieg (nicht überfordern)
+UI wird Schritt für Schritt freigeschaltet, gesteuert über das Tutorial:
+
+| Phase | Sichtbar |
+|---|---|
+| Start | **nur das Münzfeld** und das Geld |
+| nach Quest 1 | Werkzeuge im Shop |
+| nach Quest 2 | Helfer |
+| nach Quest 3 | Orte-Reiter |
+| nach Quest 4 | Casino (erst nur der Automat, weitere Spiele je Ort) |
+| später | Glücksrad, Erfolge, Rangliste, Statistik, VIP, Jackpot |
+
+- [ ] Jede Freischaltung kommt mit einem kurzen „Neu!“-Popup (1 Satz) und einem leuchtenden Knopf
+- [ ] Bestehende Spieler bekommen alles sofort (kein Rückschritt)
+- [ ] Dateien: `economy.js` (Freischalt-Stufen), `GameApp.js`, `SearchView.js`, `Shop.js`, `Views.js`
+
+## 4 – Neues Tempo (Balancing)
+Ziel: Der Anfang ist etwas zäher, der Fortschritt wird gegen Ende immer schneller. Kein Sprung in Millionen oder Milliarden zu früh.
+- [ ] Zielkurve, grob:
+
+  | Zeitpunkt | Kontostand |
+  |---|---|
+  | 10 min | ~100 $ |
+  | 1 h | ~10 k |
+  | 3 h | ~10 Mio |
+  | danach | stärker beschleunigend bis zum Mond |
+
+- [ ] Hebel:
+  - Helfer-Startpreise und Kostenwachstum am Anfang höher
+  - spätere Orte günstiger im Verhältnis zum Einkommen
+  - stärkere Meilenstein-Boni spät im Spiel
+- [ ] Mit Bot-Simulationen prüfen (wie bisher), Kurve als Grafik an dich
+- [ ] Server-Schummelschutz an die neue Kurve anpassen (`server/index.js`)
+
+## 5 – Handy-Layout (wie eine echte App)
+Am PC bleibt alles gleich, nur unter 760px Breite ändert sich das Layout.
+- [ ] Untere Navigationsleiste: 🪙 Sammeln · 🛒 Shop · 🎰 Casino · 🗺️ Orte · ☰ Mehr (mit iPhone-safe-area)
+- [ ] Kompakte Kopfzeile: groß das Geld und $/s, daneben ⚙️
+- [ ] Shop als eigener Reiter mit Zähler, kompakte Einträge in einer Zeile
+- [ ] Münzfeld füllt den Bildschirm, kein Scrollen beim Sammeln
+- [ ] Casino-Lobby als 2er-Kachelraster, Spiele im Vollbild mit ✕
+- [ ] Toasts und Live-Feed über der Leiste, maximal eine Zeile
+
+## 6 – Casino-Spiele am Handy genauso gut wie am PC
+Jedes Spiel wird einzeln am Handy geprüft und angepasst. Bedienelemente kommen unten in den Daumenbereich, die Animation muss immer sichtbar sein.
+- [ ] **Chicken**: Animation am Handy fehlt bzw. ist nicht sichtbar, sie soll laufen wie am PC
+- [ ] Slots (alle 7), Dice, Mines, Plinko, Crash, Roulette, Blackjack, Pump: jeweils Animation, Größe und Knöpfe prüfen
+- [ ] Einheitliche Leiste für Einsatz und Spielen unten in allen Spielen
+
+## 7 – Test und Veröffentlichung
+- [ ] Playwright: iPhone SE, iPhone 13, Android, Desktop. Kompletter Durchlauf vom Tutorial bis zum Casino.
+- [ ] Screenshots an dich zur Abnahme
 - [ ] Lint, Build, PR, Merge, dann online
 
 ---
 
-## Später: Handy-App & Steam (eigene Phase, erst nach dem Rework)
-Eine Codebasis für alles, keine zwei Spiele bauen.
+## Danach: Marketing (Shorts / Reels / TikTok)
+**Phase A – gratis, sofort nach dem Update:**
+- [ ] Gameplay-Clips im Hochformat 9:16 automatisch aufnehmen: Münzregen, Combo 500, Jackpot, Feuerwerk, Orts-Aufstieg
+- [ ] Untertitel und Hook einbrennen
+- [ ] Link in der Bio zur Web-Version (sofort spielbar)
+- [ ] 1 Clip pro Tag auf allen drei Plattformen, nach 2 Wochen auswerten
+
+**Phase B – Steam-Seite „Demnächst erhältlich“:**
+- [ ] Steamworks-Account mit 100 $ Gebühr, Identitäts- und Steuerprüfung (macht du)
+- [ ] Kapsel-Grafiken, mindestens 5 Screenshots, Trailer, Beschreibung (mache ich)
+- [ ] Prüfung durch Valve (2–5 Werktage), dann Wunschlisten sammeln
+- [ ] Regeln: Die Seite ist mindestens 2 Wochen vor Release sichtbar, Release frühestens 30 Tage nach der Gebühr
+- [ ] Emojis als Grafik ersetzen (Apple-Emojis nicht verkaufbar): Twemoji/Noto (freie Lizenz) oder eigene Sprites
+
+## Danach: Handy-App & Steam
+Eine Codebasis für alles.
 
 | | Handy-App (iOS/Android) | Steam (PC) |
 |---|---|---|
-| Verpackung | Capacitor (Web-Spiel in App-Hülle) | Electron oder Tauri (Web-Spiel als .exe) |
-| Kosten | Apple 99 $/Jahr, Google 25 $ einmalig | Steam Direct 100 $ pro Spiel |
-| Login | Eigener Account oder Game Center / Play Games | Automatisch über Steam-Account |
-| Spielstand | Server (wie jetzt) | Steam Cloud oder Server |
-| Erfolge | optional Game Center / Play Games | Steam-Achievements (Steamworks) |
-| Layout | Handy-Layout aus Schritt 2 | Desktop-Layout (gibt es schon) |
-| Altersfreigabe | „Simuliertes Glücksspiel“: 17+ (Apple) bzw. 18 (Google, je nach Land) | Kennzeichnung „simuliertes Glücksspiel“ |
+| Verpackung | Capacitor | Electron oder Tauri |
+| Kosten | Apple 99 $/Jahr, Google 25 $ einmalig | 100 $ pro Spiel |
+| Login | eigener Account | Steam-Account |
+| Spielstand | Server | Steam Cloud oder Server |
+| Erfolge | optional Game Center / Play Games | Steam-Achievements |
+| Altersfreigabe | „simuliertes Glücksspiel“, 17+/18 | Kennzeichnung „simuliertes Glücksspiel“ |
 
-**Wichtig (rechtlich):**
-- Spielgeld darf **nie** für echtes Geld kaufbar oder auszahlbar sein, sonst gilt es als Glücksspiel.
-- Einnahmen deshalb über einen festen Kaufpreis, Werbung oder kosmetische Dinge, nicht über Spielgeld-Pakete.
-- Der Server muss dann dauerhaft laufen. Render kostet dafür etwa 7 $/Monat, weil der Gratis-Server einschläft.
+**Rechtlich:**
+- Spielgeld darf **nie** für echtes Geld kaufbar oder auszahlbar sein.
+- Einnahmen über einen Kaufpreis, Werbung oder kosmetische Dinge.
+- Der Server muss dauerhaft laufen (Render ca. 7 $/Monat).
 - Ein Impressum und eine Datenschutzerklärung werden nötig.
 
----
-
-## Marketing (Shorts / Reels / TikTok)
-**Phase A – direkt nach dem Handy-Rework (gratis):**
-- [ ] Gameplay-Clips im Hochformat 9:16 automatisch aufnehmen (Playwright-Video auf Handy-Größe): Münzregen, Combo 500, Jackpot, Feuerwerk, Orts-Aufstieg
-- [ ] Untertitel und Hook einbrennen (z. B. „Von 1 Cent zum Casino-Mogul 🎩“, „Combo 1000 möglich?“)
-- [ ] Link in der Bio: die Web-Version, sofort spielbar und gratis
-- [ ] Rhythmus: 1 Clip pro Tag auf allen drei Plattformen, nach 2 Wochen auswerten
-
-**Phase B – Steam-Seite „Demnächst erhältlich“:**
-- [ ] Steamworks-Account mit 100 $ Gebühr, Identitäts- und Steuerprüfung (wenige Tage)
-- [ ] Shop-Grafiken (Kapsel-Bilder in mehreren Größen), mindestens 5 Screenshots, Trailer, Beschreibung
-- [ ] Valve prüft die Seite (2–5 Werktage). Danach sammelt man Wunschlisten-Einträge.
-- [ ] Regeln: Die Seite muss mindestens 2 Wochen vor Release sichtbar sein. Release frühestens 30 Tage nach der Gebühr.
-- [ ] Emojis als Grafik ersetzen (Apple-Emojis dürfen nicht verkauft werden): eigene Sprites oder Twemoji/Noto mit freier Lizenz
+## Bereits erledigt (Stand jetzt)
+Münzen-Sammeln mit Combo, Werkzeuge nur für Klicks, Helfer, 7 Orte, 15 Casino-Spiele mit Themen-Automaten und Freispielen, echter gemeinsamer Jackpot, VIP-Einsatzlimit, Quest-Tutorial, Erfolge, Rangliste (Geld und Combo), Offline-Einnahmen 20 %, Feedback, Schummelschutz, Online-Version mit Neon und Render.
