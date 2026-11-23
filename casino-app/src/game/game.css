@@ -706,7 +706,7 @@
 }
 
 /* Login */
-.mg-login .mg-modal { text-align: left; max-width: 400px; }
+.mg-login > .mg-modal { text-align: left; max-width: 400px; }
 .mg-field { display: block; margin-top: 12px; }
 .mg-field span { display: block; color: var(--muted); font-size: 12px; font-weight: 900; letter-spacing: .5px; margin-bottom: 6px; text-transform: uppercase; }
 .mg-field input { width: 100%; padding: 13px 14px; border-radius: 12px; border: 2px solid var(--border); background: #0c0720; color: var(--text); font-size: 16px; font-family: var(--f-body); font-weight: 700; outline: none; }
@@ -724,3 +724,13 @@
 }
 .mg-spot-gear { position: fixed; bottom: calc(12px + env(safe-area-inset-bottom)); right: 10px; pointer-events: auto; z-index: 2; width: 36px; height: 36px; border-radius: 50%;
   border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.45); font-size: 16px; cursor: pointer; }
+.mg-about { text-align: left; color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 18px; }
+.mg-about p { margin: 0 0 10px; }
+.mg-about b { color: var(--text); }
+.mg-about-dev { font-size: 12px; color: var(--dim); }
+.mg-author { margin-top: 14px; text-align: center; font-family: var(--f-display); font-size: 18px; color: var(--gold); letter-spacing: .5px; }
+.mg-pwmsg { margin-top: 10px; font-size: 13px; font-weight: 800; }
+.mg-login-extra { display: flex; gap: 10px; margin-top: 16px; width: min(400px, 100%); }
+.mg-login-extra .mg-btn-ghost { flex: 1; padding: 11px; font-size: 14px; }
+/* Fenster liegen auch über dem Hauptmenü */
+.mg-modal-bg { z-index: 115; }

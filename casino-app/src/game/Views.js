@@ -364,10 +364,37 @@ export function LeaderboardView({ user }) {
 }
 
 // ─── Statistik & Konto ─────────────────────────────────────────────────────
+// Neues Passwort setzen (eingeloggt – altes Passwort nicht nötig)
+export function PasswordForm({ onDone }) {
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const say = (m) => { setMsg(m); if (onDone) onDone(m); };
+  const save = async () => {
+    if (pw.length < 4) return say('❌ Mindestens 4 Zeichen');
+    if (pw !== pw2) return say('❌ Die Passwörter sind nicht gleich');
+    setBusy(true);
+    try {
+      const r = await api.changePassword(pw);
+      if (r.error) say('❌ ' + r.error); else { say('✅ Passwort geändert!'); setPw(''); setPw2(''); }
+    } catch { say('❌ Server nicht erreichbar'); }
+    setBusy(false);
+  };
+  return (
+    <div className="mg-pwform">
+      <label className="mg-field"><span>Neues Passwort</span>
+        <input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Mindestens 4 Zeichen" /></label>
+      <label className="mg-field"><span>Nochmal eingeben</span>
+        <input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} placeholder="Zur Sicherheit wiederholen" /></label>
+      {msg && !onDone && <div className="mg-pwmsg">{msg}</div>}
+      <button className="mg-btn" style={{ width: '100%', marginTop: 12 }} disabled={busy} onClick={save}>{busy ? '⏳ …' : '🔑 Passwort ändern'}</button>
+    </div>
+  );
+}
+
 export function StatsView({ state, onReset }) {
   const [newUsername, setNewUsername] = useState('');
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [msg, setMsg] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
   const st = state.stats;
@@ -403,13 +430,8 @@ export function StatsView({ state, onReset }) {
           if (r.error) flash('❌ ' + r.error);
           else { flash('✅ Geändert! Bitte neu einloggen.'); setTimeout(() => { localStorage.removeItem('token'); window.location.reload(); }, 1500); }
         }}>Namen ändern</button>
-        <input style={input} type="password" placeholder="Altes Passwort" value={oldPassword} onChange={e => setOldPassword(e.target.value)} />
-        <input style={input} type="password" placeholder="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-        <button className="mg-btn" style={{ width: '100%', marginBottom: 24 }} onClick={async () => {
-          if (!oldPassword || !newPassword) return;
-          const r = await api.changePassword(oldPassword, newPassword);
-          if (r.error) flash('❌ ' + r.error); else { flash('✅ Passwort geändert!'); setOldPassword(''); setNewPassword(''); }
-        }}>Passwort ändern</button>
+        <PasswordForm onDone={(m) => flash(m)} />
+        <div style={{ height: 16 }} />
         <div className="mg-label">Gefahrenzone</div>
         {confirmReset ? (
           <div>

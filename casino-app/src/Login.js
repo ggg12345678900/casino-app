@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, wakeServer } from './api';
-import { Logo } from './game/Menus';
+import { Logo, SettingsModal, CreditsModal } from './game/Menus';
 import { GAME_TAGLINE } from './brand';
 
 function Login({ onLogin }) {
@@ -10,6 +10,7 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [slow, setSlow] = useState(false);
+  const [modal, setModal] = useState(null); // settings | about
 
   // Server schon beim Öffnen der Seite aufwecken, damit der Login schneller geht
   useEffect(() => { wakeServer(); }, []);
@@ -65,6 +66,12 @@ function Login({ onLogin }) {
           {loading ? (slow ? '⏳ Server wacht auf… (bis zu 1 Minute)' : '⏳ Laden…') : mode === 'login' ? '🔑 Einloggen' : '🚀 Account erstellen'}
         </button>
       </div>
+      <div className="mg-login-extra">
+        <button className="mg-btn-ghost" onClick={() => setModal('settings')}>⚙️ Einstellungen</button>
+        <button className="mg-btn-ghost" onClick={() => setModal('about')}>ℹ️ Über das Spiel</button>
+      </div>
+      {modal === 'settings' && <SettingsModal onClose={() => setModal(null)} />}
+      {modal === 'about' && <CreditsModal onClose={() => setModal(null)} />}
     </div>
   );
 }

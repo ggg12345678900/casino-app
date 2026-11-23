@@ -2,3 +2,4 @@
 export const GAME_NAME = 'Casino-Mogul';
 export const GAME_TAGLINE = 'Vom ersten Cent zum Casino-Imperium';
 export const GAME_ICON = '🎩';
+export const GAME_AUTHOR = 'Kimi';

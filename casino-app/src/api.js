@@ -98,11 +98,11 @@ export const api = {
         body: JSON.stringify({ newUsername })
       }).then(r => r.json()),
 
-    changePassword: (oldPassword, newPassword) =>
+    changePassword: (newPassword) =>
       fetch(`${BASE}/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ oldPassword, newPassword })
+        body: JSON.stringify({ newPassword })
        }).then(r => r.json()),
 
   buyDifficulty: (difficulty) =>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './game.css';
-import { GAME_NAME, GAME_TAGLINE, GAME_ICON } from '../brand';
+import { GAME_NAME, GAME_TAGLINE, GAME_ICON, GAME_AUTHOR } from '../brand';
+import { PasswordForm } from './Views';
+import { hasToken } from '../api';
 import { getSettings, updateSettings, onSettings } from './settings';
 import { sfx, music } from './sound';
 
@@ -71,6 +73,7 @@ function Slider({ value, onChange, label }) {
 export function SettingsModal({ onClose, user, onLogout, onFeedback, onReset, onMenu }) {
   const s = useSettings();
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
   const canVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator;
   return (
     <div className="mg-modal-bg" onClick={onClose}>
@@ -105,6 +108,9 @@ export function SettingsModal({ onClose, user, onLogout, onFeedback, onReset, on
         </div>
 
         <div className="mg-set-group">
+          {user && hasToken() && (pwOpen
+            ? <div className="mg-confirm" style={{ borderColor: 'var(--border)', background: 'rgba(0,0,0,.25)' }}><PasswordForm /></div>
+            : <button className="mg-btn-ghost wide" onClick={() => setPwOpen(true)}>🔑 Passwort ändern</button>)}
           {onFeedback && <button className="mg-btn-ghost wide" onClick={onFeedback}>💬 Feedback geben</button>}
           {onMenu && <button className="mg-btn-ghost wide" onClick={onMenu}>🏠 Hauptmenü</button>}
           {onLogout && <button className="mg-btn-ghost wide" onClick={onLogout}>🚪 Abmelden{user ? ` (${user.username})` : ''}</button>}
@@ -132,11 +138,14 @@ export function CreditsModal({ onClose }) {
         <button className="mg-x" onClick={onClose} aria-label="Schließen">✕</button>
         <div className="big">{GAME_ICON}</div>
         <h2>{GAME_NAME}</h2>
-        <p>
-          Sammle Cent für Cent, stell Helfer ein, zieh in immer größere Casinos – vom Hinterhof bis zum Mond.
-          <br /><br />
-          Alle Einsätze sind <b>nur Spielgeld</b>. Es gibt nichts zu kaufen und nichts auszuzahlen.
-        </p>
+        <div className="mg-about">
+          <p><b>{GAME_NAME}</b> ist ein Incremental-Game mit Casino: Du startest mit nichts, sammelst Cent für Cent vom Boden,
+            stellst Helfer ein und ziehst vom dreckigen Hinterhof über Las Vegas und Monaco bis ins Mond-Casino.</p>
+          <p>Unterwegs warten 15 Casino-Spiele, ein gemeinsamer Jackpot für alle Spieler, Erfolge und eine Rangliste.</p>
+          <p>Alle Einsätze sind <b>nur Spielgeld</b> – es gibt nichts zu kaufen und nichts auszuzahlen.</p>
+          <p className="mg-about-dev">Das Spiel befindet sich in der Testphase. Feedback hilft enorm – einfach über 💬 schicken!</p>
+          <div className="mg-author">Ein Projekt von <b>{GAME_AUTHOR}</b></div>
+        </div>
         <button className="mg-btn" onClick={onClose}>Alles klar</button>
       </div>
     </div>

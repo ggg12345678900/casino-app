@@ -870,13 +870,11 @@ app.post('/api/change-username', auth, async (req, res) => {
 
 // Passwort ändern
 app.post('/api/change-password', auth, async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 4)
+  // Eingeloggt reicht – das alte Passwort muss man nicht kennen (z. B. vergessen)
+  const { newPassword } = req.body;
+  if (typeof newPassword !== 'string' || newPassword.length < 4)
     return res.status(400).json({ error: 'Passwort zu kurz (min. 4)' });
-  const result = await pool.query(`SELECT password FROM users WHERE id = $1`, [req.user.id]);
-  const user = result.rows[0];
-  if (!bcrypt.compareSync(oldPassword, user.password))
-    return res.status(400).json({ error: 'Altes Passwort falsch!' });
+  if (newPassword.length > 200) return res.status(400).json({ error: 'Passwort zu lang' });
   const hash = bcrypt.hashSync(newPassword, 10);
   await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [hash, req.user.id]);
   res.json({ success: true });
