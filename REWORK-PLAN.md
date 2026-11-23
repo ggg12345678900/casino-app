@@ -46,7 +46,23 @@ UI wird Schritt für Schritt freigeschaltet, gesteuert über das Tutorial:
 | nach Quest 4 | Casino (erst nur der Automat, weitere Spiele je Ort) |
 | später | Glücksrad, Erfolge, Rangliste, Statistik, VIP, Jackpot |
 
-- [ ] Jede Freischaltung kommt mit einem kurzen „Neu!“-Popup (1 Satz) und einem leuchtenden Knopf
+- [ ] **Echtes Spotlight-Tutorial** wie in Handy-Games:
+  - Der ganze Bildschirm wird abgedunkelt bzw. ausgegraut.
+  - **Nur das Ziel bleibt hell**, mit weißem, pulsierendem Rahmen und einem **animierten Pfeil 👇** darauf.
+  - Daneben steht eine kurze Sprechblase mit Anweisung, z. B. „Tippe auf die Münze!“.
+  - Klicks gehen nur auf das hervorgehobene Element, der Rest ist gesperrt, bis der Schritt erledigt ist.
+  - Das Spotlight wandert mit, wenn sich das Ziel bewegt (Münzen) oder der Bildschirm scrollt bzw. die Größe ändert.
+  - Ein „Überspringen“-Knopf ist klein in der Ecke.
+  - Technik: eine eigene `Spotlight`-Komponente (Overlay mit Ausschnitt über `box-shadow`/SVG-Maske), die per `data-tut="…"`-Markierung das Ziel findet. Am Handy und am PC gleich.
+- [ ] Ablauf der ersten Minuten:
+  1. 3 Münzen antippen
+  2. Belohnung abholen
+  3. Shop öffnen
+  4. erstes Werkzeug kaufen
+  5. Helfer kaufen
+  6. Orte zeigen
+  7. Casino und den ersten Automaten zeigen
+  Danach läuft das freie Spiel, und spätere Freischaltungen kommen nur noch mit einem kurzen Spotlight und „Neu!“.
 - [ ] Bestehende Spieler bekommen alles sofort (kein Rückschritt)
 - [ ] Dateien: `economy.js` (Freischalt-Stufen), `GameApp.js`, `SearchView.js`, `Shop.js`, `Views.js`
 
