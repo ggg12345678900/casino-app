@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn } from './economy';
 import { sfx } from './sound';
 import { SLOT_THEMES } from './slotThemes';
 
@@ -45,7 +45,7 @@ export function JetonShop({ state, onBuy }) {
           const block = it.blocked ? it.blocked(state, now) : null;
           const can = !maxed && !block && j >= cost;
           return (
-            <button key={it.id} className={`cs-jitem${can ? ' can' : ''}${maxed ? ' maxed' : ''}`} disabled={!can} onClick={() => onBuy(it.id)}>
+            <button key={it.id} data-tut={`jitem-${it.id}`} className={`cs-jitem${can ? ' can' : ''}${maxed ? ' maxed' : ''}`} disabled={!can} onClick={() => onBuy(it.id)}>
               <div className="ic">{it.icon}</div>
               <div className="body">
                 <div className="nm">{it.name}{it.max > 1 && <span className="lv">{lvl}/{it.max}</span>}</div>
@@ -159,9 +159,10 @@ export function Wheel({ state, onSpin, hl }) {
   const [now, setNow] = useState(Date.now());
   const rotRef = useRef(0);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
-  const seg = 360 / WHEEL_PRIZES.length;
+  const prizes = jetonsOn(state) ? WHEEL_PRIZES : WHEEL_PRIZES.map(p => (p.id === 'jetons' ? { ...p, label: '2 Min', icon: '💶', color: '#16a34a' } : p));
+  const seg = 360 / prizes.length;
   const ready = (state.wheelReadyAt || 0) <= now;
-  const bg = `conic-gradient(${WHEEL_PRIZES.map((p, i) => `${p.color} ${i * seg}deg ${(i + 1) * seg}deg`).join(', ')})`;
+  const bg = `conic-gradient(${prizes.map((p, i) => `${p.color} ${i * seg}deg ${(i + 1) * seg}deg`).join(', ')})`;
 
   const spin = () => {
     if (!ready || spinning) return;
@@ -186,7 +187,7 @@ export function Wheel({ state, onSpin, hl }) {
       <div className="cs-wheel">
         <div className="pointer" />
         <div className="disc" style={{ background: bg, transform: `rotate(${rot}deg)`, transition: spinning ? 'transform 4s cubic-bezier(.12,.8,.2,1)' : 'none' }}>
-          {WHEEL_PRIZES.map((p, i) => (
+          {prizes.map((p, i) => (
             <div key={p.id} className="seg" style={{ transform: `rotate(${(i + 0.5) * seg}deg)` }}><span>{p.icon}</span></div>
           ))}
         </div>

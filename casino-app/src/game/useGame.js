@@ -122,7 +122,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   const buyJeton = useCallback((id) => apply(s => E.buyJetonItem(s, id)), [apply]);
   const useBonusSpins = useCallback(() => {
     const n = (stateRef.current && stateRef.current.bonusSpins) || 0;
-    if (n > 0) apply(s => ({ ...s, bonusSpins: 0 }));
+    if (n > 0) apply(s => ({ ...s, bonusSpins: 0, stats: { ...s.stats, bonusUsed: (s.stats.bonusUsed || 0) + 1 } }));
     return n;
   }, [apply]);
   // High-Roller-Automat: spielt mit Jetons statt Geld

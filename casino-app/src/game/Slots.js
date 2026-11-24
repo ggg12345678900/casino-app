@@ -211,7 +211,7 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
             <button className="sl-spin" data-tut="spin" disabled={!canSpin} onClick={spin}>{inFree ? 'FREE' : spinning ? '…' : pause ? '🎆' : 'SPIN'}</button>
           </div>
           {bonusSpins > 0 && !inFree && onUseBonus && (
-            <button className="sl-bonus" disabled={spinning || !!pause || b <= 0} onClick={() => {
+            <button className="sl-bonus" data-tut="bonus" disabled={spinning || !!pause || b <= 0} onClick={() => {
               const n = onUseBonus();
               if (n > 0) { setFree({ left: n, total: n, won: 0, bet: b }); setBanner(`${n} GRATIS-SPINS! Gewinne ×${fmt(freeMult, 1)}`); setTimeout(() => setBanner(null), 2200); }
             }}>🎁 {bonusSpins} Gratis-Spins starten · Einsatz {money(b)}</button>

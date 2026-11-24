@@ -223,7 +223,16 @@ export const QUESTS = [
   { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten', tip: 'Dein erster Automat! Dreh eine Runde.', hint: 'Im Casino kannst du dein Geld vermehren – oder verlieren.', hl: 'game-slot', guide: true, reward: 2, progress: s => (s.stats.bets >= 1 ? 1 : 0) },
   { id: 'wheel',  icon: '🎡', title: 'Dreh das Glücksrad',        tip: 'Alle 8 Minuten gratis: Dreh das Glücksrad!', hint: 'Das Glücksrad findest du in der Casino-Lobby.', hl: 'wheel', guide: true, reward: 2, progress: s => ((s.stats.wheelSpins || 0) >= 1 ? 1 : 0) },
   { id: 'kneipe', icon: '🍺', title: 'Zieh in die Eckkneipe',     tip: 'Spar 40 € und zieh um!', hint: 'Spar 40 € und tippe dann auf „Umziehen“. Dort gibt es mehr Geld und neue Spiele.', hl: 'goal', guide: false, reward: 10, progress: s => (s.location >= 1 ? 1 : Math.min(0.99, s.money / 40)) },
+  // Kapitel 2 in der Eckkneipe: Jetons
+  { id: 'jeton1', icon: '🟣', title: 'Sammle deinen ersten Jeton', tip: 'Neu: Jede 25. Münze bringt einen Jeton 🟣', hint: 'Jetons sind die Casino-Währung. Jede angetippte Münze füllt die lila Leiste unter dem Boden – Helfer zählen nicht.', hl: 'jetonbar', guide: false, reward: 0, rewardJ: 25,
+    progress: s => ((s.stats.jetonsEarned || 0) >= 1 ? 1 : Math.min(0.99, (s.jetonProgress || 0) / JETON_PER_COINS)) },
+  { id: 'jshop', icon: '🛒', title: 'Kauf ein Freispiel-Paket', tip: 'Im Jeton-Shop gibt es Extras fürs Casino. Hol dir 10 Gratis-Spins!', hint: 'Der Jeton-Shop steht in der Casino-Lobby unter den Spielen.', hl: 'jitem-freepack', guide: true, reward: 5,
+    progress: s => ((s.bonusSpins || 0) > 0 || (s.stats.bonusUsed || 0) > 0 ? 1 : 0) },
+  { id: 'bonus', icon: '🎁', title: 'Starte deine Gratis-Spins', tip: 'Tippe hier, um deine Gratis-Spins zu starten!', hint: 'Am Automaten der Kneipe.', hl: 'bonus', guide: true, reward: 10,
+    progress: s => ((s.stats.bonusUsed || 0) > 0 ? 1 : 0) },
 ];
+// Jetons gibt es erst ab der Eckkneipe (vorher ist davon nichts zu sehen)
+export const jetonsOn = (s) => (s.location || 0) >= 1 || !!s.tutorialSkipped;
 // Was ist schon sichtbar? Schritt für Schritt mit dem Tutorial (Wert = nötige Zahl erledigter Aufgaben)
 export const UNLOCK_AT = { tools: 1, helpers: 2, casino: 4, wheel: 5, vip: 5, locations: 6, extras: 6 };
 export const UNLOCK_INFO = {
@@ -237,7 +246,9 @@ export const questDone = (s, i = s.quest) => i < QUESTS.length && QUESTS[i].prog
 export const claimQuest = (s) => {
   const i = s.quest || 0;
   if (!questDone(s, i)) return null;
-  return { ...earn(s, QUESTS[i].reward), quest: i + 1 };
+  const q = QUESTS[i];
+  const paid = earn(s, q.reward);
+  return { ...(q.rewardJ ? addJetons(paid, q.rewardJ) : paid), quest: i + 1 };
 };
 
 export const newAchievements = (s) => ACHIEVEMENTS.filter(a => !(s.achievements || []).includes(a.id) && a.test(s));
@@ -278,7 +289,9 @@ export const spinWheel = (s, rng = Math.random, now = Date.now()) => {
   let text = '';
   const secs = { small: 120, small2: 180, big: 600, jackpot: 3600 }[prize.id];
   if (secs) { const amount = earningsFor(s, secs); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
-  if (prize.id === 'jetons') { next = addJetons(next, 10); text = '+10 Jetons 🟣'; }
+  if (prize.id === 'jetons') {
+    if (jetonsOn(s)) { next = addJetons(next, 10); text = '+10 Jetons 🟣'; } else { const amount = earningsFor(s, 120); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
+  }
   if (prize.id === 'frenzy') { next.frenzyUntil = now + FRENZY_SEC * 1000; text = 'Geldregen! Ab zum Sammeln!'; }
   if (prize.id === 'boost') { next.boostUntil = now + 5 * 60 * 1000; text = 'Helfer verdienen 5 Minuten doppelt!'; }
   if (prize.id === 'charm') {
@@ -456,7 +469,7 @@ export const rollSpawn = (s, rng = Math.random) => {
     if ((s.charms[c.id] || 0) >= c.max) continue;
     if (rng() < 1 / c.odds) return { type: 'charm', charm: c };
   }
-  if (isUnlocked(s, 'casino') && rng() < JETON_COIN_CHANCE) return { type: 'jeton' };
+  if (jetonsOn(s) && rng() < JETON_COIN_CHANCE) return { type: 'jeton' };
   const ids = LOCATIONS[s.location].coins;
   let r = rng() * COIN_WEIGHTS.reduce((a, b) => a + b, 0);
   let idx = 0;
@@ -492,7 +505,7 @@ export const pickup = (s, coinId, gold = false, combo = 0) => {
   const money = coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) * comboMult(combo);
   const { skills, ups } = addXp(s.skills, 'suchen', 1);
   let next = earn({ ...s, skills }, money);
-  const prog = (s.jetonProgress || 0) + (combo >= COMBO_MAX ? 2 : 1);
+  const prog = (s.jetonProgress || 0) + (!jetonsOn(s) ? 0 : combo >= COMBO_MAX ? 2 : 1);
   const gainedJ = Math.floor(prog / JETON_PER_COINS);
   next.jetonProgress = prog % JETON_PER_COINS;
   if (gainedJ) next = addJetons(next, gainedJ);
@@ -596,6 +609,7 @@ export const JETON_POT_SEED = 100;
 export const HIGHROLLER_BETS = [1, 2, 5, 10, 20];
 
 export function addJetons(s, n) {
+  if (!jetonsOn(s)) return s;
   return { ...s, jetons: (s.jetons || 0) + n, stats: { ...s.stats, jetonsEarned: (s.stats.jetonsEarned || 0) + n } };
 }
 export const pickJeton = (s) => addJetons(s, JETON_COIN_VALUE);

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
+import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, jetonsOn, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard, fmtJetons } from './Views';
@@ -31,6 +31,8 @@ const PUMP_USER = { unlocked_diffs: JSON.stringify(['easy', 'medium', 'hard', 'e
 
 let toastId = 0;
 
+const rewardText = (q) => [q.reward ? `+${fmtMoney(q.reward)}` : '', q.rewardJ ? `+${q.rewardJ} 🟣` : ''].filter(Boolean).join(' ');
+
 // Tutorial-Aufgabe oben im Spiel
 function QuestTracker({ state, onClaim }) {
   const i = state.quest || 0;
@@ -48,8 +50,8 @@ function QuestTracker({ state, onClaim }) {
         <div className="bar"><div style={{ width: `${p * 100}%` }} /></div>
       </div>
       {done
-        ? <button data-tut="claim" className="mg-btn green mg-hl" onClick={onClaim} style={{ whiteSpace: 'nowrap' }}>🎁 +{fmtMoney(q.reward)}</button>
-        : <div className="rw">🎁 +{fmtMoney(q.reward)}</div>}
+        ? <button data-tut="claim" className="mg-btn green mg-hl" onClick={onClaim} style={{ whiteSpace: 'nowrap' }}>🎁 {rewardText(q)}</button>
+        : <div className="rw">🎁 {rewardText(q)}</div>}
     </div>
   );
 }
@@ -156,7 +158,8 @@ function tutorialTargets(state, quest, done, activeGame, isMobile) {
     if (!isMobile) chain.push({ id: 'nav-search', tip: 'Zurück zum Sammeln – dort ist der Shop' });
   }
   if (h === 'floor' || h === 'goal') chain.push({ id: 'nav-search', tip: 'Zurück zum Sammeln 🪙' });
-  if (h.startsWith('game-') || h === 'wheel') {
+  if (h === 'bonus') chain.push({ id: `game-slots-${LOCATIONS[state.location].id}`, tip: 'Öffne den Automaten – dort warten deine Gratis-Spins' });
+  if (h.startsWith('game-') || h === 'wheel' || h.startsWith('jitem-') || h === 'bonus') {
     chain.push({ id: 'game-back', tip: 'Zurück zur Casino-Lobby' });
     chain.push({ id: 'nav-casino', tip: 'Ab ins Casino! 🎰' });
   }
@@ -217,8 +220,11 @@ export default function GameApp({ user, onLogout }) {
 
   const move = useCallback(() => {
     const target = LOCATIONS[state.location + 1];
-    if (game.moveLocation()) { sfx.move(); setConfetti(c => c + 1); setMoveModal(target); }
-  }, [game, state]);
+    if (game.moveLocation()) {
+      sfx.move(); setConfetti(c => c + 1); setMoveModal(target);
+      if (state.location === 0 && !state.tutorialSkipped) setTimeout(() => toast({ kind: 'new', icon: '🟣', title: 'NEU FREIGESCHALTET', text: 'Jetons – die Casino-Währung' }), 900);
+    }
+  }, [game, state, toast]);
 
   const onCharm = useCallback((c) => { setConfetti(x => x + 1); setCharmModal(c); }, []);
   const claimQuest = useCallback(() => {
@@ -226,7 +232,7 @@ export default function GameApp({ user, onLogout }) {
     const i = state.quest || 0;
     if (game.claimQuest()) {
       sfx.achievement(); setConfetti(x => x + 1);
-      toast({ kind: 'ach', icon: q.icon, title: 'AUFGABE ERLEDIGT', text: `${q.title} · +${fmtMoney(q.reward)}` });
+      toast({ kind: 'ach', icon: q.icon, title: 'AUFGABE ERLEDIGT', text: `${q.title} · ${rewardText(q)}` });
       unlocksAfter(i).filter(k => UNLOCK_INFO[k] && !isUnlocked(state, k)).forEach((k, n) => setTimeout(() => {
         sfx.levelUp();
         toast({ kind: 'new', icon: UNLOCK_INFO[k].icon, title: 'NEU FREIGESCHALTET', text: UNLOCK_INFO[k].name });
@@ -242,14 +248,14 @@ export default function GameApp({ user, onLogout }) {
   const canMove = nextLoc && state.money >= nextLoc.cost;
   const un = {
     tools: isUnlocked(state, 'tools'), helpers: isUnlocked(state, 'helpers'), casino: isUnlocked(state, 'casino') && derived.games.length > 0,
-    wheel: isUnlocked(state, 'wheel'), locations: isUnlocked(state, 'locations'), extras: isUnlocked(state, 'extras'),
+    wheel: isUnlocked(state, 'wheel'), locations: isUnlocked(state, 'locations'), extras: isUnlocked(state, 'extras'), jetons: jetonsOn(state),
   };
   extrasRef.current = un.extras;
   // Was soll aufleuchten? (nur solange die aktuelle Aufgabe nicht erledigt ist)
   const quest = (state.quest || 0) < QUESTS.length ? QUESTS[state.quest || 0] : null;
   const qDone = quest ? questDone(state) : false;
   const hl = quest && !qDone ? resolveHl(quest.hl, state) : '';
-  const casinoHl = hl === 'wheel' || hl.startsWith('game-');
+  const casinoHl = hl === 'wheel' || hl.startsWith('game-') || hl.startsWith('jitem-') || hl === 'bonus';
   const shopHl = hl.startsWith('tool-') || hl.startsWith('helper-');
   const wheelReady = un.wheel && (state.wheelReadyAt || 0) <= Date.now();
   const canBuyCount = un.tools ? (TOOL_COUNT(state) + (un.helpers ? HELPER_COUNT(state) : 0)) : 0;
@@ -316,19 +322,19 @@ export default function GameApp({ user, onLogout }) {
                   maxBet={derived.maxBet} winBonus={derived.winBonus} prestigeMult={1} globalMult={1} autoSpeed={500}
                   user={PUMP_USER} setUser={() => {}} jackpot={game.jackpot.pool}
                   key={activeGame} themeId={isSlot ? activeGame.slice(6) : undefined} gameId={activeGame}
-                  freeSpins={derived.freeSpins} freeMult={derived.freeMult} turbo={derived.turbo} bonusSpins={state.bonusSpins || 0} onUseBonus={game.useBonusSpins} />
+                  freeSpins={derived.freeSpins} freeMult={derived.freeMult} turbo={derived.turbo} bonusSpins={un.jetons ? state.bonusSpins || 0 : 0} onUseBonus={game.useBonusSpins} />
               </div>
             </div>
           );
         }
-        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={buyJeton} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} />;
+        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={un.jetons ? buyJeton : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} />;
       }
       case 'collection': return <CollectionView state={state} />;
       case 'leaderboard': return <LeaderboardView user={user} />;
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
       default: {
         const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
-          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.casino} />;
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} />;
         if (isMobile || !un.tools) return search;
         return (
           <div className="mg-split">
@@ -348,7 +354,7 @@ export default function GameApp({ user, onLogout }) {
           <div className="coin3d">€</div>
           <div style={{ lineHeight: 1.1 }}>
             <MoneyCounter value={state.money} />
-            {un.casino && <span className="mg-jpill head" title="Jetons – Casino-Währung">{fmtJetons(state.jetons || 0)}</span>}
+            {un.jetons && <span className="mg-jpill head" title="Jetons – Casino-Währung">{fmtJetons(state.jetons || 0)}</span>}
             <div className="rate">
               {derived.incomePerSec > 0 ? `+${fmtMoney(derived.incomePerSec)}/s` : 'Sammle Münzen!'}
               {derived.boost && <span style={{ color: 'var(--purple)' }}> · ⚡2×</span>}

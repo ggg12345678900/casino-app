@@ -296,7 +296,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       </div>
 
       {showJetons && (
-        <div className="mg-jetonbar" title="Jede angetippte Münze füllt die Leiste – Helfer zählen nicht">
+        <div data-tut="jetonbar" className={`mg-jetonbar${hl === 'jetonbar' ? ' mg-hl' : ''}`} title="Jede angetippte Münze füllt die Leiste – Helfer zählen nicht">
           <span>🟣 Nächster Jeton</span>
           <div className="bar"><div style={{ width: `${((state.jetonProgress || 0) / JETON_PER_COINS) * 100}%` }} /></div>
           <b>{state.jetonProgress || 0}/{JETON_PER_COINS}</b>

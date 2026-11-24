@@ -178,6 +178,14 @@ Münzen-Sammeln mit Combo, Werkzeuge nur für Klicks, Helfer, 7 Orte, 15 Casino-
 - [x] Im Umzugs-Fenster steht der Hinweis: „Neuer Automat: …“.
 - [x] Laufende Freispiele am alten Automaten werden vor dem Umzug ausgezahlt oder sind nicht mehr möglich (beim Bauen klären).
 
+### C – Jeton-Tutorial (umgesetzt, noch nicht online)
+- [x] Im Hinterhof ist von Jetons nichts zu sehen (kein Zähler, keine Leiste, kein Shop, keine Jeton-Münzen; das Glücksrad-Feld zeigt dort Geld)
+- [x] Nach dem Umzug in die Eckkneipe: „NEU: Jetons“ und Tutorial-Kapitel 2
+  - Ersten Jeton sammeln → Belohnung 25 Jetons
+  - Freispiel-Paket im Jeton-Shop kaufen (Spotlight)
+  - Gratis-Spins am Automaten starten (Spotlight)
+- [x] Bestehende Spieler mit fertigem Tutorial bekommen das Kapitel ebenfalls
+
 ### Offen
 - [ ] Neuer Name (Vorschläge: The House Always Grows, All In Idle, Stack the House, Jackpot Empire …)
 - [ ] Sprache Englisch
