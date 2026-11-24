@@ -41,7 +41,7 @@ function AppInner() {
   if (!user) return <Login onLogin={setUser} />;
   // Admin: zuerst die Admin-Zentrale, das Spiel nur auf Knopfdruck
   if (user.is_admin && !adminPlays) return <AdminDashboard user={user} onPlay={() => setAdminPlays(true)} onLogout={logout} />;
-  return <GameApp key={user.id} user={user} onLogout={logout} />;
+  return <GameApp key={user.id} user={user} onLogout={logout} onAdmin={user.is_admin ? () => setAdminPlays(false) : null} />;
 }
 
 export default App;

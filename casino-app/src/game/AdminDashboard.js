@@ -393,7 +393,7 @@ export default function AdminDashboard({ user, onPlay, onLogout }) {
       <header className="mg-header">
         <div className="mg-logo"><span className="hat">🛠️</span><span className="word">Admin-Zentrale</span></div>
         <div className="ad-muted" style={{ marginLeft: 'auto' }}>{GAME_NAME} · angemeldet als <b>{user.username}</b></div>
-        <button className="mg-btn small green" onClick={onPlay}>🎮 Spiel öffnen</button>
+        <button className="mg-btn small green" onClick={onPlay}>🎮 Zum Spiel</button>
         <button className="mg-btn-ghost" onClick={onLogout}>Abmelden</button>
       </header>
       <nav className="mg-tabs">

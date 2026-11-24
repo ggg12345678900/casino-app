@@ -166,7 +166,7 @@ function tutorialTargets(state, quest, done, activeGame, isMobile) {
   return chain;
 }
 
-export default function GameApp({ user, onLogout }) {
+export default function GameApp({ user, onLogout, onAdmin }) {
   const [toasts, setToasts] = useState([]);
   const [bigWin, setBigWin] = useState(null);
   const [confetti, setConfetti] = useState(0);
@@ -249,6 +249,13 @@ export default function GameApp({ user, onLogout }) {
     }
   }, [game, state, toast]);
   const closeBigWin = useCallback(() => setBigWin(null), []);
+  // Geheimer Erfolg: 10× schnell aufs Logo tippen
+  const logoRef = useRef([]);
+  const logoTap = useCallback(() => {
+    const now = Date.now();
+    logoRef.current = [...logoRef.current.filter(t => now - t < 4000), now];
+    if (logoRef.current.length >= 10) { logoRef.current = []; game.markSecret('logo'); }
+  }, [game]);
 
   if (!state) return <LoadingScreen />;
 
@@ -295,7 +302,7 @@ export default function GameApp({ user, onLogout }) {
               <button key={id} className={moreTab === id ? 'active' : ''} onClick={() => { sfx.click(); setMoreTab(id); }}>{l}</button>
             ))}
           </div>
-          {moreTab === 'collection' && <CollectionView state={state} />}
+          {moreTab === 'collection' && <CollectionView state={state} user={user} onProfile={game.setProfile} />}
           {moreTab === 'leaderboard' && <LeaderboardView user={user} />}
           {moreTab === 'stats' && <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />}
         </div>
@@ -335,14 +342,14 @@ export default function GameApp({ user, onLogout }) {
             </div>
           );
         }
-        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={un.jetons ? buyJeton : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} me={user.username} />;
+        return <CasinoView onBuySkin={(k, id) => { if (game.buySkin(k, id)) sfx.buy(); else sfx.nope(); }} state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={un.jetons ? buyJeton : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} me={user.username} />;
       }
-      case 'collection': return <CollectionView state={state} />;
+      case 'collection': return <CollectionView state={state} user={user} onProfile={game.setProfile} />;
       case 'leaderboard': return <LeaderboardView user={user} />;
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
       default: {
         const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
-          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={fingerEvery(state)} />;
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={fingerEvery(state)} onMiss={game.addMiss} onSecret={(k) => game.markSecret(k)} />;
         if (isMobile || !un.tools) return search;
         return (
           <div className="mg-split">
@@ -357,7 +364,7 @@ export default function GameApp({ user, onLogout }) {
   return (
     <div className={`mg${isMobile ? ' is-mobile' : ''}${TABS.length > 1 ? ' has-nav' : ''}${settings.lowFx ? ' lowfx' : ''}`}>
       <header className="mg-header">
-        <div className="mg-logo"><span className="hat">{GAME_ICON}</span><span className="word">{GAME_NAME}</span></div>
+        <div className="mg-logo" onClick={logoTap}><span className="hat">{GAME_ICON}</span><span className="word">{GAME_NAME}</span></div>
         <div className="mg-money">
           <div className="coin3d">€</div>
           <div style={{ lineHeight: 1.1 }}>
@@ -371,6 +378,7 @@ export default function GameApp({ user, onLogout }) {
         </div>
         <div className="mg-user">
           <span className="name">👤 {user.username}</span>
+          {onAdmin && <button className="mg-icon-btn mg-adminbtn" title="Zur Admin-Zentrale" onClick={() => { game.saveNow(); onAdmin(); }}>🛠️</button>}
           <button className="mg-icon-btn" title="Feedback geben" onClick={() => setFeedbackOpen(true)}>💬</button>
           <button className="mg-icon-btn" title="Einstellungen" onClick={() => { sfx.click(); setSettingsOpen(true); }}>⚙️</button>
         </div>
@@ -453,7 +461,7 @@ export default function GameApp({ user, onLogout }) {
 
       {quest && (quest.guide || qDone) && !state.tutorialSkipped && !menu && !settingsOpen && !feedbackOpen && !charmModal && !moveModal && !game.welcome && !bigWin && (
         <Spotlight targets={tutorialTargets(state, quest, qDone, curTab === 'casino' ? activeGame : null, isMobile)} blocking
-          onSkip={(state.quest || 0) < 2 ? () => game.skipTutorial() : null} onSettings={() => setSettingsOpen(true)} />
+          onSkip={(state.quest || 0) < 2 ? () => game.skipTutorial() : null} onSettings={() => setSettingsOpen(true)} onAdmin={onAdmin ? () => { game.saveNow(); onAdmin(); } : null} />
       )}
       {bigWin && <BigWin win={bigWin} onClose={closeBigWin} />}
       {settingsOpen && (
@@ -464,11 +472,11 @@ export default function GameApp({ user, onLogout }) {
           onReset={() => { game.resetGame(); setTab('search'); setActiveGame(null); }} />
       )}
       {menu === 'title' && (
-        <TitleScreen user={user} onPlay={() => setMenu(null)} onSettings={() => setSettingsOpen(true)} onCredits={() => setCreditsOpen(true)}
+        <TitleScreen user={user} onPlay={() => setMenu(null)} onSettings={() => setSettingsOpen(true)} onCredits={() => { setCreditsOpen(true); game.markSecret('credits', ((state.secrets || {}).credits || 0) + 1); }}
           onLogout={() => { game.saveNow(); onLogout(); }} />
       )}
       {creditsOpen && <CreditsModal onClose={() => setCreditsOpen(false)} />}
-      {feedbackOpen && <Feedback state={state} onClose={() => setFeedbackOpen(false)} />}
+      {feedbackOpen && <Feedback state={state} onClose={() => setFeedbackOpen(false)} onSent={() => game.markSecret('feedback')} />}
       <Confetti burst={confetti} />
 
       <div className="mg-toasts">

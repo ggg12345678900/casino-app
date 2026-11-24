@@ -41,7 +41,7 @@ function Coin({ item, onPick }) {
   if (!coin && !charm && !item.jeton) return null;
   const style = {
     left: `${item.x}%`, top: `${item.y}%`,
-    '--size': `${charm ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
+    '--size': `${charm || !coin ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
     animationDuration: `${life}s`,
   };
   const pick = (e) => { e.stopPropagation(); onPick(item, e); };
@@ -114,7 +114,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum, fingerEvery = 0 }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum, fingerEvery = 0, onMiss, onSecret }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -183,6 +183,17 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     return () => clearInterval(id);
   }, []);
 
+  // Geheimer Erfolg „Zen-Meister“: 60 s aufs Münzfeld schauen, ohne zu tippen
+  const lastTapRef = useRef(Date.now());
+  const secretRef = useRef(onSecret);
+  secretRef.current = onSecret;
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === 'hidden') { lastTapRef.current = Date.now(); return; }
+      if (Date.now() - lastTapRef.current > 60000 && secretRef.current) { secretRef.current('zen'); lastTapRef.current = Date.now() + 1e12; }
+    }, 2000);
+    return () => clearInterval(id);
+  }, []);
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const pickAtRef = useRef(null);
@@ -227,6 +238,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   const pick = (item, e) => { const { x, y } = posOf(e); pickAt(item, x, y, false); };
   // auto: vom goldenen Finger aufgehoben (keine Combo)
   const pickAt = (item, x, y, auto) => {
+    if (!auto) lastTapRef.current = Date.now();
     setItems(cur => cur.filter(o => o.id !== item.id));
     if (item.charm) {
       if (onPickCharm(item.charm.id)) { sfx.charm(); onCharm(item.charm); }
@@ -275,6 +287,8 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   pickAtRef.current = pickAt;
 
   const missClick = (e) => {
+    if (onMiss) onMiss();
+    lastTapRef.current = Date.now();
     if (comboRef.current.n > 0) { comboRef.current.n = 0; setCombo(0); }
     if (Math.random() > 0.35) return;
     const { x, y } = posOf(e);
@@ -306,7 +320,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     <div>
       {showGoal && <GoalBanner state={state} onMove={onMove} hl={hl === 'goal'} />}
 
-      <div ref={floorRef} data-tut="floor" className={`mg-floor floor-${loc.id}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} onPointerDown={missClick}>
+      <div ref={floorRef} data-tut="floor" className={`mg-floor floor-${loc.id} cskin-${(state.cosmetics || {}).chip || 'classic'} fskin-${(state.cosmetics || {}).floor || 'default'}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} onPointerDown={missClick}>
         <div className="mg-floor-ambient" />
         {deco.map((d, i) => (
           <div key={i} className="mg-floor-deco" style={{ left: `${d.x}%`, top: `${d.y}%`, transform: `rotate(${d.r}deg)` }}>{d.e}</div>
