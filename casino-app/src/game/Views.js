@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn, ALBUM, ALBUM_TOTAL, albumPieces, albumSets, ALBUM_SET_BONUS, ALBUM_CHANCE, TIERS } from './economy';
 import { sfx } from './sound';
 import { SLOT_THEMES } from './slotThemes';
 
@@ -317,6 +317,46 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeto
 }
 
 // ─── Sammlung ──────────────────────────────────────────────────────────────
+// Münz-Sammelalbum
+function AlbumPanel({ state }) {
+  const album = state.album || {};
+  return (
+    <div className="mg-panel mg-album" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="disp" style={{ fontSize: 22 }}>📖 Sammelalbum · {albumPieces(state)}/{ALBUM_TOTAL}</div>
+        <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#ffc83d66', background: '#ffc83d1a', fontSize: 13 }}>Sets: {albumSets(state)} · +{Math.round(albumSets(state) * ALBUM_SET_BONUS * 100)}% Münzwert</span>
+      </div>
+      <div style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 12px' }}>
+        Seltene Münzen findest du nur beim Antippen (ca. 1 : {Math.round(1 / ALBUM_CHANCE)}) – und nur die Münzen des Orts, an dem du gerade bist.
+        Jedes volle Set: dauerhaft +{Math.round(ALBUM_SET_BONUS * 100)} % Münzwert. Doppelte werden zu Jetons.
+      </div>
+      <div className="mg-album-sets">
+        {LOCATIONS.map((l, li) => {
+          const set = ALBUM[l.id] || [];
+          const done = set.every(([id]) => (album[id] || 0) > 0);
+          const reached = li <= state.location;
+          return (
+            <div key={l.id} className={`mg-album-set${done ? ' done' : ''}${reached ? '' : ' far'}`}>
+              <div className="hd">{reached ? `${l.icon} ${l.name}` : '🔒 ???'}{done && ' ✅'}</div>
+              <div className="pcs">
+                {set.map(([id, icon, name]) => {
+                  const n = album[id] || 0;
+                  return (
+                    <div key={id} className={`pc${n ? ' got' : ''}`} title={n ? name : '???'}>
+                      <span>{n ? icon : '?'}</span>
+                      {n > 1 && <b>×{n}</b>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function CollectionView({ state }) {
   const total = CHARMS.reduce((a, c) => a + c.max, 0);
   const have = CHARMS.reduce((a, c) => a + (state.charms[c.id] || 0), 0);
@@ -328,14 +368,20 @@ export function CollectionView({ state }) {
           <div className="disp" style={{ fontSize: 22 }}>🏆 Erfolge · {got.length}/{ACHIEVEMENTS.length}</div>
           <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#ffc83d66', background: '#ffc83d1a', fontSize: 13 }}>Bonus: +{Math.round(got.length * ACHIEVEMENT_BONUS * 100)}% auf alles</span>
         </div>
+        <div className="mg-tierbar">
+          {TIERS.slice(1).map((t, i) => {
+            const all = ACHIEVEMENTS.filter(a => a.tier === i + 1);
+            return <span key={t} className={`mg-tier t${i + 1}`}>{t} {all.filter(a => got.includes(a.id)).length}/{all.length}</span>;
+          })}
+        </div>
         <div className="mg-ach">
-          {ACHIEVEMENTS.map(a => {
+          {[...ACHIEVEMENTS].sort((a, b) => (got.includes(b.id) - got.includes(a.id)) || (a.tier - b.tier)).map(a => {
             const ok = got.includes(a.id);
             return (
-              <div key={a.id} className={`mg-ach-item ${ok ? 'got' : 'locked'}`}>
+              <div key={a.id} className={`mg-ach-item ${ok ? 'got' : 'locked'} t${a.tier}`}>
                 <div className="ic">{a.icon}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14 }}>{a.name}</div>
+                  <div style={{ fontWeight: 900, fontSize: 14 }}>{a.name} <span className={`mg-tier t${a.tier}`}>{TIERS[a.tier]}</span></div>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>{a.desc}</div>
                 </div>
               </div>
@@ -343,6 +389,7 @@ export function CollectionView({ state }) {
           })}
         </div>
       </div>
+      <AlbumPanel state={state} />
       <div className="mg-panel" style={{ marginBottom: 16 }}>
         <div className="disp" style={{ fontSize: 22 }}>🍀 Glücksbringer · {have}/{total}</div>
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
@@ -377,16 +424,25 @@ export function LeaderboardView({ user }) {
   }, [by]);
   const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
   const comboBadge = (n) => (n > 0 ? <span className="mg-lvl" title="Beste Combo" style={{ color: '#ffb36b', borderColor: '#ff8a3d66', background: '#ff8a3d1a' }}>🔥 ×{fmt(n, 0)}</span> : null);
-  const value = (r) => (by === 'combo'
-    ? <b className="disp" style={{ color: '#ffb36b', fontSize: 20, fontWeight: 400 }}>🔥 ×{fmt(r.max_combo, 0)}</b>
-    : <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>);
+  const value = (r) => {
+    if (by === 'combo') return <b className="disp" style={{ color: '#ffb36b', fontSize: 20, fontWeight: 400 }}>🔥 ×{fmt(r.max_combo, 0)}</b>;
+    if (by === 'bigwin') return <b style={{ color: 'var(--gold)' }}>{fmtMoney(r.value)}</b>;
+    if (by === 'jackpots') return <b style={{ color: 'var(--gold)' }}>💰 {fmt(r.value, 0)}×</b>;
+    if (by === 'jetons') return <b style={{ color: '#e9d5ff' }}>{fmt(r.value, 0)} 🟣</b>;
+    if (by === 'album') return <b style={{ color: 'var(--gold)' }}>📖 {fmt(r.value, 0)}/{ALBUM_TOTAL}</b>;
+    return <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>;
+  };
+  const BOARDS = [['money', '💰 Vermögen', 'Sortiert nach Ort, dann Gesamt verdient'], ['combo', '🔥 Combo', 'Wer hat die meisten Münzen am Stück erwischt?'],
+    ['bigwin', '🎆 Größter Gewinn', 'Der größte Einzelgewinn im Casino'], ['jackpots', '💰 Jackpots', 'Wer hat den Jackpot am öftesten geknackt?'],
+    ['jetons', '🟣 Jetons', 'Insgesamt verdiente Jetons'], ['album', '📖 Album', 'Die meisten gefundenen Album-Stücke']];
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
-      <div className="mg-shop-tabs" style={{ marginBottom: 14 }}>
-        <button className={`mg-shop-tab ${by === 'money' ? 'active' : ''}`} onClick={() => setBy('money')}>💰 Vermögen</button>
-        <button className={`mg-shop-tab ${by === 'combo' ? 'active' : ''}`} onClick={() => setBy('combo')}>🔥 Combo-Rekord</button>
+      <div className="mg-lb-tabs">
+        {BOARDS.map(([id, label]) => (
+          <button key={id} className={by === id ? 'active' : ''} onClick={() => setBy(id)}>{label}</button>
+        ))}
       </div>
-      <div className="mg-label">{by === 'combo' ? 'Wer hat die meisten Münzen am Stück erwischt?' : 'Sortiert nach Ort, dann Gesamt verdient'}</div>
+      <div className="mg-label">{BOARDS.find(b => b[0] === by)[2]}</div>
       {!data && <div style={{ color: 'var(--muted)' }}>Lade…</div>}
       {data && data.me && !data.top.some(r => r.username === data.me.username) && (
         <div className="mg-rank me">

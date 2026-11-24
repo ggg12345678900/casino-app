@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, jetonsOn, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
+import { ADMIN_ACTION_TEXT, LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, jetonsOn, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard, fmtJetons } from './Views';
@@ -176,6 +176,7 @@ export default function GameApp({ user, onLogout }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [moreTab, setMoreTab] = useState('collection');
+  const [dismissedAnn, setDismissedAnn] = useState(() => { try { return +localStorage.getItem('mogul_ann') || 0; } catch { return 0; } });
   const extrasRef = useRef(false);
 
   const toast = useCallback((t) => {
@@ -189,6 +190,7 @@ export default function GameApp({ user, onLogout }) {
     onBigWin: (w) => { sfx.bigWin(); setBigWin(w); },
     onJackpotNews: (w) => { sfx.win(); toast({ kind: 'ach', icon: '🎉', title: 'JACKPOT GEKNACKT', text: `${w.username} hat ${fmtMoney(w.amount)} bei ${GAME_INFO[w.game]?.name || 'einem Spiel'} geknackt!` }); },
     onJackpotCooldown: (min) => toast({ icon: '⏳', title: 'JACKPOT GESPERRT', text: `Du hast vor Kurzem schon geknackt. Wieder möglich in ${min} min.` }),
+    onAdmin: (a) => { const t = ADMIN_ACTION_TEXT(a); if (t) { sfx.achievement(); toast({ kind: 'new', icon: a.type === 'message' ? '📢' : '🛠️', title: 'NACHRICHT VOM ADMIN', text: t }); } },
     onInsurance: (amt) => { sfx.win(); toast({ icon: '🛡️', title: 'VERSICHERUNG', text: `Verlust von ${fmtMoney(amt)} erstattet. Wieder bereit in 1 Stunde.` }); },
     onJetonJackpot: (pot) => { sfx.bigWin(); setConfetti(c => c + 1); toast({ kind: 'ach', icon: '💎', title: 'JETON-JACKPOT!', text: `+${fmtJetons(pot)} am High-Roller-Automaten` }); },
     onJackpot: (w) => { sfx.bigWin(); setTimeout(() => sfx.bigWin(), 900); setConfetti(c => c + 1); setBigWin({ ...w, jackpot: true, multiplier: 0 }); },
@@ -226,6 +228,11 @@ export default function GameApp({ user, onLogout }) {
     }
   }, [game, state, toast]);
 
+  const onAlbum = useCallback((a) => {
+    if (a.setDone) { sfx.bigWin(); setConfetti(c => c + 1); toast({ kind: 'ach', icon: '📖', title: 'ALBUM-SET KOMPLETT!', text: `Dauerhaft +10 % Münzwert` }); }
+    else if (a.dup) toast({ icon: a.icon, title: 'DOPPELTES ALBUM-STÜCK', text: a.jetons ? `${a.name} → +${a.jetons} Jetons 🟣` : a.name });
+    else { sfx.charm(); toast({ kind: 'new', icon: a.icon, title: 'NEU IM SAMMELALBUM', text: a.name }); }
+  }, [toast]);
   const onCharm = useCallback((c) => { setConfetti(x => x + 1); setCharmModal(c); }, []);
   const claimQuest = useCallback(() => {
     const q = QUESTS[state.quest || 0];
@@ -334,7 +341,7 @@ export default function GameApp({ user, onLogout }) {
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
       default: {
         const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
-          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} />;
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} />;
         if (isMobile || !un.tools) return search;
         return (
           <div className="mg-split">
@@ -378,6 +385,13 @@ export default function GameApp({ user, onLogout }) {
             </button>
           ))}
         </nav>
+      )}
+
+      {game.announcement && game.announcement.text && dismissedAnn !== game.announcement.id && (
+        <div className="mg-announce">
+          <span>📢</span><div>{game.announcement.text}</div>
+          <button onClick={() => { setDismissedAnn(game.announcement.id); try { localStorage.setItem('mogul_ann', String(game.announcement.id)); } catch {} }} aria-label="Schließen">✕</button>
+        </div>
       )}
 
       <main className="mg-main">

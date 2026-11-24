@@ -8,3 +8,4 @@ casino-app/build/
 
 .env.local
 .env*.local
+test-builds/

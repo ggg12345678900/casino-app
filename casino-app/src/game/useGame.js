@@ -20,13 +20,13 @@ const writeLocal = (userId, s) => {
  * Hält den kompletten Spielstand, lässt die Zeit laufen und speichert.
  * Events (Funde, Glücksbringer, Level-Ups) gehen über onEvent an die UI.
  */
-export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot } = {}) {
+export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot, onAdmin } = {}) {
   const [state, setState] = useState(null);
   const [welcome, setWelcome] = useState(null); // { seconds, earned }
   const stateRef = useRef(null);
   stateRef.current = state;
   const cbRef = useRef({});
-  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot };
+  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot, onAdmin };
   const [globalJp, setGlobalJp] = useState({ pool: null, wins: [] });
   const pendingRef = useRef(0);       // noch nicht gemeldete Jackpot-Einzahlungen
   const lastWinRef = useRef(null);    // höchste bekannte Gewinn-ID
@@ -238,6 +238,28 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     return () => { clearInterval(a); clearInterval(b); flush(); };
   }, [state === null, user.username]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Postfach: Änderungen aus dem Admin-Menü und Ankündigungen (alle 20 s)
+  const [announcement, setAnnouncement] = useState(null);
+  useEffect(() => {
+    if (!ONLINE || !state) return undefined;
+    let stop = false;
+    const check = () => hasToken() && api.inbox().then(res => {
+      if (stop || !res || res.error) return;
+      setAnnouncement(res.announcement || null);
+      const acts = res.actions || [];
+      if (!acts.length) return;
+      let s = stateRef.current;
+      acts.forEach(a => { s = E.applyAdminAction(s, a); });
+      stateRef.current = s;
+      setState(s);
+      acts.forEach(a => cbRef.current.onAdmin && cbRef.current.onAdmin(a));
+      setTimeout(() => saveServer(), 500);
+    }).catch(() => {});
+    check();
+    const id = setInterval(check, 20000);
+    return () => { stop = true; clearInterval(id); };
+  }, [state === null, saveServer]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Erfolge prüfen (jede Sekunde)
   useEffect(() => {
     if (!state) return undefined;
@@ -261,7 +283,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   }, [user.id]);
 
   return {
-    state, derived: state ? E.derive(state) : null, welcome,
+    state, derived: state ? E.derive(state) : null, welcome, announcement,
     jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
     pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };

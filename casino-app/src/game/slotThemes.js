@@ -29,6 +29,22 @@ export const SLOT_THEMES = {
     name: 'Lunar Jackpot', icon: '🌕', syms: ['🪐', '🛸', '🚀', '👽', '💫', '🌕'], scatter: '☄️',
     c1: '#334155', c2: '#020617', neon: '#c4b5fd', glass: '#f5f3ff',
   },
+  mars: {
+    name: 'Red Planet Riches', icon: '🔴', syms: ['🪨', '🛰️', '🤖', '🔭', '💎', '🔴'], scatter: '🌋',
+    c1: '#b91c1c', c2: '#450a0a', neon: '#fb923c', glass: '#fff7ed',
+  },
+  station: {
+    name: 'Zero-G Spins', icon: '🛰️', syms: ['🔩', '📡', '🧑‍🚀', '🌍', '💫', '🛰️'], scatter: '🌠',
+    c1: '#1d4ed8', c2: '#0c1445', neon: '#93c5fd', glass: '#eff6ff',
+  },
+  blackhole: {
+    name: 'Event Horizon', icon: '🕳️', syms: ['🌀', '⏳', '☄️', '🌑', '⚫', '🕳️'], scatter: '✴️',
+    c1: '#18181b', c2: '#000000', neon: '#f472b6', glass: '#fdf2f8',
+  },
+  multiverse: {
+    name: 'Infinity Jackpot', icon: '🌌', syms: ['🪞', '⚛️', '🧬', '🌈', '💠', '♾️'], scatter: '🌌',
+    c1: '#7e22ce', c2: '#0f172a', neon: '#5eead4', glass: '#f0fdfa',
+  },
 };
 
 // Gewichte (Häufigkeit) pro Walzenposition und Auszahlung bei 3 Gleichen auf der Linie

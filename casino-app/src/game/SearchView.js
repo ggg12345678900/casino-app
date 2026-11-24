@@ -14,6 +14,10 @@ const DECO = {
   vegas: ['🌴', '🕶️', '🎰', '💃', '🪩'],
   monaco: ['🍾', '⚓', '🛥️', '⌚', '🦞'],
   mond: ['🌑', '🛰️', '⭐', '🪐', '👨‍🚀'],
+  mars: ['🪨', '🏜️', '🤖', '🌋', '🛸'],
+  station: ['🔩', '📡', '🧪', '🌍', '🛰️'],
+  blackhole: ['🌀', '☄️', '✴️', '⏳', '🌑'],
+  multiverse: ['🪞', '⚛️', '🌈', '🧬', '💠'],
 };
 
 let uid = 0;
@@ -110,7 +114,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -219,6 +223,10 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       const ang = Math.random() * Math.PI * 2;
       const dist = 30 + Math.random() * 50;
       list.push({ id: ++uid, kind: 'chip', x, y, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist - 30, rot: Math.random() * 720 - 360, text: '✨' });
+    }
+    if (r.album) {
+      list.push({ id: ++uid, kind: 'gold', x, y: y - 80, text: `📖 ${r.album.icon} ${r.album.name}${r.album.dup ? ' (doppelt)' : '!'}` });
+      if (onAlbum) onAlbum(r.album);
     }
     if (r.jetons && showJetons) list.push({ id: ++uid, kind: 'jeton', x, y: y - 50, text: `🟣 +${r.jetons} Jeton` });
     if (r.levelUp) list.push({ id: ++uid, kind: 'level', x, y: y - 36, text: `⬆️ Sammeln Lv ${r.levelUp}` });

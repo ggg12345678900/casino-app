@@ -186,6 +186,14 @@ Münzen-Sammeln mit Combo, Werkzeuge nur für Klicks, Helfer, 7 Orte, 15 Casino-
   - Gratis-Spins am Automaten starten (Spotlight)
 - [x] Bestehende Spieler mit fertigem Tutorial bekommen das Kapitel ebenfalls
 
+### D – Grind-Paket & Admin (umgesetzt, noch nicht online)
+- [x] 4 neue Orte nach dem Mond: Mars-Casino, Raumstation Orbit, Schwarzes Loch, Paralleluniversum (je neue Chips, Helfer, Werkzeuge, Automat; per Simulation abgestimmt, gesamt ca. 8 h bei normalem Spiel)
+- [x] Münz-Sammelalbum: 11 Sets × 4 seltene Münzen (nur durch Antippen, ca. 1:300), volles Set = +10 % Münzwert, Doppelte = 3 Jetons
+- [x] Gestufte Erfolge (Bronze bis Diamant), 29 neue Erfolge
+- [x] Neue Ranglisten: Größter Gewinn, Jackpots, Jetons, Album
+- [x] Admin-Zentrale (Login als admin): Übersicht, Live-Spieler, Spielerliste mit Suche/Sortierung, Spieler-Details, Passwort setzen (auch zufällig), Name ändern, Geld/Jetons geben oder setzen, Ort und VIP setzen, persönliche Nachricht, Spielstand ansehen/herunterladen/bearbeiten/zurücksetzen, sperren, aus Rangliste ausblenden, Admin-Rechte, Account löschen, Feedback (erledigt/löschen), Jackpot setzen, Ankündigung an alle, Geschenk an alle
+- [x] Lokale Testversion als Zip (Doppelklick auf index.html)
+
 ### Offen
 - [ ] Neuer Name (Vorschläge: The House Always Grows, All In Idle, Stack the House, Jackpot Empire …)
 - [ ] Sprache Englisch

@@ -176,8 +176,14 @@ export const api = {
       body: JSON.stringify({ save, reset })
     }).then(r => r.json()),
 
+  inbox: () => fetch(`${BASE}/inbox`, { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()),
+  adm: (path, method = 'GET', body) => fetch(`${BASE}/admin/${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok && !j.error) j.error = `Fehler ${r.status}`; return j; }),
   mogulLeaderboard: (by = 'money') =>
-    fetch(`${BASE}/mogul-leaderboard${by === 'combo' ? '?by=combo' : ''}`, {
+    fetch(`${BASE}/mogul-leaderboard${by !== 'money' ? `?by=${by}` : ''}`, {
       headers: { Authorization: `Bearer ${getToken()}` }
     }).then(r => r.json()),
 
