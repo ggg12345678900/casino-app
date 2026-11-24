@@ -139,6 +139,17 @@ const initDB = async () => {
     )
   `);
   await pool.query(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS live_wins (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      username TEXT,
+      game TEXT,
+      amount DOUBLE PRECISION,
+      mult DOUBLE PRECISION,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
   // Admin erstellen / Passwort immer aktuell halten
   const adminPass = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
@@ -961,6 +972,51 @@ app.delete('/api/admin/delete-user/:id', adminAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+
+// ═══ Absturzberichte (landen im Admin-Menü unter Feedback, Kategorie „absturz“) ═══
+const crashCounter = new Map();
+app.post('/api/crash', async (req, res) => {
+  let user = null;
+  try { const t = req.headers.authorization?.split(' ')[1]; if (t) user = jwt.verify(t, SECRET); } catch {}
+  const who = user ? `u${user.id}` : req.ip;
+  const hour = Math.floor(Date.now() / 3600000);
+  const key = `${who}:${hour}`;
+  const n = (crashCounter.get(key) || 0) + 1;
+  crashCounter.set(key, n);
+  if (crashCounter.size > 5000) crashCounter.clear();
+  if (n > 10) return res.json({ success: true, skipped: true });
+  const b = req.body || {};
+  const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const message = `💥 ${str(b.message, 500) || 'Unbekannter Fehler'}\n\n${str(b.stack, 2000)}\n\n${str(b.extra, 1500)}`;
+  const context = `${str(b.url, 200)} · ${str(b.ua, 250)}`;
+  await pool.query(
+    `INSERT INTO feedback (user_id, username, rating, category, message, context) VALUES ($1, $2, 1, 'absturz', $3, $4)`,
+    [user ? user.id : null, user ? user.username : 'unbekannt', message, context]);
+  console.warn('💥 Absturzbericht:', user ? user.username : 'unbekannt', str(b.message, 200));
+  res.json({ success: true });
+});
+
+// ═══ Live-Gewinne: echte Gewinne aller Spieler ═══════════════════════════════
+const LIVE_GAME_RE = /^[a-z0-9-]{2,30}$/;
+app.post('/api/wins', auth, async (req, res) => {
+  const b = req.body || {};
+  const amount = Number(b.amount); const mult = Number(b.mult);
+  if (!LIVE_GAME_RE.test(String(b.game || '')) || !Number.isFinite(amount) || amount <= 0 || amount > 1e40 || !Number.isFinite(mult) || mult < 2 || mult > 100000)
+    return res.status(400).json({ error: 'Ungültig' });
+  // höchstens ein Eintrag alle 3 Sekunden pro Spieler
+  const last = await pool.query(`SELECT 1 FROM live_wins WHERE user_id = $1 AND created_at > NOW() - INTERVAL '3 seconds' LIMIT 1`, [req.user.id]);
+  if (last.rows.length) return res.json({ success: true, skipped: true });
+  const u = await pool.query(`SELECT username, COALESCE(banned, FALSE) AS banned, COALESCE(lb_hidden, FALSE) AS hidden, is_admin FROM users WHERE id = $1`, [req.user.id]);
+  if (!u.rows[0] || u.rows[0].banned || u.rows[0].hidden || u.rows[0].is_admin) return res.json({ success: true, skipped: true });
+  await pool.query(`INSERT INTO live_wins (user_id, username, game, amount, mult) VALUES ($1, $2, $3, $4, $5)`,
+    [req.user.id, u.rows[0].username, b.game, amount, mult]);
+  if (Math.random() < 0.05) await pool.query(`DELETE FROM live_wins WHERE id < (SELECT COALESCE(MAX(id), 0) - 500 FROM live_wins)`);
+  res.json({ success: true });
+});
+app.get('/api/wins', auth, async (req, res) => {
+  const r = await pool.query(`SELECT id, username, game, amount, mult, created_at FROM live_wins ORDER BY id DESC LIMIT 12`);
+  res.json(r.rows);
+});
 
 // ═══ Postfach: Admin-Aktionen & Ankündigung für den Spieler ═════════════════
 const ADMIN_ACTION_TYPES = ['money', 'jetons', 'location', 'vip', 'reset', 'replace', 'income', 'message'];

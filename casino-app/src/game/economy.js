@@ -432,6 +432,7 @@ export const newGame = () => ({
   jetonPot: 100,      // Jackpot des High-Roller-Automaten (in Jetons)
   insuranceReadyAt: 0,
   album: {},          // Sammelalbum: id -> Anzahl
+  autoFinger: 0,      // Stufe des goldenen Fingers
   skills: { suchen: { level: 0, xp: 0 }, management: { level: 0, xp: 0 }, zocken: { level: 0, xp: 0 } },
   stats: {
     totalEarned: 0, clicks: 0, searches: 0, finds: 0, goldChips: 0, maxCombo: 0, sacks: 0, wheelSpins: 0,
@@ -774,6 +775,21 @@ export const recordJetonBet = (s, didWin, amount, multiplier, bet) => {
     return { state: { ...s, jetons: (s.jetons || 0) + pot, jetonPot: JETON_POT_SEED, stats: { ...st, jetonsWon: st.jetonsWon + pot } }, pot };
   }
   return { state: { ...s, jetonPot: (s.jetonPot || JETON_POT_SEED) + bet * 0.1, stats: st }, pot: 0 };
+};
+
+// ─── Goldener Finger (ab dem Mond): tippt automatisch Chips an ──────────────
+// Zählt wie eigenes Antippen (Münzwert, Jeton-Leiste, Album), aber ohne Combo.
+export const FINGER_MIN_LOC = 6;
+export const FINGER_LEVELS = [
+  { cost: 1e16, every: 5 }, { cost: 3e17, every: 4 }, { cost: 1e19, every: 3 },
+  { cost: 3e21, every: 2 }, { cost: 1e24, every: 1.5 }, { cost: 1e27, every: 1 },
+];
+export const fingerEvery = (s) => ((s.autoFinger || 0) > 0 ? FINGER_LEVELS[Math.min(s.autoFinger, FINGER_LEVELS.length) - 1].every : 0);
+export const buyFinger = (s) => {
+  const lvl = s.autoFinger || 0;
+  const next = FINGER_LEVELS[lvl];
+  if (!next || s.location < FINGER_MIN_LOC || s.money < next.cost) return null;
+  return { ...s, money: s.money - next.cost, autoFinger: lvl + 1 };
 };
 
 // ─── Änderungen aus dem Admin-Menü ─────────────────────────────────────────

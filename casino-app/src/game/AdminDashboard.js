@@ -313,7 +313,7 @@ function FeedbackList() {
         <div key={f.id} className={`ad-fb${f.done ? ' done' : ''}`}>
           <div className="ad-fb-head">
             <b>{f.username}</b> <span style={{ color: 'var(--gold)' }}>{'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)}</span>
-            <em className="ad-tag">{f.category}</em> <span className="ad-muted">{date(f.created_at)}</span>
+            <em className={`ad-tag${f.category === 'absturz' ? ' red' : ''}`}>{f.category}</em> <span className="ad-muted">{date(f.created_at)}</span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
               <button className="ad-mini" title="Erledigt" onClick={() => api.adm(`feedback/${f.id}/done`, 'POST').then(load)}>{f.done ? '↩️' : '✅'}</button>
               <button className="ad-mini" title="Löschen" onClick={() => api.adm(`feedback/${f.id}`, 'DELETE').then(load)}>🗑️</button>
