@@ -41,7 +41,7 @@ function Coin({ item, onPick }) {
   if (!coin && !charm && !item.jeton) return null;
   const style = {
     left: `${item.x}%`, top: `${item.y}%`,
-    '--size': `${charm ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
+    '--size': `${charm || !coin ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
     animationDuration: `${life}s`,
   };
   const pick = (e) => { e.stopPropagation(); onPick(item, e); };
