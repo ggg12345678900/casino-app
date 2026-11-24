@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { fmtMoney, fmt } from './economy';
 import { sfx } from './sound';
 import {
@@ -69,9 +69,11 @@ function Reel({ strip, offset, duration, spinning, theme, winRow, scatterGlow })
   );
 }
 
-export default function Slots({ balance, setBalance, addResult, maxBet = 5, winBonus = 0, jackpot = 0, themeId = 'casino', gameId = 'slots' }) {
+export default function Slots({ balance, setBalance, addResult, maxBet = 5, winBonus = 0, jackpot = 0, themeId = 'casino', gameId = 'slots',
+  freeSpins = FREE_SPINS, freeMult = FREE_SPIN_MULT, turbo = false, bonusSpins = 0, onUseBonus, betPresets, money = fmtMoney }) {
   const theme = SLOT_THEMES[themeId] || SLOT_THEMES.casino;
-  const presets = [0.01, 0.05, 0.1, 0.25, 0.5, 1].map(f => Math.max(0.01, +(maxBet * f).toPrecision(2)));
+  const presets = betPresets || [0.01, 0.05, 0.1, 0.25, 0.5, 1].map(f => Math.max(0.01, +(maxBet * f).toPrecision(2)));
+  const stopMs = useMemo(() => (turbo ? STOP_MS.map(x => Math.round(x / 2)) : STOP_MS), [turbo]);
   const [bet, setBet] = useState(presets[2]);
   const [reels, setReels] = useState(() => [0, 1, 2].map(() => ({ strip: [roll(), roll(), roll()], offset: 0, duration: 0 })));
   const [spinning, setSpinning] = useState(false);
@@ -113,14 +115,14 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
       return { strip: [...visible, ...filler, ...grid[i]], offset: 0, duration: 0 };
     }));
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      setReels(cur => cur.map((r, i) => ({ ...r, offset: r.strip.length - 3, duration: STOP_MS[i] })));
+      setReels(cur => cur.map((r, i) => ({ ...r, offset: r.strip.length - 3, duration: stopMs[i] })));
     }));
     const ticker = setInterval(() => sfx.tick(), 85);
     setTimeout(() => {
       clearInterval(ticker);
       const line = grid.map(col => col[1]);
       const scatters = grid.flat().filter(x => x === S).length;
-      const fsMult = isFree ? FREE_SPIN_MULT : 1;
+      const fsMult = isFree ? freeMult : 1;
       const base = linePay(line);
       let mult = base * fsMult * (base >= 1 ? bonus : 1);
       const amount = +(b * mult).toFixed(2);
@@ -151,18 +153,18 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
       if (scatters >= 3) {
         sfx.bigWin();
         setWin(w => ({ ...(w || { amount: 0, mult: 0 }), scatter: true }));
-        setFree(f => ({ left: (isFree ? f.left : 0) + FREE_SPINS, total: (isFree ? f.total : 0) + FREE_SPINS, won: isFree ? f.won : 0, bet: b }));
-        setBanner(isFree ? `+${FREE_SPINS} FREISPIELE!` : `${FREE_SPINS} FREISPIELE! Gewinne ×${FREE_SPIN_MULT}`);
+        setFree(f => ({ left: (isFree ? f.left : 0) + freeSpins, total: (isFree ? f.total : 0) + freeSpins, won: isFree ? f.won : 0, bet: b }));
+        setBanner(isFree ? `+${freeSpins} FREISPIELE!` : `${freeSpins} FREISPIELE! Gewinne ×${fmt(freeMult, 1)}`);
         setTimeout(() => setBanner(null), 2200);
       } else if (isFree && freeRef.current.left === 0) {
         // letzte Freispiel-Runde vorbei
         const total = freeRef.current.won;
-        setBanner(`Freispiele vorbei: ${fmtMoney(total)}`);
+        setBanner(`Freispiele vorbei: ${money(total)}`);
         setTimeout(() => setBanner(null), 2600);
       }
       setSpinning(false);
-    }, STOP_MS[2] + 80);
-  }, [spinning, maxBet, setBalance, addResult, bonus, gameId]);
+    }, stopMs[2] + 80);
+  }, [spinning, maxBet, setBalance, addResult, bonus, gameId, freeSpins, freeMult, stopMs, money]);
 
   // Freispiele laufen automatisch, Auto-Spin auf Wunsch
   useEffect(() => {
@@ -185,9 +187,9 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
         <div className="sl-bulbs" />
         <div className="sl-top">
           <div className="sl-marquee">{theme.name.toUpperCase()}</div>
-          <div className="sl-jackpot">{theme.syms[5]}{theme.syms[5]}{theme.syms[5]} = ×250 + JACKPOT {fmtMoney(jackpot)}</div>
+          <div className="sl-jackpot">{theme.syms[5]}{theme.syms[5]}{theme.syms[5]} = ×250 + JACKPOT {money(jackpot)}</div>
         </div>
-        {inFree && <div className="sl-free">🎁 FREISPIELE {free.total - free.left}/{free.total} · Gewinne ×{FREE_SPIN_MULT} · bisher {fmtMoney(free.won)}</div>}
+        {inFree && <div className="sl-free">🎁 FREISPIELE {free.total - free.left}/{free.total} · Gewinne ×{fmt(freeMult, 1)} · bisher {money(free.won)}</div>}
         <div className={`sl-window${win && !win.half && win.amount > 0 ? ' won' : ''}`}>
           {reels.map((r, i) => <Reel key={i} {...r} spinning={spinning} theme={theme} winRow={!!(win && win.row && !win.half)} scatterGlow={!!(win && win.scatter)} />)}
           <div className="sl-line" />
@@ -195,7 +197,7 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
         </div>
         <div className={`sl-led${win && !win.half && win.amount > 0 ? ' won' : ''}`}>
           {win && win.amount > 0
-            ? (win.half ? <>HALBER EINSATZ ZURÜCK <b>{fmtMoney(shown)}</b></> : <>GEWINN <b>{fmtMoney(shown)}</b> <span>×{fmt(win.mult, 1)}</span></>)
+            ? (win.half ? <>HALBER EINSATZ ZURÜCK <b>{money(shown)}</b></> : <>GEWINN <b>{money(shown)}</b> <span>×{fmt(win.mult, 1)}</span></>)
             : spinning ? (inFree ? 'Freispiel…' : 'Viel Glück…') : inFree ? 'Freispiele laufen…' : 'Setz deinen Einsatz!'}
         </div>
         <div className="sl-controls">
@@ -208,7 +210,13 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
             <button className={`sl-auto${auto ? ' on' : ''}`} onClick={() => setAuto(a => !a)}>{auto ? '⏹ STOP' : '🔁 AUTO'}</button>
             <button className="sl-spin" data-tut="spin" disabled={!canSpin} onClick={spin}>{inFree ? 'FREE' : spinning ? '…' : pause ? '🎆' : 'SPIN'}</button>
           </div>
-          <div className="sl-betinfo">Einsatz <b>{fmtMoney(b)}</b>{bet > maxBet && ' (Max)'}</div>
+          {bonusSpins > 0 && !inFree && onUseBonus && (
+            <button className="sl-bonus" data-tut="bonus" disabled={spinning || !!pause || b <= 0} onClick={() => {
+              const n = onUseBonus();
+              if (n > 0) { setFree({ left: n, total: n, won: 0, bet: b }); setBanner(`${n} GRATIS-SPINS! Gewinne ×${fmt(freeMult, 1)}`); setTimeout(() => setBanner(null), 2200); }
+            }}>🎁 {bonusSpins} Gratis-Spins starten · Einsatz {money(b)}</button>
+          )}
+          <div className="sl-betinfo">Einsatz <b>{money(b)}</b>{bet > maxBet && ' (Max)'}</div>
         </div>
       </div>
       </div>
@@ -219,8 +227,8 @@ export default function Slots({ balance, setBalance, addResult, maxBet = 5, winB
         ))}
         <div className="sl-pay"><span>{theme.syms[0]}{theme.syms[0]} + beliebig</span><b>×{PAIR_LOW}</b></div>
         <div className="sl-pay"><span style={{ fontSize: 15 }}>2 Gleiche</span><b>×0,5</b></div>
-        <div className="sl-pay"><span>{theme.scatter}{theme.scatter}{theme.scatter} <small style={{ fontSize: 12 }}>irgendwo</small></span><b>{FREE_SPINS} Freispiele</b></div>
-        <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 8 }}>In Freispielen zählt jeder Gewinn doppelt. Gewertet wird die mittlere Reihe.</div>
+        <div className="sl-pay"><span>{theme.scatter}{theme.scatter}{theme.scatter} <small style={{ fontSize: 12 }}>irgendwo</small></span><b>{freeSpins} Freispiele</b></div>
+        <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 8 }}>In Freispielen zählt jeder Gewinn ×{fmt(freeMult, 1)}. Gewertet wird die mittlere Reihe.</div>
         {winBonus > 0 && <div style={{ color: 'var(--green)', fontSize: 12, marginTop: 6, fontWeight: 800 }}>Dein Zocken-Bonus: +{(winBonus * 50).toFixed(1)}% auf Gewinne</div>}
       </div>
     </div>

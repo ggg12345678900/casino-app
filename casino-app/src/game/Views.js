@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn, ALBUM, ALBUM_TOTAL, albumPieces, albumSets, ALBUM_SET_BONUS, ALBUM_CHANCE, TIERS } from './economy';
 import { sfx } from './sound';
 import { SLOT_THEMES } from './slotThemes';
 
@@ -13,13 +13,53 @@ export const GAME_INFO = {
   blackjack: { name: 'Blackjack', icon: '🃏', desc: 'Schlag den Dealer', bg: 'linear-gradient(160deg, #eab308, #713f12)', tag: 'neu' },
   chicken:   { name: 'Chicken',   icon: '🐔', desc: 'Über die Straße', bg: 'linear-gradient(160deg, #84cc16, #365314)' },
   pump:      { name: 'Pump',      icon: '🎈', desc: 'Pump bis es knallt', bg: 'linear-gradient(160deg, #06b6d4, #164e63)' },
+  highroller: { name: 'High Roller', icon: '💎', desc: 'Nur mit Jetons 🟣', bg: 'linear-gradient(160deg, #7c3aed, #1a0536)', jeton: true },
 };
 // Ein Automat pro Ort (vorne), danach die Tischspiele
 LOCATIONS.slice().reverse().forEach(l => {
   const t = SLOT_THEMES[l.id];
   GAME_INFO[`slots-${l.id}`] = { name: t.name, icon: t.icon, desc: `Automat · ${t.scatter}×3 = Freispiele`, bg: `linear-gradient(160deg, ${t.c1}, ${t.c2})`, slot: l.id };
 });
-const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_INFO).filter(g => !g.startsWith('slots-'))];
+const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_INFO).filter(g => !g.startsWith('slots-') && g !== 'highroller')];
+export const fmtJetons = (n) => `${fmt(Math.floor(n + 1e-9), 0)} 🟣`;
+
+// ─── Jeton-Shop ────────────────────────────────────────────────────────────
+export function JetonShop({ state, onBuy }) {
+  const now = Date.now();
+  const j = state.jetons || 0;
+  const slotName = SLOT_THEMES[LOCATIONS[state.location].id].name;
+  return (
+    <div className="mg-panel cs-jshop">
+      <div className="cs-jshop-head">
+        <div>
+          <div className="mg-label" style={{ marginBottom: 2 }}>🟣 Jeton-Shop</div>
+          <div className="cs-jshop-sub">Jetons gibt's fürs Antippen (alle 25 Münzen 1), für große Gewinne, den Jackpot und am Glücksrad.</div>
+        </div>
+        <div className="cs-jbal">{fmtJetons(j)}</div>
+      </div>
+      <div className="cs-jitems">
+        {JETON_ITEMS.map(it => {
+          const lvl = jetonItemLevel(state, it);
+          const maxed = it.max && lvl >= it.max;
+          const cost = it.cost(lvl);
+          const block = it.blocked ? it.blocked(state, now) : null;
+          const can = !maxed && !block && j >= cost;
+          return (
+            <button key={it.id} data-tut={`jitem-${it.id}`} className={`cs-jitem${can ? ' can' : ''}${maxed ? ' maxed' : ''}`} disabled={!can} onClick={() => onBuy(it.id)}>
+              <div className="ic">{it.icon}</div>
+              <div className="body">
+                <div className="nm">{it.name}{it.max > 1 && <span className="lv">{lvl}/{it.max}</span>}</div>
+                <div className="ds">{it.perSlot ? `${slotName}: ` : ''}{it.desc}</div>
+                {it.id === 'freepack' && (state.bonusSpins || 0) > 0 && <div className="ds" style={{ color: 'var(--green)' }}>Du hast {state.bonusSpins} Gratis-Spins – starte sie am Automaten</div>}
+              </div>
+              <div className="pr">{maxed ? '✔' : block ? '–' : fmtJetons(cost)}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 export const coinRange = (loc) => {
   const a = coinById(loc.coins[0]); const b = coinById(loc.coins[3]);
   return `${a.label} ${a.unit} – ${b.label} ${b.unit}`;
@@ -119,9 +159,10 @@ export function Wheel({ state, onSpin, hl }) {
   const [now, setNow] = useState(Date.now());
   const rotRef = useRef(0);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
-  const seg = 360 / WHEEL_PRIZES.length;
+  const prizes = jetonsOn(state) ? WHEEL_PRIZES : WHEEL_PRIZES.map(p => (p.id === 'jetons' ? { ...p, label: '2 Min', icon: '💶', color: '#16a34a' } : p));
+  const seg = 360 / prizes.length;
   const ready = (state.wheelReadyAt || 0) <= now;
-  const bg = `conic-gradient(${WHEEL_PRIZES.map((p, i) => `${p.color} ${i * seg}deg ${(i + 1) * seg}deg`).join(', ')})`;
+  const bg = `conic-gradient(${prizes.map((p, i) => `${p.color} ${i * seg}deg ${(i + 1) * seg}deg`).join(', ')})`;
 
   const spin = () => {
     if (!ready || spinning) return;
@@ -146,7 +187,7 @@ export function Wheel({ state, onSpin, hl }) {
       <div className="cs-wheel">
         <div className="pointer" />
         <div className="disc" style={{ background: bg, transform: `rotate(${rot}deg)`, transition: spinning ? 'transform 4s cubic-bezier(.12,.8,.2,1)' : 'none' }}>
-          {WHEEL_PRIZES.map((p, i) => (
+          {prizes.map((p, i) => (
             <div key={p.id} className="seg" style={{ transform: `rotate(${(i + 0.5) * seg}deg)` }}><span>{p.icon}</span></div>
           ))}
         </div>
@@ -190,7 +231,7 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', jackpot, showExtras = true }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, hl = '', jackpot, showExtras = true }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const jp = jackpot ? jackpot.pool : jackpotPool(state);
   const online = jackpot && jackpot.online;
@@ -226,7 +267,14 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', 
 
       <div className="mg-label">🎮 Spiele</div>
       <div className="cs-games">
-        {ALL_GAMES.map(g => {
+        {(state.jetonShop || {}).highroller > 0 && (
+          <button data-tut="game-highroller" className="cs-game highroller" onClick={() => onPick('highroller')}>
+            <span className="tag neu">💎 VIP</span>
+            <div className="art" style={{ background: GAME_INFO.highroller.bg }}>💎</div>
+            <div className="info"><div className="nm">High Roller</div><div className="ds">Nur mit Jetons · Jackpot {fmtJetons(state.jetonPot || 100)}</div></div>
+          </button>
+        )}
+        {ALL_GAMES.filter(g => !(g.startsWith('slots-') && firstLoc(g) < state.location)).map(g => {
           const unlocked = derived.games.includes(g);
           const info = GAME_INFO[g];
           const l = LOCATIONS[firstLoc(g)];
@@ -242,6 +290,8 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', 
           );
         })}
       </div>
+
+      {onBuyJeton && <div style={{ marginTop: 18 }}><JetonShop state={state} onBuy={onBuyJeton} /></div>}
 
       {online && jackpot.wins && jackpot.wins.length > 0 && (
         <div className="mg-panel" style={{ marginTop: 18 }}>
@@ -267,6 +317,46 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', 
 }
 
 // ─── Sammlung ──────────────────────────────────────────────────────────────
+// Münz-Sammelalbum
+function AlbumPanel({ state }) {
+  const album = state.album || {};
+  return (
+    <div className="mg-panel mg-album" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="disp" style={{ fontSize: 22 }}>📖 Sammelalbum · {albumPieces(state)}/{ALBUM_TOTAL}</div>
+        <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#ffc83d66', background: '#ffc83d1a', fontSize: 13 }}>Sets: {albumSets(state)} · +{Math.round(albumSets(state) * ALBUM_SET_BONUS * 100)}% Münzwert</span>
+      </div>
+      <div style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 12px' }}>
+        Seltene Münzen findest du nur beim Antippen (ca. 1 : {Math.round(1 / ALBUM_CHANCE)}) – und nur die Münzen des Orts, an dem du gerade bist.
+        Jedes volle Set: dauerhaft +{Math.round(ALBUM_SET_BONUS * 100)} % Münzwert. Doppelte werden zu Jetons.
+      </div>
+      <div className="mg-album-sets">
+        {LOCATIONS.map((l, li) => {
+          const set = ALBUM[l.id] || [];
+          const done = set.every(([id]) => (album[id] || 0) > 0);
+          const reached = li <= state.location;
+          return (
+            <div key={l.id} className={`mg-album-set${done ? ' done' : ''}${reached ? '' : ' far'}`}>
+              <div className="hd">{reached ? `${l.icon} ${l.name}` : '🔒 ???'}{done && ' ✅'}</div>
+              <div className="pcs">
+                {set.map(([id, icon, name]) => {
+                  const n = album[id] || 0;
+                  return (
+                    <div key={id} className={`pc${n ? ' got' : ''}`} title={n ? name : '???'}>
+                      <span>{n ? icon : '?'}</span>
+                      {n > 1 && <b>×{n}</b>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function CollectionView({ state }) {
   const total = CHARMS.reduce((a, c) => a + c.max, 0);
   const have = CHARMS.reduce((a, c) => a + (state.charms[c.id] || 0), 0);
@@ -278,14 +368,20 @@ export function CollectionView({ state }) {
           <div className="disp" style={{ fontSize: 22 }}>🏆 Erfolge · {got.length}/{ACHIEVEMENTS.length}</div>
           <span className="mg-lvl" style={{ color: 'var(--gold)', borderColor: '#ffc83d66', background: '#ffc83d1a', fontSize: 13 }}>Bonus: +{Math.round(got.length * ACHIEVEMENT_BONUS * 100)}% auf alles</span>
         </div>
+        <div className="mg-tierbar">
+          {TIERS.slice(1).map((t, i) => {
+            const all = ACHIEVEMENTS.filter(a => a.tier === i + 1);
+            return <span key={t} className={`mg-tier t${i + 1}`}>{t} {all.filter(a => got.includes(a.id)).length}/{all.length}</span>;
+          })}
+        </div>
         <div className="mg-ach">
-          {ACHIEVEMENTS.map(a => {
+          {[...ACHIEVEMENTS].sort((a, b) => (got.includes(b.id) - got.includes(a.id)) || (a.tier - b.tier)).map(a => {
             const ok = got.includes(a.id);
             return (
-              <div key={a.id} className={`mg-ach-item ${ok ? 'got' : 'locked'}`}>
+              <div key={a.id} className={`mg-ach-item ${ok ? 'got' : 'locked'} t${a.tier}`}>
                 <div className="ic">{a.icon}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14 }}>{a.name}</div>
+                  <div style={{ fontWeight: 900, fontSize: 14 }}>{a.name} <span className={`mg-tier t${a.tier}`}>{TIERS[a.tier]}</span></div>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>{a.desc}</div>
                 </div>
               </div>
@@ -293,6 +389,7 @@ export function CollectionView({ state }) {
           })}
         </div>
       </div>
+      <AlbumPanel state={state} />
       <div className="mg-panel" style={{ marginBottom: 16 }}>
         <div className="disp" style={{ fontSize: 22 }}>🍀 Glücksbringer · {have}/{total}</div>
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
@@ -327,16 +424,25 @@ export function LeaderboardView({ user }) {
   }, [by]);
   const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`);
   const comboBadge = (n) => (n > 0 ? <span className="mg-lvl" title="Beste Combo" style={{ color: '#ffb36b', borderColor: '#ff8a3d66', background: '#ff8a3d1a' }}>🔥 ×{fmt(n, 0)}</span> : null);
-  const value = (r) => (by === 'combo'
-    ? <b className="disp" style={{ color: '#ffb36b', fontSize: 20, fontWeight: 400 }}>🔥 ×{fmt(r.max_combo, 0)}</b>
-    : <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>);
+  const value = (r) => {
+    if (by === 'combo') return <b className="disp" style={{ color: '#ffb36b', fontSize: 20, fontWeight: 400 }}>🔥 ×{fmt(r.max_combo, 0)}</b>;
+    if (by === 'bigwin') return <b style={{ color: 'var(--gold)' }}>{fmtMoney(r.value)}</b>;
+    if (by === 'jackpots') return <b style={{ color: 'var(--gold)' }}>💰 {fmt(r.value, 0)}×</b>;
+    if (by === 'jetons') return <b style={{ color: '#e9d5ff' }}>{fmt(r.value, 0)} 🟣</b>;
+    if (by === 'album') return <b style={{ color: 'var(--gold)' }}>📖 {fmt(r.value, 0)}/{ALBUM_TOTAL}</b>;
+    return <b style={{ color: 'var(--green)' }}>{fmtMoney(r.earned)}</b>;
+  };
+  const BOARDS = [['money', '💰 Vermögen', 'Sortiert nach Ort, dann Gesamt verdient'], ['combo', '🔥 Combo', 'Wer hat die meisten Münzen am Stück erwischt?'],
+    ['bigwin', '🎆 Größter Gewinn', 'Der größte Einzelgewinn im Casino'], ['jackpots', '💰 Jackpots', 'Wer hat den Jackpot am öftesten geknackt?'],
+    ['jetons', '🟣 Jetons', 'Insgesamt verdiente Jetons'], ['album', '📖 Album', 'Die meisten gefundenen Album-Stücke']];
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
-      <div className="mg-shop-tabs" style={{ marginBottom: 14 }}>
-        <button className={`mg-shop-tab ${by === 'money' ? 'active' : ''}`} onClick={() => setBy('money')}>💰 Vermögen</button>
-        <button className={`mg-shop-tab ${by === 'combo' ? 'active' : ''}`} onClick={() => setBy('combo')}>🔥 Combo-Rekord</button>
+      <div className="mg-lb-tabs">
+        {BOARDS.map(([id, label]) => (
+          <button key={id} className={by === id ? 'active' : ''} onClick={() => setBy(id)}>{label}</button>
+        ))}
       </div>
-      <div className="mg-label">{by === 'combo' ? 'Wer hat die meisten Münzen am Stück erwischt?' : 'Sortiert nach Ort, dann Gesamt verdient'}</div>
+      <div className="mg-label">{BOARDS.find(b => b[0] === by)[2]}</div>
       {!data && <div style={{ color: 'var(--muted)' }}>Lade…</div>}
       {data && data.me && !data.top.some(r => r.username === data.me.username) && (
         <div className="mg-rank me">

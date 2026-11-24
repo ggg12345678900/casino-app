@@ -142,3 +142,58 @@ Eine Codebasis für alles.
 
 ## Bereits erledigt (Stand jetzt)
 Münzen-Sammeln mit Combo, Werkzeuge nur für Klicks, Helfer, 7 Orte, 15 Casino-Spiele mit Themen-Automaten und Freispielen, echter gemeinsamer Jackpot, VIP-Einsatzlimit, Quest-Tutorial, Erfolge, Rangliste (Geld und Combo), Offline-Einnahmen 20 %, Feedback, Schummelschutz, Online-Version mit Neon und Render.
+
+---
+
+## Paket Jetons & ein Automat pro Ort (umgesetzt)
+
+### A – Zweite Währung „Jetons“ 🟣 (fürs Casino)
+**Verdienen:**
+- [x] Münzen antippen: alle **25 angetippten Münzen = 1 Jeton**. Fortschrittsleiste unter dem Münzfeld. **Helfer geben keine Jetons**, damit sich Antippen immer lohnt.
+- [x] Ab Combo 20 füllt sich die Leiste doppelt so schnell.
+- [x] Seltene **Jeton-Münze** auf dem Boden (ca. 1 von 150) bringt 5 Jetons.
+- [x] Großer Gewinn (×10 oder mehr) +1, Jackpot +25, Glücksrad bekommt ein Feld „10 Jetons“.
+- Ziel: aktiver Spieler ca. 50–100 Jetons pro Stunde
+
+**Ausgeben (Jeton-Shop im Casino):**
+- [x] Dauerhaft:
+  - Glückssträhne (+0,5 % Gewinnbonus je Stufe, max. 10)
+  - Automaten-Upgrade (mehr Freispiele, höherer Freispiel-Multiplikator)
+  - Versicherung (1× pro Stunde verlorenen Einsatz zurück)
+  - Turbo-Walzen (statt Auto-Spin – den gibt es schon kostenlos)
+  - VIP-Rabatt 10 %
+- [x] Verbrauch: Freispiel-Paket (10 Freispiele), Extra-Dreh am Glücksrad
+- [x] Exklusiv: **High-Roller-Automat**, nur mit Jetons spielbar, mit eigenem Jeton-Jackpot
+
+**Sonstiges:**
+- [x] Anzeige: 🟣-Zähler oben neben dem Geld
+- [x] Freischaltung zusammen mit dem Casino, mit eigenem Spotlight-Schritt
+- [x] Server-Schummelschutz: Jetons müssen zur Zahl der gesammelten Münzen passen
+- [x] Niemals für echtes Geld kaufbar (wichtig für Steam und die App Stores)
+
+### B – Nur ein Automat pro Ort
+- [x] Beim Umzug verschwindet der alte Automat („im neuen Casino ist kein Platz mehr“). In der Lobby steht immer nur der Automat des aktuellen Orts.
+- [x] Die anderen Spiele (Dice, Mines, Roulette …) bleiben.
+- [x] Automaten späterer Orte bleiben als gesperrte Vorschau sichtbar.
+- [x] Im Umzugs-Fenster steht der Hinweis: „Neuer Automat: …“.
+- [x] Laufende Freispiele am alten Automaten werden vor dem Umzug ausgezahlt oder sind nicht mehr möglich (beim Bauen klären).
+
+### C – Jeton-Tutorial (umgesetzt, noch nicht online)
+- [x] Im Hinterhof ist von Jetons nichts zu sehen (kein Zähler, keine Leiste, kein Shop, keine Jeton-Münzen; das Glücksrad-Feld zeigt dort Geld)
+- [x] Nach dem Umzug in die Eckkneipe: „NEU: Jetons“ und Tutorial-Kapitel 2
+  - Ersten Jeton sammeln → Belohnung 25 Jetons
+  - Freispiel-Paket im Jeton-Shop kaufen (Spotlight)
+  - Gratis-Spins am Automaten starten (Spotlight)
+- [x] Bestehende Spieler mit fertigem Tutorial bekommen das Kapitel ebenfalls
+
+### D – Grind-Paket & Admin (umgesetzt, noch nicht online)
+- [x] 4 neue Orte nach dem Mond: Mars-Casino, Raumstation Orbit, Schwarzes Loch, Paralleluniversum (je neue Chips, Helfer, Werkzeuge, Automat; per Simulation abgestimmt, gesamt ca. 8 h bei normalem Spiel)
+- [x] Münz-Sammelalbum: 11 Sets × 4 seltene Münzen (nur durch Antippen, ca. 1:300), volles Set = +10 % Münzwert, Doppelte = 3 Jetons
+- [x] Gestufte Erfolge (Bronze bis Diamant), 29 neue Erfolge
+- [x] Neue Ranglisten: Größter Gewinn, Jackpots, Jetons, Album
+- [x] Admin-Zentrale (Login als admin): Übersicht, Live-Spieler, Spielerliste mit Suche/Sortierung, Spieler-Details, Passwort setzen (auch zufällig), Name ändern, Geld/Jetons geben oder setzen, Ort und VIP setzen, persönliche Nachricht, Spielstand ansehen/herunterladen/bearbeiten/zurücksetzen, sperren, aus Rangliste ausblenden, Admin-Rechte, Account löschen, Feedback (erledigt/löschen), Jackpot setzen, Ankündigung an alle, Geschenk an alle
+- [x] Lokale Testversion als Zip (Doppelklick auf index.html)
+
+### Offen
+- [ ] Neuer Name (Vorschläge: The House Always Grows, All In Idle, Stack the House, Jackpot Empire …)
+- [ ] Sprache Englisch
