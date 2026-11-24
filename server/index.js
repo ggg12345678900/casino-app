@@ -623,6 +623,18 @@ app.post('/api/save', auth, async (req, res) => {
   const minEarned = MOGUL_MIN_COSTS.slice(0, location + 1).reduce((a, b) => a + b, 0);
   if (earned < minEarned * 0.999 || money > (earned + gambleWon) * 1.0001 + 1)
     return res.status(400).json({ error: 'Spielstand unplausibel' });
+  // Jetons: verdient nur durch Antippen (max. ~2 je 25 Münzen + seltene Jeton-Münzen), große Gewinne,
+  // Jackpots und das Glücksrad. Gewinne am High-Roller-Automaten zählen extra.
+  const st = save.stats || {};
+  const num = (v) => (Number.isFinite(v) && v > 0 ? v : 0);
+  const jetons = save.jetons === undefined ? 0 : save.jetons;
+  if (typeof jetons !== 'number' || !Number.isFinite(jetons) || jetons < 0)
+    return res.status(400).json({ error: 'Ungültige Jetons' });
+  const jEarned = num(st.jetonsEarned);
+  const jWon = num(st.jetonsWon);
+  const jMax = num(st.finds) * 0.2 + num(st.bets) + num(st.wheelSpins) * 10 + num(st.jackpots) * 25 + 100;
+  if (jEarned > jMax || jWon > Math.max(5000, jEarned * 50) || jetons > jEarned + jWon + 1)
+    return res.status(400).json({ error: 'Spielstand unplausibel' });
 
   const prev = await pool.query(
     `SELECT mogul_location, mogul_earned, save_data, EXTRACT(EPOCH FROM (NOW() - save_at)) * 1000 AS since,

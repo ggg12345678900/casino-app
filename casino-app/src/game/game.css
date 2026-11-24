@@ -734,3 +734,41 @@
 .mg-login-extra .mg-btn-ghost { flex: 1; padding: 11px; font-size: 14px; }
 /* Fenster liegen auch über dem Hauptmenü */
 .mg-modal-bg { z-index: 115; }
+
+/* ═══ Jetons ═══════════════════════════════════════════════════════════ */
+.mg-jpill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: linear-gradient(180deg, #7c3aed, #4c1d95);
+  border: 1px solid #c4b5fd; color: #f5f3ff; font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; box-shadow: 0 0 10px rgba(167,139,250,.45); white-space: nowrap; }
+.mg-jpill.head { margin-left: 8px; vertical-align: 4px; }
+.mg-coin.jeton { background: radial-gradient(circle at 35% 30%, #f3e8ff, #a855f7 45%, #4c1d95); border: 3px dashed #f5d0fe; color: #fff;
+  box-shadow: 0 0 18px 4px rgba(192,132,252,.8), 0 4px 10px rgba(0,0,0,.6); }
+.mg-coin.jeton .face b { font-size: 18px; } .mg-coin.jeton .face i { font-size: 10px; }
+.mg-float.jeton { color: #e9d5ff; text-shadow: 0 0 10px #a855f7, 0 2px 0 rgba(0,0,0,.6); font-weight: 900; }
+.mg-jetonbar { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 12px; border-radius: 14px; background: rgba(76,29,149,.35); border: 1px solid #6d28d9; font-size: 12px; font-weight: 800; color: #e9d5ff; }
+.mg-jetonbar .bar { flex: 1; height: 8px; border-radius: 4px; background: #0c0720; overflow: hidden; }
+.mg-jetonbar .bar div { height: 100%; background: linear-gradient(90deg, #a855f7, #f0abfc); transition: width .2s; }
+.mg-jetonbar b { font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+.cs-jshop { border-color: #6d28d9; background: linear-gradient(180deg, #3b1a78, #22104a 60%, #1b1040); }
+.cs-jshop-head { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 12px; }
+.cs-jshop-sub { color: var(--muted); font-size: 12px; font-weight: 700; }
+.cs-jbal { font-family: var(--f-display); font-size: 24px; color: #f5d0fe; text-shadow: 0 0 14px rgba(192,132,252,.7); white-space: nowrap; }
+.cs-jitems { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.cs-jitem { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--border); background: rgba(12,7,32,.6); color: inherit; text-align: left; cursor: pointer; box-shadow: 0 3px 0 var(--shadow); }
+.cs-jitem .ic { font-size: 28px; width: 36px; text-align: center; flex-shrink: 0; }
+.cs-jitem .body { flex: 1; min-width: 0; }
+.cs-jitem .nm { font-family: var(--f-display); font-size: 15px; display: flex; gap: 6px; align-items: center; }
+.cs-jitem .lv { font-family: var(--f-body); font-size: 10px; font-weight: 900; color: #e9d5ff; background: rgba(168,85,247,.25); border-radius: 6px; padding: 1px 6px; }
+.cs-jitem .ds { color: var(--muted); font-size: 11px; font-weight: 700; margin-top: 2px; }
+.cs-jitem .pr { font-weight: 900; font-size: 13px; white-space: nowrap; padding: 4px 9px; border-radius: 999px; background: rgba(0,0,0,.4); color: #c4b5fd; }
+.cs-jitem.can { border-color: #a855f7; }
+.cs-jitem.can .pr { background: linear-gradient(180deg, #e9d5ff, #a855f7); color: #2e1065; }
+.cs-jitem:disabled { cursor: default; opacity: .65; }
+.cs-jitem.maxed { opacity: .55; }
+.cs-jitem.can:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow); }
+.cs-game.highroller { border-color: #c084fc; box-shadow: 0 0 22px rgba(192,132,252,.45), 0 5px 0 var(--shadow); }
+.sl-bonus { width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 14px; cursor: pointer; font-family: var(--f-display); font-size: 16px;
+  background: linear-gradient(180deg, #8dffb9, #19c96a); color: #053d1d; box-shadow: 0 4px 0 var(--green-d); animation: mgPulse 1.4s ease-in-out infinite; }
+.sl-bonus:disabled { filter: grayscale(.7); opacity: .6; animation: none; }
+@media (max-width: 760px) {
+  .cs-jitems { grid-template-columns: 1fr; }
+  .mg-jpill.head { font-size: 11px; padding: 1px 7px; margin-left: 6px; }
+}
