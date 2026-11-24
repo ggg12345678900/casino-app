@@ -122,32 +122,56 @@ export function LocationsView({ state, onMove }) {
 // ─── Casino ────────────────────────────────────────────────────────────────
 const FAKE_NAMES = ['Kevin', 'Chantal', 'Dieter', 'Mandy', 'Jürgen', 'LuckyLuke', 'Zockerkönig', 'Svenja', 'Ronny', 'BigBoss', 'Heike', 'Marvin', 'Jackpot-Jens', 'Uschi', 'Dennis', 'Chiara'];
 
-function LiveFeed({ maxBet, games }) {
-  const [rows, setRows] = useState([]);
+const ONLINE_FEED = process.env.REACT_APP_DEMO !== 'true';
+const agoShort = (t) => {
+  const sec = Math.max(0, (Date.now() - new Date(t).getTime()) / 1000);
+  if (sec < 60) return 'gerade';
+  if (sec < 3600) return `${Math.floor(sec / 60)} min`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} h`;
+  return `${Math.floor(sec / 86400)} T`;
+};
+// Live-Gewinne: online die echten Gewinne aller Spieler, in der Demo erfundene Beispiele
+function LiveFeed({ maxBet, games, me }) {
+  const [rows, setRows] = useState(ONLINE_FEED ? null : []);
   useEffect(() => {
+    if (!ONLINE_FEED) return undefined;
+    let stop = false;
+    const load = () => api.liveWins().then(r => { if (!stop && Array.isArray(r)) setRows(r); }).catch(() => {});
+    load();
+    const id = setInterval(load, 8000);
+    return () => { stop = true; clearInterval(id); };
+  }, []);
+  useEffect(() => {
+    if (ONLINE_FEED) return undefined;
     const add = () => {
       const g = games[Math.floor(Math.random() * games.length)];
       const big = Math.random() < 0.12;
-      const mult = big ? 10 + Math.random() * 90 : 1.2 + Math.random() * 4;
+      const mult = big ? 10 + Math.random() * 90 : 2 + Math.random() * 4;
       const amount = maxBet * (0.05 + Math.random() * 0.6) * mult;
-      setRows(r => [{ id: Math.random(), name: FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)], g, amount, big, mult }, ...r].slice(0, 6));
+      setRows(r => [{ id: Math.random(), username: FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)], game: g, amount, mult }, ...r].slice(0, 6));
     };
     add(); add(); add();
-    // neue Meldung alle 6–12 Sekunden (zufällig, wirkt natürlicher)
     let t;
     const next = () => { t = setTimeout(() => { add(); next(); }, 6000 + Math.random() * 6000); };
     next();
     return () => clearTimeout(t);
   }, [maxBet, games]);
+  if (rows === null) return <div className="cs-feed"><div className="ad-muted">Lade…</div></div>;
+  if (rows.length === 0) return <div className="cs-feed"><div className="ad-muted" style={{ padding: 8 }}>Noch keine Gewinne – hol dir den ersten Platz im Feed! 🎰</div></div>;
   return (
     <div className="cs-feed">
-      {rows.map(r => (
-        <div key={r.id} className={`cs-feed-row${r.big ? ' big' : ''}`}>
-          <span>{GAME_INFO[r.g].icon}</span>
-          <span><b style={{ color: 'var(--text)', marginLeft: 0 }}>{r.name}</b> · {GAME_INFO[r.g].name}{r.big ? ` · ×${r.mult.toFixed(0)}` : ''}</span>
-          <b>+{fmtMoney(r.amount)}</b>
-        </div>
-      ))}
+      {rows.slice(0, 8).map(r => {
+        const info = GAME_INFO[r.game] || { icon: '🎰', name: r.game };
+        const big = r.mult >= 10;
+        return (
+          <div key={r.id} className={`cs-feed-row${big ? ' big' : ''}${me && r.username === me ? ' me' : ''}`}>
+            <span>{info.icon}</span>
+            <span><b style={{ color: 'var(--text)', marginLeft: 0 }}>{r.username}</b> · {info.name} · ×{fmt(r.mult, r.mult < 10 ? 1 : 0)}
+              {r.created_at && <span className="ago"> · {agoShort(r.created_at)}</span>}</span>
+            <b>+{fmtMoney(r.amount)}</b>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -231,7 +255,7 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, hl = '', jackpot, showExtras = true }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, hl = '', jackpot, showExtras = true, me }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const jp = jackpot ? jackpot.pool : jackpotPool(state);
   const online = jackpot && jackpot.online;
@@ -310,7 +334,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeto
 
       <div className="mg-panel" style={{ marginTop: 18 }}>
         <div className="mg-label">📡 Live-Gewinne</div>
-        <LiveFeed maxBet={Math.max(derived.maxBet, 1)} games={derived.games} />
+        <LiveFeed maxBet={Math.max(derived.maxBet, 1)} games={derived.games} me={me} />
       </div>
     </div>
   );

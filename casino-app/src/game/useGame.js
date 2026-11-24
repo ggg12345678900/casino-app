@@ -30,6 +30,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   const [globalJp, setGlobalJp] = useState({ pool: null, wins: [] });
   const pendingRef = useRef(0);       // noch nicht gemeldete Jackpot-Einzahlungen
   const lastWinRef = useRef(null);    // höchste bekannte Gewinn-ID
+  const lastWinPostRef = useRef(0);   // letzter gemeldeter Live-Gewinn
 
   // ── Laden: neuerer Stand gewinnt (lokal vs. Server) ──────────────────
   useEffect(() => {
@@ -177,6 +178,11 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     });
     if (insured && cbRef.current.onInsurance) cbRef.current.onInsurance(amount);
     if (didWin && multiplier >= 10 && cbRef.current.onBigWin && !hit) cbRef.current.onBigWin({ amount, multiplier, game });
+    // Echte Gewinne für den Live-Feed melden (ab ×2, höchstens alle 4 s)
+    if (ONLINE && didWin && multiplier >= 2 && amount > 0 && hasToken() && Date.now() - lastWinPostRef.current > 4000) {
+      lastWinPostRef.current = Date.now();
+      api.postWin(String(game), +amount, +multiplier).catch(() => {});
+    }
     if (localHit && cbRef.current.onJackpot) cbRef.current.onJackpot({ amount: pool, game });
     if (hit && ONLINE && s0) {
       // Gemeinsamen Jackpot beim Server einfordern

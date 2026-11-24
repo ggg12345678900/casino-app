@@ -334,7 +334,7 @@ export default function GameApp({ user, onLogout }) {
             </div>
           );
         }
-        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={un.jetons ? buyJeton : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} />;
+        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={un.jetons ? buyJeton : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} me={user.username} />;
       }
       case 'collection': return <CollectionView state={state} />;
       case 'leaderboard': return <LeaderboardView user={user} />;
