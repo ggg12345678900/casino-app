@@ -20,13 +20,13 @@ const writeLocal = (userId, s) => {
  * Hält den kompletten Spielstand, lässt die Zeit laufen und speichert.
  * Events (Funde, Glücksbringer, Level-Ups) gehen über onEvent an die UI.
  */
-export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot } = {}) {
+export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown } = {}) {
   const [state, setState] = useState(null);
   const [welcome, setWelcome] = useState(null); // { seconds, earned }
   const stateRef = useRef(null);
   stateRef.current = state;
   const cbRef = useRef({});
-  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot };
+  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown };
   const [globalJp, setGlobalJp] = useState({ pool: null, wins: [] });
   const pendingRef = useRef(0);       // noch nicht gemeldete Jackpot-Einzahlungen
   const lastWinRef = useRef(null);    // höchste bekannte Gewinn-ID
@@ -118,27 +118,6 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
 
   const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
   const claimQuest = useCallback(() => apply(s => E.claimQuest(s)), [apply]);
-  const pickJeton = useCallback(() => apply(s => E.pickJeton(s)), [apply]);
-  const buyJeton = useCallback((id) => apply(s => E.buyJetonItem(s, id)), [apply]);
-  const useBonusSpins = useCallback(() => {
-    const n = (stateRef.current && stateRef.current.bonusSpins) || 0;
-    if (n > 0) apply(s => ({ ...s, bonusSpins: 0 }));
-    return n;
-  }, [apply]);
-  // High-Roller-Automat: spielt mit Jetons statt Geld
-  const setJetons = useCallback((v) => {
-    setState(s => {
-      const j = typeof v === 'function' ? v(s.jetons || 0) : v;
-      const next = { ...s, jetons: Math.max(0, j) };
-      stateRef.current = next;
-      return next;
-    });
-  }, []);
-  const addJetonResult = useCallback((didWin, amount, game, bet = 0, multiplier = 1) => {
-    let pot = 0;
-    setState(s => { const out = E.recordJetonBet(s, didWin, amount, multiplier, bet); pot = out.pot; stateRef.current = out.state; return out.state; });
-    setTimeout(() => { if (pot > 0 && cbRef.current.onJetonJackpot) cbRef.current.onJetonJackpot(pot); }, 0);
-  }, []);
   const skipTutorial = useCallback(() => apply(s => ({ ...s, tutorialSkipped: true })), [apply]);
   const buyVip = useCallback((n = 1) => apply(s => E.buyVip(s, n)), [apply]);
   const buyHelper = useCallback((id, n) => apply(s => E.buyHelper(s, id, n)), [apply]);
@@ -165,17 +144,11 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     const pool = s0 ? E.jackpotPool(s0) + Math.max(0, bet) * E.JACKPOT_SHARE : 0;
     const localHit = hit && !ONLINE;
     if (ONLINE) pendingRef.current += Math.max(0, bet) * E.JACKPOT_SHARE;
-    // Versicherung (Jeton-Shop): einmal pro Stunde einen Verlust ab halbem Max-Einsatz erstatten
-    const now = Date.now();
-    const insured = !!s0 && !didWin && amount > 0 && bet > 0 && !!(s0.jetonShop || {}).insurance
-      && (s0.insuranceReadyAt || 0) <= now && bet >= E.derive(s0).maxBet * 0.5;
     setState(s => {
-      let next = E.recordBet(s, didWin, amount, multiplier, bet, localHit);
-      if (insured) next = { ...next, money: next.money + amount, insuranceReadyAt: now + E.INSURANCE_COOLDOWN_MS };
+      const next = E.recordBet(s, didWin, amount, multiplier, bet, localHit);
       stateRef.current = next;
       return next;
     });
-    if (insured && cbRef.current.onInsurance) cbRef.current.onInsurance(amount);
     if (didWin && multiplier >= 10 && cbRef.current.onBigWin && !hit) cbRef.current.onBigWin({ amount, multiplier, game });
     if (localHit && cbRef.current.onJackpot) cbRef.current.onJackpot({ amount: pool, game });
     if (hit && ONLINE && s0) {
@@ -263,6 +236,6 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   return {
     state, derived: state ? E.derive(state) : null, welcome,
     jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
-    pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    pickup, pickCharm, claimQuest, skipTutorial, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

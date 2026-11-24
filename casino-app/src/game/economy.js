@@ -220,14 +220,14 @@ export const QUESTS = [
   { id: 'brille', icon: '👓', title: 'Kauf die Brille',           tip: 'Kauf die Brille – damit siehst du mehr Münzen.', hint: 'Werkzeuge machen dein Sammeln besser.', hl: 'tool-brille', guide: true, reward: 0.3, progress: s => (s.tools.includes('brille') ? 1 : Math.min(0.99, s.money / 0.1)) },
   { id: 'helfer', icon: '🧹', title: 'Stell eine Putzkraft ein',  tip: 'Stell eine Putzkraft ein – sie sammelt für dich, auch wenn du nicht tippst.', hint: 'Helfer sammeln automatisch Münzen für dich.', hl: 'helper-putzkraft', guide: true, reward: 0.5, progress: s => ((s.helpers.putzkraft || 0) >= 1 ? 1 : Math.min(0.99, s.money / 0.5)) },
   { id: 'combo',  icon: '🔥', title: 'Schaff eine Combo ×3',      tip: 'Tippe 3 Münzen schnell hintereinander – das gibt Combo-Bonus!', hint: 'Jede Combo-Stufe gibt +5 % Wert.', hl: 'floor', guide: true, reward: 1, progress: s => (s.stats.maxCombo || 0) / 3 },
-  { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten', tip: 'Dein erster Automat! Dreh eine Runde.', hint: 'Im Casino kannst du dein Geld vermehren – oder verlieren.', hl: 'game-slot', guide: true, reward: 2, progress: s => (s.stats.bets >= 1 ? 1 : 0) },
+  { id: 'slots',  icon: '🎰', title: 'Spiel eine Runde am Automaten', tip: 'Dein erster Automat! Dreh eine Runde.', hint: 'Im Casino kannst du dein Geld vermehren – oder verlieren.', hl: 'game-slots-hinterhof', guide: true, reward: 2, progress: s => (s.stats.bets >= 1 ? 1 : 0) },
   { id: 'wheel',  icon: '🎡', title: 'Dreh das Glücksrad',        tip: 'Alle 8 Minuten gratis: Dreh das Glücksrad!', hint: 'Das Glücksrad findest du in der Casino-Lobby.', hl: 'wheel', guide: true, reward: 2, progress: s => ((s.stats.wheelSpins || 0) >= 1 ? 1 : 0) },
   { id: 'kneipe', icon: '🍺', title: 'Zieh in die Eckkneipe',     tip: 'Spar 40 € und zieh um!', hint: 'Spar 40 € und tippe dann auf „Umziehen“. Dort gibt es mehr Geld und neue Spiele.', hl: 'goal', guide: false, reward: 10, progress: s => (s.location >= 1 ? 1 : Math.min(0.99, s.money / 40)) },
 ];
 // Was ist schon sichtbar? Schritt für Schritt mit dem Tutorial (Wert = nötige Zahl erledigter Aufgaben)
 export const UNLOCK_AT = { tools: 1, helpers: 2, casino: 4, wheel: 5, vip: 5, locations: 6, extras: 6 };
 export const UNLOCK_INFO = {
-  tools: { icon: '🛠️', name: 'Werkzeuge' }, helpers: { icon: '👥', name: 'Helfer' }, casino: { icon: '🎰', name: 'Casino & Jetons 🟣' },
+  tools: { icon: '🛠️', name: 'Werkzeuge' }, helpers: { icon: '👥', name: 'Helfer' }, casino: { icon: '🎰', name: 'Casino' },
   wheel: { icon: '🎡', name: 'Glücksrad & VIP-Karte' }, locations: { icon: '🗺️', name: 'Orte' }, extras: { icon: '🏆', name: 'Erfolge, Rangliste & Statistik' },
 };
 export const isUnlocked = (s, key) => !!s.tutorialSkipped || (s.quest || 0) >= (UNLOCK_AT[key] ?? 0) || (s.location || 0) > 0;
@@ -266,7 +266,6 @@ export const WHEEL_PRIZES = [
   { id: 'small2', label: '3 Min',       icon: '💶', color: '#16a34a', weight: 14 },
   { id: 'charm',  label: 'Glücksbringer', icon: '🍀', color: '#db2777', weight: 6 },
   { id: 'jackpot',label: 'JACKPOT 1h',  icon: '👑', color: '#dc2626', weight: 2 },
-  { id: 'jetons', label: '10 Jetons',   icon: '🟣', color: '#9333ea', weight: 10 },
 ];
 export const spinWheel = (s, rng = Math.random, now = Date.now()) => {
   if ((s.wheelReadyAt || 0) > now) return null;
@@ -278,7 +277,6 @@ export const spinWheel = (s, rng = Math.random, now = Date.now()) => {
   let text = '';
   const secs = { small: 120, small2: 180, big: 600, jackpot: 3600 }[prize.id];
   if (secs) { const amount = earningsFor(s, secs); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
-  if (prize.id === 'jetons') { next = addJetons(next, 10); text = '+10 Jetons 🟣'; }
   if (prize.id === 'frenzy') { next.frenzyUntil = now + FRENZY_SEC * 1000; text = 'Geldregen! Ab zum Sammeln!'; }
   if (prize.id === 'boost') { next.boostUntil = now + 5 * 60 * 1000; text = 'Helfer verdienen 5 Minuten doppelt!'; }
   if (prize.id === 'charm') {
@@ -305,12 +303,6 @@ export const newGame = () => ({
   wheelReadyAt: 0,  // Glücksrad wieder drehbar ab (ms)
   quest: 0,         // Tutorial-Aufgabe (Index in QUESTS)
   tutorialSkipped: false,
-  jetons: 0,          // Casino-Währung
-  jetonProgress: 0,   // angetippte Münzen bis zum nächsten Jeton
-  jetonShop: {},      // gekaufte Jeton-Upgrades
-  bonusSpins: 0,      // gekaufte Gratis-Spins
-  jetonPot: 100,      // Jackpot des High-Roller-Automaten (in Jetons)
-  insuranceReadyAt: 0,
   skills: { suchen: { level: 0, xp: 0 }, management: { level: 0, xp: 0 }, zocken: { level: 0, xp: 0 } },
   stats: {
     totalEarned: 0, clicks: 0, searches: 0, finds: 0, goldChips: 0, maxCombo: 0, sacks: 0, wheelSpins: 0,
@@ -331,7 +323,6 @@ export const migrate = (s) => {
     skills: { ...base.skills, ...(s.skills || {}) },
     stats: { ...base.stats, ...(s.stats || {}) },
     helpers: s.helpers || {}, tools: s.tools || [], charms: s.charms || {}, achievements: s.achievements || [],
-    jetonShop: { ...(s.jetonShop || {}), slotup: { ...((s.jetonShop || {}).slotup || {}) } },
   };
 };
 
@@ -385,12 +376,9 @@ export const derive = (s, now = Date.now()) => {
 
   const pickMult = toolMult(s, 'pick');
   const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1));
-  const js = s.jetonShop || {};
-  const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble')) + (js.luck || 0) * LUCK_STEP;
+  const winBonus = Math.min(0.10, Math.min(0.05, sk.zocken.level * 0.002) + charmSum(s, 'gamble'));
   const loc = LOCATIONS[s.location];
-  const slotLvl = (js.slotup || {})[loc.id] || 0;
-  // Nur der Automat des aktuellen Orts steht im Casino – die alten haben keinen Platz mehr
-  const games = gamesUpTo(s.location).filter(g => !g.startsWith('slots-') || g === `slots-${loc.id}`);
+  const games = gamesUpTo(s.location);
   // Max-Einsatz: steigt nur durch gekaufte VIP-Stufen (nicht durch Einkommen oder Umzug)
   const maxBet = vipLimit(s.vip || 0);
 
@@ -399,7 +387,6 @@ export const derive = (s, now = Date.now()) => {
     autoCoins, helperRates, helperIncome, helperMult, incomePerSec,
     pickMult, pickEV, manualPerSec: spawnRate * pickEV, frenzy, boost,
     winBonus, maxBet, games, loc,
-    freeSpins: FREE_SPINS_BASE + slotLvl * 2, freeMult: FREE_MULT_BASE + slotLvl * 0.5, slotLvl, turbo: !!js.turbo,
   };
 };
 
@@ -418,21 +405,20 @@ export const VIP_COIN_BONUS = 0.05; // jede VIP-Stufe: +5 % Münzwert
 export const VIP_PRICE_FACTOR = 20;
 export const vipLimit = (lvl) => BET_BASE * Math.pow(2, lvl);
 export const vipCostAt = (lvl) => vipLimit(lvl + 1) * VIP_PRICE_FACTOR;
-const vipDisc = (s) => ((s.jetonShop || {}).vipdisc ? 0.9 : 1);
-export const vipCost = (s) => vipCostAt(s.vip || 0) * vipDisc(s);
+export const vipCost = (s) => vipCostAt(s.vip || 0);
 const VIP_TIERS = [[0, 'Gast'], [1, 'Bronze'], [3, 'Silber'], [6, 'Gold'], [10, 'Platin'], [15, 'Diamant'], [21, 'Black Card'], [30, 'Mogul']];
 export const vipName = (lvl) => VIP_TIERS.filter(([min]) => lvl >= min).pop()[1];
 export const vipTierIndex = (lvl) => VIP_TIERS.filter(([min]) => lvl >= min).length - 1;
 // Wie viele Stufen kann man sich leisten? (Kosten verdoppeln sich je Stufe)
 export const vipAffordable = (s) => {
   let lvl = s.vip || 0; let money = s.money; let n = 0;
-  while (n < 200 && money >= vipCostAt(lvl) * vipDisc(s)) { money -= vipCostAt(lvl) * vipDisc(s); lvl++; n++; }
+  while (n < 200 && money >= vipCostAt(lvl)) { money -= vipCostAt(lvl); lvl++; n++; }
   return n;
 };
 export const buyVip = (s, count = 1) => {
   let lvl = s.vip || 0; let money = s.money;
   for (let i = 0; i < count; i++) {
-    const c = vipCostAt(lvl) * vipDisc(s);
+    const c = vipCostAt(lvl);
     if (money < c) break;
     money -= c; lvl++;
   }
@@ -456,7 +442,6 @@ export const rollSpawn = (s, rng = Math.random) => {
     if ((s.charms[c.id] || 0) >= c.max) continue;
     if (rng() < 1 / c.odds) return { type: 'charm', charm: c };
   }
-  if (isUnlocked(s, 'casino') && rng() < JETON_COIN_CHANCE) return { type: 'jeton' };
   const ids = LOCATIONS[s.location].coins;
   let r = rng() * COIN_WEIGHTS.reduce((a, b) => a + b, 0);
   let idx = 0;
@@ -491,16 +476,12 @@ export const pickup = (s, coinId, gold = false, combo = 0) => {
   if (!coin) return null;
   const money = coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) * comboMult(combo);
   const { skills, ups } = addXp(s.skills, 'suchen', 1);
-  let next = earn({ ...s, skills }, money);
-  const prog = (s.jetonProgress || 0) + (combo >= COMBO_MAX ? 2 : 1);
-  const gainedJ = Math.floor(prog / JETON_PER_COINS);
-  next.jetonProgress = prog % JETON_PER_COINS;
-  if (gainedJ) next = addJetons(next, gainedJ);
+  const next = earn({ ...s, skills }, money);
   next.stats = {
     ...next.stats, clicks: s.stats.clicks + 1, finds: s.stats.finds + 1, goldChips: s.stats.goldChips + (gold ? 1 : 0),
     maxCombo: Math.max(s.stats.maxCombo || 0, combo),
   };
-  return { state: next, result: { money, gold, jetons: gainedJ, levelUp: ups > 0 ? skills.suchen.level : null } };
+  return { state: next, result: { money, gold, levelUp: ups > 0 ? skills.suchen.level : null } };
 };
 
 // Einen Glücksbringer vom Boden aufheben
@@ -543,7 +524,7 @@ export const moveLocation = (s) => {
 // Ergebnis einer Casino-Runde: XP + Statistik (Geld bewegen die Spiele selbst)
 // Gewinn aus dem gemeinsamen (Server-)Jackpot gutschreiben
 export const creditJackpot = (s, amount) => ({
-  ...addJetons(s, JETON_JACKPOT), money: s.money + amount,
+  ...s, money: s.money + amount,
   stats: {
     ...s.stats, jackpots: (s.stats.jackpots || 0) + 1,
     gambleProfit: s.stats.gambleProfit + amount, gambleWon: (s.stats.gambleWon || 0) + amount,
@@ -554,8 +535,6 @@ export const creditJackpot = (s, amount) => ({
 // hitJackpot: vorher (außerhalb von React) ausgewürfelt, damit das Ergebnis eindeutig bleibt
 export const recordBet = (s, didWin, amount, multiplier = 1, bet = 0, hitJackpot = false) => {
   const { skills } = addXp(s.skills, 'zocken', 1);
-  if (didWin && multiplier >= 10) s = addJetons(s, 1);
-  if (hitJackpot) s = addJetons(s, JETON_JACKPOT);
   const st = s.stats;
   const pool = jackpotPool(s) + Math.max(0, bet) * JACKPOT_SHARE;
   if (hitJackpot) {
@@ -579,66 +558,6 @@ export const recordBet = (s, didWin, amount, multiplier = 1, bet = 0, hitJackpot
       biggestWin: didWin && amount > st.biggestWin ? amount : st.biggestWin,
     },
   };
-};
-
-// ─── Jetons: zweite Währung fürs Casino ────────────────────────────────────
-// Verdient wird nur durch eigenes Antippen (nie durch Helfer), große Gewinne, Jackpot und Glücksrad.
-export const JETON_PER_COINS = 25;
-export const JETON_COIN_CHANCE = 1 / 150;  // seltene Jeton-Münze auf dem Boden
-export const JETON_COIN_VALUE = 5;
-export const JETON_JACKPOT = 25;
-export const LUCK_STEP = 0.005;            // Glückssträhne: +0,5 % Gewinnbonus je Stufe
-export const FREE_SPINS_BASE = 8;
-export const FREE_MULT_BASE = 2;
-export const BONUS_PACK = 10;
-export const INSURANCE_COOLDOWN_MS = 60 * 60 * 1000;
-export const JETON_POT_SEED = 100;
-export const HIGHROLLER_BETS = [1, 2, 5, 10, 20];
-
-export function addJetons(s, n) {
-  return { ...s, jetons: (s.jetons || 0) + n, stats: { ...s.stats, jetonsEarned: (s.stats.jetonsEarned || 0) + n } };
-}
-export const pickJeton = (s) => addJetons(s, JETON_COIN_VALUE);
-
-export const JETON_ITEMS = [
-  { id: 'freepack', icon: '🎁', name: 'Freispiel-Paket', desc: `${BONUS_PACK} Gratis-Spins am Automaten – mit Freispiel-Multiplikator`, use: true, cost: () => 25 },
-  { id: 'wheelspin', icon: '🎡', name: 'Extra-Dreh', desc: 'Das Glücksrad ist sofort wieder drehbar', use: true, cost: () => 15,
-    blocked: (s, now) => ((s.wheelReadyAt || 0) <= now ? 'Rad ist schon bereit' : null) },
-  { id: 'luck', icon: '🍀', name: 'Glückssträhne', desc: '+0,5 % Gewinnbonus im Casino – pro Stufe', max: 10, cost: (l) => 30 * (l + 1) },
-  { id: 'slotup', icon: '🎰', name: 'Automaten-Tuning', desc: 'Dieser Automat: +2 Freispiele und Freispiel-Gewinne +0,5×', max: 2, cost: (l) => [40, 120][l] || 0, perSlot: true },
-  { id: 'turbo', icon: '⚡', name: 'Turbo-Walzen', desc: 'Alle Automaten drehen doppelt so schnell', max: 1, cost: () => 80 },
-  { id: 'insurance', icon: '🛡️', name: 'Versicherung', desc: 'Einmal pro Stunde: Verlust ab halbem Max-Einsatz kommt zurück', max: 1, cost: () => 150 },
-  { id: 'vipdisc', icon: '💳', name: 'VIP-Rabatt', desc: 'Alle VIP-Stufen 10 % günstiger', max: 1, cost: () => 200 },
-  { id: 'highroller', icon: '💎', name: 'High-Roller-Lounge', desc: 'Exklusiver Automat: gespielt wird mit Jetons, eigener Jeton-Jackpot', max: 1, cost: () => 250 },
-];
-export const jetonItemLevel = (s, item) => {
-  const js = s.jetonShop || {};
-  if (item.perSlot) return (js.slotup || {})[LOCATIONS[s.location].id] || 0;
-  return js[item.id] || 0;
-};
-export const buyJetonItem = (s, id, now = Date.now()) => {
-  const item = JETON_ITEMS.find(x => x.id === id);
-  if (!item) return null;
-  const lvl = jetonItemLevel(s, item);
-  if (item.max && lvl >= item.max) return null;
-  if (item.blocked && item.blocked(s, now)) return null;
-  const cost = item.cost(lvl);
-  if ((s.jetons || 0) < cost) return null;
-  const next = { ...s, jetons: s.jetons - cost, jetonShop: { ...(s.jetonShop || {}) } };
-  if (id === 'freepack') next.bonusSpins = (s.bonusSpins || 0) + BONUS_PACK;
-  else if (id === 'wheelspin') next.wheelReadyAt = 0;
-  else if (item.perSlot) next.jetonShop.slotup = { ...(next.jetonShop.slotup || {}), [LOCATIONS[s.location].id]: lvl + 1 };
-  else next.jetonShop[id] = lvl + 1;
-  return next;
-};
-// High-Roller-Automat: Ergebnis buchen (die Jetons bewegt der Automat selbst)
-export const recordJetonBet = (s, didWin, amount, multiplier, bet) => {
-  const st = { ...s.stats, jetonsWon: (s.stats.jetonsWon || 0) + (didWin ? Math.max(0, amount) : 0), bets: s.stats.bets + 1 };
-  if (multiplier >= 250) {
-    const pot = s.jetonPot || JETON_POT_SEED;
-    return { state: { ...s, jetons: (s.jetons || 0) + pot, jetonPot: JETON_POT_SEED, stats: { ...st, jetonsWon: st.jetonsWon + pot } }, pot };
-  }
-  return { state: { ...s, jetonPot: (s.jetonPot || JETON_POT_SEED) + bet * 0.1, stats: st }, pot: 0 };
 };
 
 // Offline-Einnahmen seit dem letzten Speichern

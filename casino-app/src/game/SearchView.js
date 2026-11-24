@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   LOCATIONS, SKILLS, xpForLevel, fmt, fmtMoney, rollSpawn, randomJunk, comboMult,
   MAX_ON_FLOOR, COIN_LIFETIME, GOLD_LIFETIME, CHARM_LIFETIME, COMBO_WINDOW_MS, COMBO_MAX, COMBO_MILESTONES,
-  SACK_MIN_SEC, SACK_MAX_SEC, JETON_PER_COINS, JETON_COIN_VALUE,
+  SACK_MIN_SEC, SACK_MAX_SEC,
 } from './economy';
 import { sfx } from './sound';
 
@@ -34,20 +34,12 @@ export const coinLabel = (c) => `${c.label} ${c.unit}`;
 // Eine Münze bzw. ein Chip auf dem Boden
 function Coin({ item, onPick }) {
   const { coin, gold, charm, life } = item;
-  if (!coin && !charm && !item.jeton) return null;
   const style = {
     left: `${item.x}%`, top: `${item.y}%`,
     '--size': `${charm ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
     animationDuration: `${life}s`,
   };
   const pick = (e) => { e.stopPropagation(); onPick(item, e); };
-  if (item.jeton) {
-    return (
-      <button className="mg-coin jeton" style={{ ...style, '--size': '50px' }} onPointerDown={pick} aria-label="Jeton aufheben">
-        <span className="face"><b>J</b><i>+{JETON_COIN_VALUE}</i></span>
-      </button>
-    );
-  }
   if (charm) {
     return (
       <button className="mg-coin charm" style={style} onPointerDown={pick} aria-label={`${charm.name} aufheben`}>
@@ -110,7 +102,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -169,8 +161,8 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
           const { x, y } = freeSpot(list);
           list = [...list, {
             id: ++uid, x, y, born: now, rot: Math.random() * 60 - 30,
-            coin: sp.coin, gold: sp.gold, charm: sp.type === 'charm' ? sp.charm : null, jeton: sp.type === 'jeton',
-            life: sp.type === 'charm' || sp.type === 'jeton' ? CHARM_LIFETIME : sp.gold ? GOLD_LIFETIME : COIN_LIFETIME,
+            coin: sp.coin, gold: sp.gold, charm: sp.type === 'charm' ? sp.charm : null,
+            life: sp.type === 'charm' ? CHARM_LIFETIME : sp.gold ? GOLD_LIFETIME : COIN_LIFETIME,
           }];
         }
         return list.length === cur.length && list.every((o, i) => o === cur[i]) ? cur : list;
@@ -197,13 +189,6 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       if (onPickCharm(item.charm.id)) { sfx.charm(); onCharm(item.charm); }
       return;
     }
-    if (item.jeton) {
-      if (onPickJeton && onPickJeton()) {
-        sfx.gold();
-        spawnFloats([{ id: ++uid, kind: 'jeton', x, y, text: `🟣 +${JETON_COIN_VALUE} Jetons` }]);
-      }
-      return;
-    }
     const nowMs = Date.now();
     const c = comboRef.current;
     c.n = nowMs - c.last < COMBO_WINDOW_MS ? c.n + 1 : 0;
@@ -220,7 +205,6 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       const dist = 30 + Math.random() * 50;
       list.push({ id: ++uid, kind: 'chip', x, y, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist - 30, rot: Math.random() * 720 - 360, text: '✨' });
     }
-    if (r.jetons && showJetons) list.push({ id: ++uid, kind: 'jeton', x, y: y - 50, text: `🟣 +${r.jetons} Jeton` });
     if (r.levelUp) list.push({ id: ++uid, kind: 'level', x, y: y - 36, text: `⬆️ Sammeln Lv ${r.levelUp}` });
     if (COMBO_MILESTONES.includes(c.n)) {
       list.push({ id: ++uid, kind: 'gold', x, y: y - 60, text: `🔥 COMBO ×${c.n}!` });
@@ -295,13 +279,6 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
         ))}
       </div>
 
-      {showJetons && (
-        <div className="mg-jetonbar" title="Jede angetippte Münze füllt die Leiste – Helfer zählen nicht">
-          <span>🟣 Nächster Jeton</span>
-          <div className="bar"><div style={{ width: `${((state.jetonProgress || 0) / JETON_PER_COINS) * 100}%` }} /></div>
-          <b>{state.jetonProgress || 0}/{JETON_PER_COINS}</b>
-        </div>
-      )}
       {showExtras && <>
       <div className="mg-statrow">
         <div className="mg-stat"><div className="k">🪙 Neue Münzen</div><div className="v">{fmt(derived.spawnRate * 60, 0)}/min</div></div>

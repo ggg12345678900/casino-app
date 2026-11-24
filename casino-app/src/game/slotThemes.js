@@ -39,9 +39,3 @@ export const PAIR_LOW = 2;        // 2× das häufigste Symbol
 export const PAIR_OTHER = 0.5;    // sonst 2 Gleiche: halber Einsatz zurück
 export const FREE_SPINS = 8;      // 3+ Scatter irgendwo im Fenster
 export const FREE_SPIN_MULT = 2;  // Gewinne in Freispielen ×2
-
-// Exklusiver Automat der High-Roller-Lounge (gespielt mit Jetons)
-SLOT_THEMES.highroller = {
-  name: 'High Roller', icon: '💎', syms: ['🟣', '🎩', '🥂', '💍', '💎', '🏆'], scatter: '🌟',
-  c1: '#6d28d9', c2: '#1a0536', neon: '#e9d5ff', glass: '#faf5ff',
-};

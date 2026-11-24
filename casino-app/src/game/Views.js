@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime } from './economy';
 import { sfx } from './sound';
 import { SLOT_THEMES } from './slotThemes';
 
@@ -13,53 +13,13 @@ export const GAME_INFO = {
   blackjack: { name: 'Blackjack', icon: '🃏', desc: 'Schlag den Dealer', bg: 'linear-gradient(160deg, #eab308, #713f12)', tag: 'neu' },
   chicken:   { name: 'Chicken',   icon: '🐔', desc: 'Über die Straße', bg: 'linear-gradient(160deg, #84cc16, #365314)' },
   pump:      { name: 'Pump',      icon: '🎈', desc: 'Pump bis es knallt', bg: 'linear-gradient(160deg, #06b6d4, #164e63)' },
-  highroller: { name: 'High Roller', icon: '💎', desc: 'Nur mit Jetons 🟣', bg: 'linear-gradient(160deg, #7c3aed, #1a0536)', jeton: true },
 };
 // Ein Automat pro Ort (vorne), danach die Tischspiele
 LOCATIONS.slice().reverse().forEach(l => {
   const t = SLOT_THEMES[l.id];
   GAME_INFO[`slots-${l.id}`] = { name: t.name, icon: t.icon, desc: `Automat · ${t.scatter}×3 = Freispiele`, bg: `linear-gradient(160deg, ${t.c1}, ${t.c2})`, slot: l.id };
 });
-const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_INFO).filter(g => !g.startsWith('slots-') && g !== 'highroller')];
-export const fmtJetons = (n) => `${fmt(Math.floor(n + 1e-9), 0)} 🟣`;
-
-// ─── Jeton-Shop ────────────────────────────────────────────────────────────
-export function JetonShop({ state, onBuy }) {
-  const now = Date.now();
-  const j = state.jetons || 0;
-  const slotName = SLOT_THEMES[LOCATIONS[state.location].id].name;
-  return (
-    <div className="mg-panel cs-jshop">
-      <div className="cs-jshop-head">
-        <div>
-          <div className="mg-label" style={{ marginBottom: 2 }}>🟣 Jeton-Shop</div>
-          <div className="cs-jshop-sub">Jetons gibt's fürs Antippen (alle 25 Münzen 1), für große Gewinne, den Jackpot und am Glücksrad.</div>
-        </div>
-        <div className="cs-jbal">{fmtJetons(j)}</div>
-      </div>
-      <div className="cs-jitems">
-        {JETON_ITEMS.map(it => {
-          const lvl = jetonItemLevel(state, it);
-          const maxed = it.max && lvl >= it.max;
-          const cost = it.cost(lvl);
-          const block = it.blocked ? it.blocked(state, now) : null;
-          const can = !maxed && !block && j >= cost;
-          return (
-            <button key={it.id} className={`cs-jitem${can ? ' can' : ''}${maxed ? ' maxed' : ''}`} disabled={!can} onClick={() => onBuy(it.id)}>
-              <div className="ic">{it.icon}</div>
-              <div className="body">
-                <div className="nm">{it.name}{it.max > 1 && <span className="lv">{lvl}/{it.max}</span>}</div>
-                <div className="ds">{it.perSlot ? `${slotName}: ` : ''}{it.desc}</div>
-                {it.id === 'freepack' && (state.bonusSpins || 0) > 0 && <div className="ds" style={{ color: 'var(--green)' }}>Du hast {state.bonusSpins} Gratis-Spins – starte sie am Automaten</div>}
-              </div>
-              <div className="pr">{maxed ? '✔' : block ? '–' : fmtJetons(cost)}</div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_INFO).filter(g => !g.startsWith('slots-'))];
 export const coinRange = (loc) => {
   const a = coinById(loc.coins[0]); const b = coinById(loc.coins[3]);
   return `${a.label} ${a.unit} – ${b.label} ${b.unit}`;
@@ -230,7 +190,7 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, hl = '', jackpot, showExtras = true }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, hl = '', jackpot, showExtras = true }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const jp = jackpot ? jackpot.pool : jackpotPool(state);
   const online = jackpot && jackpot.online;
@@ -266,14 +226,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeto
 
       <div className="mg-label">🎮 Spiele</div>
       <div className="cs-games">
-        {(state.jetonShop || {}).highroller > 0 && (
-          <button data-tut="game-highroller" className="cs-game highroller" onClick={() => onPick('highroller')}>
-            <span className="tag neu">💎 VIP</span>
-            <div className="art" style={{ background: GAME_INFO.highroller.bg }}>💎</div>
-            <div className="info"><div className="nm">High Roller</div><div className="ds">Nur mit Jetons · Jackpot {fmtJetons(state.jetonPot || 100)}</div></div>
-          </button>
-        )}
-        {ALL_GAMES.filter(g => !(g.startsWith('slots-') && firstLoc(g) < state.location)).map(g => {
+        {ALL_GAMES.map(g => {
           const unlocked = derived.games.includes(g);
           const info = GAME_INFO[g];
           const l = LOCATIONS[firstLoc(g)];
@@ -289,8 +242,6 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeto
           );
         })}
       </div>
-
-      {onBuyJeton && <div style={{ marginTop: 18 }}><JetonShop state={state} onBuy={onBuyJeton} /></div>}
 
       {online && jackpot.wins && jackpot.wins.length > 0 && (
         <div className="mg-panel" style={{ marginTop: 18 }}>
