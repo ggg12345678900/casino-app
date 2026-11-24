@@ -142,3 +142,42 @@ Eine Codebasis für alles.
 
 ## Bereits erledigt (Stand jetzt)
 Münzen-Sammeln mit Combo, Werkzeuge nur für Klicks, Helfer, 7 Orte, 15 Casino-Spiele mit Themen-Automaten und Freispielen, echter gemeinsamer Jackpot, VIP-Einsatzlimit, Quest-Tutorial, Erfolge, Rangliste (Geld und Combo), Offline-Einnahmen 20 %, Feedback, Schummelschutz, Online-Version mit Neon und Render.
+
+---
+
+## Paket Jetons & ein Automat pro Ort (umgesetzt)
+
+### A – Zweite Währung „Jetons“ 🟣 (fürs Casino)
+**Verdienen:**
+- [x] Münzen antippen: alle **25 angetippten Münzen = 1 Jeton**. Fortschrittsleiste unter dem Münzfeld. **Helfer geben keine Jetons**, damit sich Antippen immer lohnt.
+- [x] Ab Combo 20 füllt sich die Leiste doppelt so schnell.
+- [x] Seltene **Jeton-Münze** auf dem Boden (ca. 1 von 150) bringt 5 Jetons.
+- [x] Großer Gewinn (×10 oder mehr) +1, Jackpot +25, Glücksrad bekommt ein Feld „10 Jetons“.
+- Ziel: aktiver Spieler ca. 50–100 Jetons pro Stunde
+
+**Ausgeben (Jeton-Shop im Casino):**
+- [x] Dauerhaft:
+  - Glückssträhne (+0,5 % Gewinnbonus je Stufe, max. 10)
+  - Automaten-Upgrade (mehr Freispiele, höherer Freispiel-Multiplikator)
+  - Versicherung (1× pro Stunde verlorenen Einsatz zurück)
+  - Turbo-Walzen (statt Auto-Spin – den gibt es schon kostenlos)
+  - VIP-Rabatt 10 %
+- [x] Verbrauch: Freispiel-Paket (10 Freispiele), Extra-Dreh am Glücksrad
+- [x] Exklusiv: **High-Roller-Automat**, nur mit Jetons spielbar, mit eigenem Jeton-Jackpot
+
+**Sonstiges:**
+- [x] Anzeige: 🟣-Zähler oben neben dem Geld
+- [x] Freischaltung zusammen mit dem Casino, mit eigenem Spotlight-Schritt
+- [x] Server-Schummelschutz: Jetons müssen zur Zahl der gesammelten Münzen passen
+- [x] Niemals für echtes Geld kaufbar (wichtig für Steam und die App Stores)
+
+### B – Nur ein Automat pro Ort
+- [x] Beim Umzug verschwindet der alte Automat („im neuen Casino ist kein Platz mehr“). In der Lobby steht immer nur der Automat des aktuellen Orts.
+- [x] Die anderen Spiele (Dice, Mines, Roulette …) bleiben.
+- [x] Automaten späterer Orte bleiben als gesperrte Vorschau sichtbar.
+- [x] Im Umzugs-Fenster steht der Hinweis: „Neuer Automat: …“.
+- [x] Laufende Freispiele am alten Automaten werden vor dem Umzug ausgezahlt oder sind nicht mehr möglich (beim Bauen klären).
+
+### Offen
+- [ ] Neuer Name (Vorschläge: The House Always Grows, All In Idle, Stack the House, Jackpot Empire …)
+- [ ] Sprache Englisch
