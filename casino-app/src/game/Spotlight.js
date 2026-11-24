@@ -16,7 +16,7 @@ const findTarget = (targets) => {
   return null;
 };
 
-export default function Spotlight({ targets, blocking = true, onSkip, onSettings }) {
+export default function Spotlight({ targets, blocking = true, onSkip, onSettings, onAdmin }) {
   const [view, setView] = useState(null); // { rect, tip, id }
   const [nudge, setNudge] = useState(0);
   const lastId = useRef(null);
@@ -85,6 +85,7 @@ export default function Spotlight({ targets, blocking = true, onSkip, onSettings
       <div className="mg-spot-bubble" style={bubbleStyle}>{view.tip}</div>
       {onSkip && <button className="mg-spot-skip" onClick={onSkip}>Tutorial überspringen</button>}
       {onSettings && <button className="mg-spot-gear" onClick={onSettings} aria-label="Einstellungen">⚙️</button>}
+      {onAdmin && <button className="mg-spot-gear admin" onClick={onAdmin} aria-label="Zur Admin-Zentrale">🛠️</button>}
     </div>
   );
 }

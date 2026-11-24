@@ -120,6 +120,10 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
   const claimQuest = useCallback(() => apply(s => E.claimQuest(s)), [apply]);
   const buyFinger = useCallback(() => apply(s => E.buyFinger(s)), [apply]);
+  const setProfile = useCallback((patch) => apply(s => E.setProfile(s, patch)), [apply]);
+  const markSecret = useCallback((key, value = true) => apply(s => E.markSecret(s, key, value)), [apply]);
+  const addMiss = useCallback(() => apply(s => ({ ...s, stats: { ...s.stats, misses: (s.stats.misses || 0) + 1 } })), [apply]);
+  const buySkin = useCallback((kind, id) => apply(s => E.buySkin(s, kind, id)), [apply]);
   const pickJeton = useCallback(() => apply(s => E.pickJeton(s)), [apply]);
   const buyJeton = useCallback((id) => apply(s => E.buyJetonItem(s, id)), [apply]);
   const useBonusSpins = useCallback(() => {
@@ -292,6 +296,6 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   return {
     state, derived: state ? E.derive(state) : null, welcome, announcement,
     jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
-    pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, buyFinger, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, buyFinger, setProfile, markSecret, addMiss, buySkin, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

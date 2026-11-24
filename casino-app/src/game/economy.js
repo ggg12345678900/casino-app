@@ -307,6 +307,15 @@ export const ACHIEVEMENTS = [
   { id: 'albumset1',icon: '📚', name: 'Erstes Set',           desc: 'Ein Album-Set komplett',           test: s => albumSets(s) >= 1 },
   { id: 'albumset5',icon: '🗃️', name: 'Numismatiker',         desc: '5 Album-Sets komplett',            test: s => albumSets(s) >= 5 },
   { id: 'albumall', icon: '🏛️', name: 'Museum',               desc: 'Das ganze Album komplett',         test: s => albumPieces(s) >= ALBUM_TOTAL },
+  // ── Geheime Erfolge (Easter Eggs) – bleiben verborgen, bis man sie findet ──
+  { id: 'sec_logo',   secret: true, icon: '🎩', name: 'Hut ab!',            desc: '10× schnell aufs Logo getippt',            test: s => !!(s.secrets || {}).logo },
+  { id: 'sec_zero',   secret: true, icon: '🕳️', name: 'Pleite, aber glücklich', desc: 'Nach dem Zocken genau 0,00 € übrig',   test: s => s.stats.bets > 0 && s.money < 0.005 },
+  { id: 'sec_777',    secret: true, icon: '🎰', name: 'Schnapszahl',        desc: 'Genau 777 € auf dem Konto',               test: s => Math.floor(s.money) === 777 },
+  { id: 'sec_night',  secret: true, icon: '🦉', name: 'Nachteule',          desc: 'Zwischen 3 und 4 Uhr nachts gespielt',     test: () => new Date().getHours() === 3 },
+  { id: 'sec_zen',    secret: true, icon: '🧘', name: 'Zen-Meister',        desc: '60 Sekunden aufs Münzfeld geschaut, ohne zu tippen', test: s => !!(s.secrets || {}).zen },
+  { id: 'sec_blind',  secret: true, icon: '🙈', name: 'Blindgänger',        desc: '100× daneben getippt',                     test: s => (s.stats.misses || 0) >= 100 },
+  { id: 'sec_credits',secret: true, icon: '📜', name: 'Neugierig',          desc: '„Über das Spiel“ 5× geöffnet',             test: s => ((s.secrets || {}).credits || 0) >= 5 },
+  { id: 'sec_feedback',secret: true, icon: '💌', name: 'Danke!',            desc: 'Feedback geschickt',                       test: s => !!(s.secrets || {}).feedback },
 ];
 // Stufe (1 Bronze … 5 Diamant) für die Anzeige
 const TIER_OF = {
@@ -314,6 +323,7 @@ const TIER_OF = {
   combo10: 1, combo20: 2, combo100: 3, combo500: 4, combo1k: 4, combo5k: 5, earn100: 1, earn1m: 2, earn1b: 3, earn1t: 3, earn1q: 4, earn1e18: 4, earn1e24: 5,
   help10: 1, help100: 2, help500: 3, help2k: 4, help10k: 5, tools10: 2, tools30: 4, sack1: 1, sack25: 2, sack100: 3, sack500: 4,
   bet1: 1, bet500: 2, bet5k: 3, bet25k: 5, bigwin: 1, bigwin25: 3, bigwin250: 5, wheel1: 1, wheel50: 3, wheel250: 4, jackpot1: 3, jackpot5: 5,
+  sec_logo: 3, sec_zero: 3, sec_777: 3, sec_night: 4, sec_zen: 2, sec_blind: 2, sec_credits: 2, sec_feedback: 2,
   vip10: 3, vip20: 5, jet100: 1, jet1k: 3, jet10k: 5, album1: 1, albumset1: 2, albumset5: 4, albumall: 5, charm1: 1, nadel: 5,
   loc1: 1, loc2: 1, loc3: 2, loc4: 2, loc5: 3, loc6: 3, loc7: 4, loc8: 4, loc9: 5, loc10: 5,
 };
@@ -433,6 +443,9 @@ export const newGame = () => ({
   insuranceReadyAt: 0,
   album: {},          // Sammelalbum: id -> Anzahl
   autoFinger: 0,      // Stufe des goldenen Fingers
+  secrets: {},        // Fortschritt geheimer Erfolge
+  profile: { avatar: 'cent', title: '' },
+  cosmetics: { owned: [], chip: 'classic', floor: 'default' },
   skills: { suchen: { level: 0, xp: 0 }, management: { level: 0, xp: 0 }, zocken: { level: 0, xp: 0 } },
   stats: {
     totalEarned: 0, clicks: 0, searches: 0, finds: 0, goldChips: 0, maxCombo: 0, sacks: 0, wheelSpins: 0,
@@ -455,6 +468,9 @@ export const migrate = (s) => {
     helpers: s.helpers || {}, tools: s.tools || [], charms: s.charms || {}, achievements: s.achievements || [],
     jetonShop: { ...(s.jetonShop || {}), slotup: { ...((s.jetonShop || {}).slotup || {}) } },
     album: s.album || {},
+    secrets: s.secrets || {},
+    profile: { ...base.profile, ...(s.profile || {}) },
+    cosmetics: { ...base.cosmetics, ...(s.cosmetics || {}), owned: ((s.cosmetics || {}).owned || []) },
   };
 };
 
@@ -775,6 +791,87 @@ export const recordJetonBet = (s, didWin, amount, multiplier, bet) => {
     return { state: { ...s, jetons: (s.jetons || 0) + pot, jetonPot: JETON_POT_SEED, stats: { ...st, jetonsWon: st.jetonsWon + pot } }, pot };
   }
   return { state: { ...s, jetonPot: (s.jetonPot || JETON_POT_SEED) + bet * 0.1, stats: st }, pot: 0 };
+};
+
+// ─── Profil: Avatare und Titel (freigeschaltet über Erfolge) ──────────────
+const hasAch = (s, id) => (s.achievements || []).includes(id);
+export const AVATARS = [
+  { id: 'cent', icon: '🪙', name: 'Glückscent', req: null },
+  { id: 'hat', icon: '🎩', name: 'Zylinder', req: 'loc3' },
+  { id: 'fox', icon: '🦊', name: 'Schlauer Fuchs', req: 'cent1k' },
+  { id: 'cat', icon: '😼', name: 'Casino-Katze', req: 'bet500' },
+  { id: 'fire', icon: '🔥', name: 'Feuer', req: 'combo100' },
+  { id: 'robot', icon: '🤖', name: 'Roboter', req: 'help100' },
+  { id: 'clover', icon: '🍀', name: 'Glückspilz', req: 'charm1' },
+  { id: 'dice', icon: '🎲', name: 'Würfel', req: 'bigwin' },
+  { id: 'crown', icon: '👑', name: 'Krone', req: 'earn1b' },
+  { id: 'moon', icon: '🌙', name: 'Mondkind', req: 'loc6' },
+  { id: 'alien', icon: '👽', name: 'Alien', req: 'loc7' },
+  { id: 'diamond', icon: '💎', name: 'Diamant', req: 'jackpot1' },
+  { id: 'owl', icon: '🦉', name: 'Nachteule', req: 'sec_night' },
+  { id: 'ninja', icon: '🥷', name: 'Ninja', req: 'combo1k' },
+  { id: 'unicorn', icon: '🦄', name: 'Einhorn', req: 'albumset1' },
+  { id: 'galaxy', icon: '🌌', name: 'Multiversum', req: 'loc10' },
+];
+export const TITLES = [
+  { id: 'anfaenger', name: 'Kleingeld-Sammler', req: 'cent100' },
+  { id: 'stamm', name: 'Stammgast', req: 'loc1' },
+  { id: 'zocker', name: 'Zocker', req: 'bet500' },
+  { id: 'comboking', name: 'Combo-König', req: 'combo500' },
+  { id: 'combogott', name: 'Combo-Gott', req: 'combo5k' },
+  { id: 'jackpot', name: 'Jackpot-Jäger', req: 'jackpot1' },
+  { id: 'millionaer', name: 'Millionär', req: 'earn1m' },
+  { id: 'milliardaer', name: 'Milliardär', req: 'earn1b' },
+  { id: 'boss', name: 'Konzern-Boss', req: 'help500' },
+  { id: 'sammler', name: 'Numismatiker', req: 'albumset5' },
+  { id: 'jeton', name: 'Jeton-Baron', req: 'jet1k' },
+  { id: 'astronaut', name: 'Astronaut', req: 'loc6' },
+  { id: 'eule', name: 'Nachteule', req: 'sec_night' },
+  { id: 'zen', name: 'Zen-Meister', req: 'sec_zen' },
+  { id: 'pleite', name: 'Pleitegeier', req: 'sec_zero' },
+  { id: 'mogul', name: 'Casino-Mogul', req: 'loc10' },
+];
+export const avatarUnlocked = (s, a) => !a.req || hasAch(s, a.req);
+export const titleUnlocked = (s, t) => !t.req || hasAch(s, t.req);
+export const avatarIcon = (id) => (AVATARS.find(a => a.id === id) || AVATARS[0]).icon;
+export const titleName = (id) => (TITLES.find(t => t.id === id) || {}).name || '';
+export const achievementName = (id) => (ACHIEVEMENTS.find(a => a.id === id) || {}).name || id;
+export const setProfile = (s, patch) => {
+  const next = { ...s.profile, ...patch };
+  const av = AVATARS.find(a => a.id === next.avatar);
+  if (!av || !avatarUnlocked(s, av)) next.avatar = s.profile.avatar;
+  if (next.title) { const t = TITLES.find(x => x.id === next.title); if (!t || !titleUnlocked(s, t)) next.title = s.profile.title; }
+  return { ...s, profile: next };
+};
+export const markSecret = (s, key, value = true) => ({ ...s, secrets: { ...(s.secrets || {}), [key]: value } });
+
+// ─── Designs für Jetons: Chip-Skins und Spielfeld-Designs ─────────────────
+export const CHIP_SKINS = [
+  { id: 'classic', name: 'Klassisch', icon: '🪙', cost: 0 },
+  { id: 'neon', name: 'Neon-Glow', icon: '💡', cost: 60 },
+  { id: 'gold', name: 'Pures Gold', icon: '🥇', cost: 120 },
+  { id: 'candy', name: 'Zuckerwatte', icon: '🍬', cost: 90 },
+  { id: 'pixel', name: 'Retro-Pixel', icon: '👾', cost: 150 },
+  { id: 'rainbow', name: 'Regenbogen', icon: '🌈', cost: 250 },
+];
+export const FLOOR_SKINS = [
+  { id: 'default', name: 'Standard', icon: '🏠', cost: 0 },
+  { id: 'night', name: 'Sternennacht', icon: '🌃', cost: 80 },
+  { id: 'retro', name: 'Röhren-TV', icon: '📺', cost: 100 },
+  { id: 'jungle', name: 'Dschungel', icon: '🌴', cost: 120 },
+  { id: 'vapor', name: 'Vaporwave', icon: '🌆', cost: 180 },
+  { id: 'royal', name: 'Königlich', icon: '👑', cost: 300 },
+];
+export const buySkin = (s, kind, id) => {
+  const list = kind === 'chip' ? CHIP_SKINS : FLOOR_SKINS;
+  const skin = list.find(x => x.id === id);
+  if (!skin) return null;
+  const key = `${kind}:${id}`;
+  const c = s.cosmetics || { owned: [] };
+  const owned = skin.cost === 0 || (c.owned || []).includes(key);
+  if (owned) return { ...s, cosmetics: { ...c, [kind]: id } }; // nur anlegen
+  if ((s.jetons || 0) < skin.cost) return null;
+  return { ...s, jetons: s.jetons - skin.cost, cosmetics: { ...c, owned: [...(c.owned || []), key], [kind]: id } };
 };
 
 // ─── Goldener Finger (ab dem Mond): tippt automatisch Chips an ──────────────

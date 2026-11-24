@@ -128,6 +128,8 @@ const initDB = async () => {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lb_hidden BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trust_until TIMESTAMP DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_avatar TEXT DEFAULT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mogul_title TEXT DEFAULT NULL`);
   await pool.query(`ALTER TABLE feedback ADD COLUMN IF NOT EXISTS done BOOLEAN DEFAULT FALSE`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS admin_actions (
@@ -698,9 +700,12 @@ app.post('/api/save', auth, async (req, res) => {
   // Beste Combo: zählt unbegrenzt, kann aber nie höher sein als alle aufgehobenen Münzen
   const finds = Math.max(0, Math.floor(Number(save.stats && save.stats.finds) || 0));
   const maxCombo = Math.max(0, Math.min(finds, 1e6, Math.floor(Number(save.stats && save.stats.maxCombo) || 0)));
+  const pid = (v) => (typeof v === 'string' && /^[a-z0-9_]{1,24}$/.test(v) ? v : null);
+  const prof = save.profile || {};
   await pool.query(
-    `UPDATE users SET save_data = $1, save_at = NOW(), last_seen = NOW(), mogul_location = $2, mogul_earned = $3, mogul_max_combo = $4 WHERE id = $5`,
-    [raw, location, earned, maxCombo, req.user.id]);
+    `UPDATE users SET save_data = $1, save_at = NOW(), last_seen = NOW(), mogul_location = $2, mogul_earned = $3, mogul_max_combo = $4,
+       mogul_avatar = $6, mogul_title = $7 WHERE id = $5`,
+    [raw, location, earned, maxCombo, req.user.id, pid(prof.avatar), pid(prof.title)]);
   res.json({ success: true });
 });
 
@@ -715,11 +720,11 @@ app.get('/api/mogul-leaderboard', auth, async (req, res) => {
   if (EXTRA[req.query.by]) {
     const pick = EXTRA[req.query.by];
     const all = await pool.query(
-      `SELECT id, username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo, save_data
+      `SELECT id, username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo, mogul_avatar AS avatar, mogul_title AS title, save_data
        FROM users WHERE is_admin = 0 AND save_data IS NOT NULL AND COALESCE(lb_hidden, FALSE) = FALSE`);
     const rows = all.rows.map(r => {
       let v = 0; try { v = pick(JSON.parse(r.save_data)); } catch {}
-      return { id: r.id, username: r.username, location: r.location, earned: r.earned, max_combo: r.max_combo, value: Number.isFinite(v) ? v : 0 };
+      return { id: r.id, username: r.username, location: r.location, earned: r.earned, max_combo: r.max_combo, avatar: r.avatar, title: r.title, value: Number.isFinite(v) ? v : 0 };
     }).filter(r => r.value > 0).sort((x, y) => y.value - x.value || y.earned - x.earned);
     const idx = rows.findIndex(r => r.id === req.user.id);
     const strip = ({ id, ...r }) => r;
@@ -727,11 +732,11 @@ app.get('/api/mogul-leaderboard', auth, async (req, res) => {
   }
   if (req.query.by === 'combo') {
     const top = await pool.query(
-      `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo
+      `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo, mogul_avatar AS avatar, mogul_title AS title
        FROM users WHERE is_admin = 0 AND save_data IS NOT NULL AND COALESCE(lb_hidden, FALSE) = FALSE AND COALESCE(mogul_max_combo, 0) > 0
        ORDER BY mogul_max_combo DESC, mogul_earned DESC LIMIT 50`);
     const me = await pool.query(
-      `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned, COALESCE(u.mogul_max_combo, 0) AS max_combo,
+      `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned, COALESCE(u.mogul_max_combo, 0) AS max_combo, u.mogul_avatar AS avatar, u.mogul_title AS title,
          (SELECT COUNT(*) FROM users o WHERE o.is_admin = 0 AND o.save_data IS NOT NULL AND
             (COALESCE(o.mogul_max_combo, 0) > COALESCE(u.mogul_max_combo, 0) OR
              (COALESCE(o.mogul_max_combo, 0) = COALESCE(u.mogul_max_combo, 0) AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
@@ -739,11 +744,11 @@ app.get('/api/mogul-leaderboard', auth, async (req, res) => {
     return res.json({ top: top.rows, me: me.rows[0] || null });
   }
   const top = await pool.query(
-    `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo
+    `SELECT username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo, mogul_avatar AS avatar, mogul_title AS title
      FROM users WHERE is_admin = 0 AND save_data IS NOT NULL AND COALESCE(lb_hidden, FALSE) = FALSE
      ORDER BY mogul_location DESC, mogul_earned DESC LIMIT 50`);
   const me = await pool.query(
-    `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned, COALESCE(u.mogul_max_combo, 0) AS max_combo,
+    `SELECT u.username, u.mogul_location AS location, u.mogul_earned AS earned, COALESCE(u.mogul_max_combo, 0) AS max_combo, u.mogul_avatar AS avatar, u.mogul_title AS title,
        (SELECT COUNT(*) FROM users o WHERE o.is_admin = 0 AND o.save_data IS NOT NULL AND
           (o.mogul_location > u.mogul_location OR (o.mogul_location = u.mogul_location AND o.mogul_earned > u.mogul_earned))) + 1 AS rank
      FROM users u WHERE u.id = $1`, [req.user.id]);
@@ -1014,7 +1019,8 @@ app.post('/api/wins', auth, async (req, res) => {
   res.json({ success: true });
 });
 app.get('/api/wins', auth, async (req, res) => {
-  const r = await pool.query(`SELECT id, username, game, amount, mult, created_at FROM live_wins ORDER BY id DESC LIMIT 12`);
+  const r = await pool.query(`SELECT w.id, w.username, w.game, w.amount, w.mult, w.created_at, u.mogul_avatar AS avatar, u.mogul_title AS title
+     FROM live_wins w LEFT JOIN users u ON u.id = w.user_id ORDER BY w.id DESC LIMIT 12`);
   res.json(r.rows);
 });
 

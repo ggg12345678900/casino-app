@@ -11,7 +11,7 @@ const CATS = [
 ];
 const DEMO = process.env.REACT_APP_DEMO === 'true';
 
-export default function Feedback({ state, onClose }) {
+export default function Feedback({ state, onClose, onSent }) {
   const [rating, setRating] = useState(0);
   const [category, setCategory] = useState('idee');
   const [message, setMessage] = useState('');
@@ -24,6 +24,7 @@ export default function Feedback({ state, onClose }) {
     try {
       const res = await api.sendFeedback({ rating: rating || 3, category, message, context });
       setStatus(res.error ? res.error : 'done');
+      if (!res.error && onSent) onSent();
     } catch {
       setStatus('Senden hat nicht geklappt. Prüf deine Verbindung und versuch es nochmal.');
     }

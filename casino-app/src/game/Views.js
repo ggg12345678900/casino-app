@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn, ALBUM, ALBUM_TOTAL, albumPieces, albumSets, ALBUM_SET_BONUS, ALBUM_CHANCE, TIERS } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn, ALBUM, ALBUM_TOTAL, albumPieces, albumSets, ALBUM_SET_BONUS, ALBUM_CHANCE, TIERS, AVATARS, TITLES, avatarUnlocked, titleUnlocked, avatarIcon, titleName, achievementName, CHIP_SKINS, FLOOR_SKINS } from './economy';
 import { sfx } from './sound';
 import { SLOT_THEMES } from './slotThemes';
 
@@ -24,7 +24,7 @@ const ALL_GAMES = [...LOCATIONS.map(l => `slots-${l.id}`), ...Object.keys(GAME_I
 export const fmtJetons = (n) => `${fmt(Math.floor(n + 1e-9), 0)} 🟣`;
 
 // ─── Jeton-Shop ────────────────────────────────────────────────────────────
-export function JetonShop({ state, onBuy }) {
+export function JetonShop({ state, onBuy, onBuySkin }) {
   const now = Date.now();
   const j = state.jetons || 0;
   const slotName = SLOT_THEMES[LOCATIONS[state.location].id].name;
@@ -57,6 +57,36 @@ export function JetonShop({ state, onBuy }) {
           );
         })}
       </div>
+      {onBuySkin && <SkinShop state={state} onBuy={onBuySkin} />}
+    </div>
+  );
+}
+
+function SkinShop({ state, onBuy }) {
+  const c = state.cosmetics || { owned: [] };
+  const row = (kind, list, label) => (
+    <>
+      <div className="mg-label" style={{ marginTop: 14 }}>{label}</div>
+      <div className="cs-skins">
+        {list.map(sk => {
+          const owned = sk.cost === 0 || (c.owned || []).includes(`${kind}:${sk.id}`);
+          const active = (c[kind] || (kind === 'chip' ? 'classic' : 'default')) === sk.id;
+          const can = owned || (state.jetons || 0) >= sk.cost;
+          return (
+            <button key={sk.id} className={`cs-skin ${kind}-prev-${sk.id}${active ? ' on' : ''}`} disabled={!can && !active} onClick={() => onBuy(kind, sk.id)}>
+              <div className="sw">{sk.icon}</div>
+              <div className="nm">{sk.name}</div>
+              <div className="pr">{active ? '✔ aktiv' : owned ? 'Anlegen' : fmtJetons(sk.cost)}</div>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+  return (
+    <div className="cs-skinshop">
+      {row('chip', CHIP_SKINS, '🎨 Chip-Skins')}
+      {row('floor', FLOOR_SKINS, '🖼️ Spielfeld-Designs')}
     </div>
   );
 }
@@ -166,7 +196,7 @@ function LiveFeed({ maxBet, games, me }) {
         return (
           <div key={r.id} className={`cs-feed-row${big ? ' big' : ''}${me && r.username === me ? ' me' : ''}`}>
             <span>{info.icon}</span>
-            <span><b style={{ color: 'var(--text)', marginLeft: 0 }}>{r.username}</b> · {info.name} · ×{fmt(r.mult, r.mult < 10 ? 1 : 0)}
+            <span>{r.avatar && <span className="mg-av-s">{avatarIcon(r.avatar)}</span>}<b style={{ color: 'var(--text)', marginLeft: 0 }}>{r.username}</b>{r.title && titleName(r.title) && <span className="mg-title-badge s">{titleName(r.title)}</span>} · {info.name} · ×{fmt(r.mult, r.mult < 10 ? 1 : 0)}
               {r.created_at && <span className="ago"> · {agoShort(r.created_at)}</span>}</span>
             <b>+{fmtMoney(r.amount)}</b>
           </div>
@@ -255,7 +285,7 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, hl = '', jackpot, showExtras = true, me }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, onBuySkin, hl = '', jackpot, showExtras = true, me }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const jp = jackpot ? jackpot.pool : jackpotPool(state);
   const online = jackpot && jackpot.online;
@@ -315,7 +345,7 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeto
         })}
       </div>
 
-      {onBuyJeton && <div style={{ marginTop: 18 }}><JetonShop state={state} onBuy={onBuyJeton} /></div>}
+      {onBuyJeton && <div style={{ marginTop: 18 }}><JetonShop state={state} onBuy={onBuyJeton} onBuySkin={onBuySkin} /></div>}
 
       {online && jackpot.wins && jackpot.wins.length > 0 && (
         <div className="mg-panel" style={{ marginTop: 18 }}>
@@ -381,12 +411,54 @@ function AlbumPanel({ state }) {
   );
 }
 
-export function CollectionView({ state }) {
+// Profil: Avatar und Titel (erscheinen in Rangliste und Live-Feed)
+function ProfilePanel({ state, user, onProfile }) {
+  const pr = state.profile || {};
+  return (
+    <div className="mg-panel mg-profile" style={{ marginBottom: 16 }}>
+      <div className="mg-profile-head">
+        <div className="av">{avatarIcon(pr.avatar)}</div>
+        <div>
+          <div className="disp" style={{ fontSize: 22 }}>{user ? user.username : 'Du'}</div>
+          {pr.title ? <span className="mg-title-badge">{titleName(pr.title)}</span> : <span className="ad-muted">Noch kein Titel gewählt</span>}
+        </div>
+      </div>
+      <div className="mg-label" style={{ marginTop: 12 }}>Avatar · freigeschaltet über Erfolge</div>
+      <div className="mg-avatars">
+        {AVATARS.map(a => {
+          const ok = avatarUnlocked(state, a);
+          return (
+            <button key={a.id} className={`mg-avatar${pr.avatar === a.id ? ' on' : ''}${ok ? '' : ' locked'}`} disabled={!ok}
+              title={ok ? a.name : `🔒 ${achievementName(a.req)}`} onClick={() => onProfile && onProfile({ avatar: a.id })}>
+              <span>{ok ? a.icon : '🔒'}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mg-label" style={{ marginTop: 12 }}>Titel</div>
+      <div className="mg-titles">
+        <button className={`mg-titlechip${!pr.title ? ' on' : ''}`} onClick={() => onProfile && onProfile({ title: '' })}>Keiner</button>
+        {TITLES.map(t => {
+          const ok = titleUnlocked(state, t);
+          return (
+            <button key={t.id} className={`mg-titlechip${pr.title === t.id ? ' on' : ''}${ok ? '' : ' locked'}`} disabled={!ok}
+              title={ok ? '' : `Freischalten: ${achievementName(t.req)}`} onClick={() => onProfile && onProfile({ title: t.id })}>
+              {ok ? t.name : `🔒 ${achievementName(t.req)}`}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function CollectionView({ state, user, onProfile }) {
   const total = CHARMS.reduce((a, c) => a + c.max, 0);
   const have = CHARMS.reduce((a, c) => a + (state.charms[c.id] || 0), 0);
   const got = state.achievements || [];
   return (
     <div>
+      <ProfilePanel state={state} user={user} onProfile={onProfile} />
       <div className="mg-panel" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           <div className="disp" style={{ fontSize: 22 }}>🏆 Erfolge · {got.length}/{ACHIEVEMENTS.length}</div>
@@ -403,10 +475,10 @@ export function CollectionView({ state }) {
             const ok = got.includes(a.id);
             return (
               <div key={a.id} className={`mg-ach-item ${ok ? 'got' : 'locked'} t${a.tier}`}>
-                <div className="ic">{a.icon}</div>
+                <div className="ic">{a.secret && !ok ? '❓' : a.icon}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14 }}>{a.name} <span className={`mg-tier t${a.tier}`}>{TIERS[a.tier]}</span></div>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>{a.desc}</div>
+                  <div style={{ fontWeight: 900, fontSize: 14 }}>{a.secret && !ok ? 'Geheimer Erfolg' : a.name} <span className={`mg-tier t${a.tier}`}>{TIERS[a.tier]}</span>{a.secret && <span className="mg-tier secret">🤫 geheim</span>}</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>{a.secret && !ok ? 'Finde selbst heraus, wie man ihn bekommt …' : a.desc}</div>
                 </div>
               </div>
             );
@@ -481,7 +553,8 @@ export function LeaderboardView({ user }) {
         <div key={r.username} className={`mg-rank ${r.username === user.username ? 'me' : ''}`} style={by === 'combo' && i === 0 ? { borderColor: '#ff8a3d', boxShadow: '0 4px 0 var(--shadow), 0 0 24px rgba(255,138,61,.35)' } : undefined}>
           <span style={{ width: 36, textAlign: 'center', fontSize: 18, fontWeight: 800 }}>{medal(i)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700 }}>{r.username}{r.username === user.username && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (du)</span>}</div>
+            <div style={{ fontWeight: 700 }}><span className="mg-av-s">{avatarIcon(r.avatar)}</span>{r.username}{r.username === user.username && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (du)</span>}
+              {r.title && titleName(r.title) && <span className="mg-title-badge s">{titleName(r.title)}</span>}</div>
             <div style={{ color: 'var(--muted)', fontSize: 12 }}>{LOCATIONS[r.location]?.icon} {LOCATIONS[r.location]?.name}</div>
           </div>
           {by === 'money' && comboBadge(r.max_combo)}
