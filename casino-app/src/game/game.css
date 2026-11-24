@@ -860,3 +860,12 @@
 .ad-fb-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .cs-feed-row.me { border-color: var(--green) !important; box-shadow: 0 0 12px rgba(61,255,139,.25); }
 .cs-feed-row .ago { color: var(--dim); font-size: 11px; }
+
+/* Goldener Finger */
+.mg-finger { position: absolute; z-index: 6; pointer-events: none; transform: translate(-30%, -10%); transition: left .45s cubic-bezier(.3,.8,.3,1), top .45s cubic-bezier(.3,.8,.3,1); }
+.mg-finger span { display: inline-block; font-size: 44px; filter: drop-shadow(0 0 10px #ffd34d) drop-shadow(0 0 22px rgba(255,200,60,.8)) drop-shadow(0 4px 0 rgba(0,0,0,.5)); animation: mgFingerHover 1.4s ease-in-out infinite; }
+.mg-finger span.tap { animation: mgFingerTap .35s ease-out, mgFingerHover 1.4s ease-in-out .35s infinite; }
+@keyframes mgFingerHover { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-6px) rotate(-4deg); } }
+@keyframes mgFingerTap { 0% { transform: scale(1); } 40% { transform: scale(.8) translateY(6px); } 100% { transform: scale(1.1); } }
+.mg-fingercard { border-color: #ffd34d !important; background: linear-gradient(180deg, #5a4214, #33240a 70%, #1d1142) !important; }
+.mg-fingercard.locked { filter: grayscale(.6); opacity: .6; }

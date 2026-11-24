@@ -114,7 +114,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum, fingerEvery = 0 }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -183,6 +183,36 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     return () => clearInterval(id);
   }, []);
 
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const pickAtRef = useRef(null);
+  // Goldener Finger: tippt automatisch alle paar Sekunden einen zufälligen Chip an
+  const [finger, setFinger] = useState({ x: 50, y: 55, tap: 0 });
+  useEffect(() => {
+    if (!fingerEvery) return undefined;
+    let t1; let t2;
+    const loop = () => {
+      t1 = setTimeout(() => {
+        const list = itemsRef.current.filter(it => !it.charm && (it.coin || it.jeton));
+        if (list.length && document.visibilityState !== 'hidden') {
+          const target = list[Math.floor(Math.random() * list.length)];
+          setFinger(f => ({ ...f, x: target.x, y: target.y }));
+          t2 = setTimeout(() => {
+            const still = itemsRef.current.find(it => it.id === target.id);
+            const rect = floorRef.current && floorRef.current.getBoundingClientRect();
+            if (still && rect && pickAtRef.current) {
+              setFinger(f => ({ ...f, tap: f.tap + 1 }));
+              pickAtRef.current(still, (still.x / 100) * rect.width, (still.y / 100) * rect.height, true);
+            }
+          }, 480);
+        }
+        loop();
+      }, fingerEvery * 1000);
+    };
+    loop();
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [fingerEvery]);
+
   const spawnFloats = useCallback((list) => {
     setFloats(f => [...f.slice(-20), ...list]);
     const ids = list.map(i => i.id);
@@ -194,9 +224,10 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const pick = (item, e) => {
+  const pick = (item, e) => { const { x, y } = posOf(e); pickAt(item, x, y, false); };
+  // auto: vom goldenen Finger aufgehoben (keine Combo)
+  const pickAt = (item, x, y, auto) => {
     setItems(cur => cur.filter(o => o.id !== item.id));
-    const { x, y } = posOf(e);
     if (item.charm) {
       if (onPickCharm(item.charm.id)) { sfx.charm(); onCharm(item.charm); }
       return;
@@ -209,13 +240,16 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
       return;
     }
     const nowMs = Date.now();
-    const c = comboRef.current;
-    c.n = nowMs - c.last < COMBO_WINDOW_MS ? c.n + 1 : 0;
-    c.last = nowMs;
-    setCombo(c.n);
+    const c = auto ? { n: 0 } : comboRef.current;
+    if (!auto) {
+      c.n = nowMs - c.last < COMBO_WINDOW_MS ? c.n + 1 : 0;
+      c.last = nowMs;
+      setCombo(c.n);
+    }
+    if (!item.coin) return;
     const r = onPickup(item.coin.id, item.gold, c.n);
     if (!r) return;
-    if (item.gold) { sfx.gold(); setShake(true); setTimeout(() => setShake(false), 350); } else sfx.coin(c.n);
+    if (item.gold) { sfx.gold(); setShake(true); setTimeout(() => setShake(false), 350); } else if (!auto) sfx.coin(c.n); else sfx.tick();
     if (r.levelUp) sfx.levelUp();
     const list = [{ id: ++uid, kind: item.gold ? 'gold' : 'find', x, y, text: `${item.gold ? '🥇 GOLD! ' : ''}+${fmtMoney(r.money)}` }];
     const n = item.gold ? 7 : 3;
@@ -230,13 +264,15 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     }
     if (r.jetons && showJetons) list.push({ id: ++uid, kind: 'jeton', x, y: y - 50, text: `🟣 +${r.jetons} Jeton` });
     if (r.levelUp) list.push({ id: ++uid, kind: 'level', x, y: y - 36, text: `⬆️ Sammeln Lv ${r.levelUp}` });
-    if (COMBO_MILESTONES.includes(c.n)) {
+    if (!auto && COMBO_MILESTONES.includes(c.n)) {
       list.push({ id: ++uid, kind: 'gold', x, y: y - 60, text: `🔥 COMBO ×${c.n}!` });
       sfx.achievement();
       setShake(true); setTimeout(() => setShake(false), 350);
     }
     spawnFloats(list);
   };
+
+  pickAtRef.current = pickAt;
 
   const missClick = (e) => {
     if (comboRef.current.n > 0) { comboRef.current.n = 0; setCombo(0); }
@@ -285,6 +321,11 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
           </div>
         )}
         {items.map(it => <Coin key={it.id} item={it} onPick={pick} />)}
+        {fingerEvery > 0 && (
+          <div className="mg-finger" style={{ left: `${finger.x}%`, top: `${finger.y}%` }} aria-hidden="true">
+            <span key={finger.tap} className={finger.tap ? 'tap' : ''}>👆</span>
+          </div>
+        )}
         {sack && (
           <button key={sack.id} className="mg-sack" onPointerDown={clickSack} aria-label="Geldsack schnappen"><span>💰</span></button>
         )}

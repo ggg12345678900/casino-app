@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './game.css';
 import useGame from './useGame';
-import { ADMIN_ACTION_TEXT, LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, jetonsOn, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
+import { ADMIN_ACTION_TEXT, fingerEvery, LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, jetonsOn, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard, fmtJetons } from './Views';
@@ -217,6 +217,7 @@ export default function GameApp({ user, onLogout }) {
   }, [game, state, toast]);
 
   const buyJeton = useCallback((id) => { if (game.buyJeton(id)) { sfx.buy(); if (id === 'highroller') setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
+  const buyFinger = useCallback(() => { if (game.buyFinger()) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
   const buyTool = useCallback((id) => { if (game.buyTool(id)) sfx.buy(); else sfx.nope(); }, [game]);
   const buyVip = useCallback((n = 1) => { if (game.buyVip(n)) { sfx.levelUp(); setConfetti(c => c + 1); } else sfx.nope(); }, [game]);
 
@@ -286,7 +287,7 @@ export default function GameApp({ user, onLogout }) {
   const renderTab = () => {
     switch (curTab) {
       case 'locations': return <LocationsView state={state} onMove={move} />;
-      case 'shop': return <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} hl={hl} showHelpers={un.helpers} />;
+      case 'shop': return <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} onBuyFinger={buyFinger} hl={hl} showHelpers={un.helpers} />;
       case 'more': return (
         <div>
           <div className="mg-subtabs">
@@ -341,12 +342,12 @@ export default function GameApp({ user, onLogout }) {
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
       default: {
         const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
-          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} />;
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={fingerEvery(state)} />;
         if (isMobile || !un.tools) return search;
         return (
           <div className="mg-split">
             {search}
-            <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} hl={hl} showHelpers={un.helpers} />
+            <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} onBuyFinger={buyFinger} hl={hl} showHelpers={un.helpers} />
           </div>
         );
       }

@@ -119,6 +119,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
 
   const pickCharm = useCallback((id) => apply(s => E.pickCharm(s, id)), [apply]);
   const claimQuest = useCallback(() => apply(s => E.claimQuest(s)), [apply]);
+  const buyFinger = useCallback(() => apply(s => E.buyFinger(s)), [apply]);
   const pickJeton = useCallback(() => apply(s => E.pickJeton(s)), [apply]);
   const buyJeton = useCallback((id) => apply(s => E.buyJetonItem(s, id)), [apply]);
   const useBonusSpins = useCallback(() => {
@@ -291,6 +292,6 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   return {
     state, derived: state ? E.derive(state) : null, welcome, announcement,
     jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
-    pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
+    pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, buyFinger, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

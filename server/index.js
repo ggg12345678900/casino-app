@@ -973,6 +973,29 @@ app.delete('/api/admin/delete-user/:id', adminAuth, async (req, res) => {
 });
 
 
+// ═══ Absturzberichte (landen im Admin-Menü unter Feedback, Kategorie „absturz“) ═══
+const crashCounter = new Map();
+app.post('/api/crash', async (req, res) => {
+  let user = null;
+  try { const t = req.headers.authorization?.split(' ')[1]; if (t) user = jwt.verify(t, SECRET); } catch {}
+  const who = user ? `u${user.id}` : req.ip;
+  const hour = Math.floor(Date.now() / 3600000);
+  const key = `${who}:${hour}`;
+  const n = (crashCounter.get(key) || 0) + 1;
+  crashCounter.set(key, n);
+  if (crashCounter.size > 5000) crashCounter.clear();
+  if (n > 10) return res.json({ success: true, skipped: true });
+  const b = req.body || {};
+  const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const message = `💥 ${str(b.message, 500) || 'Unbekannter Fehler'}\n\n${str(b.stack, 2000)}\n\n${str(b.extra, 1500)}`;
+  const context = `${str(b.url, 200)} · ${str(b.ua, 250)}`;
+  await pool.query(
+    `INSERT INTO feedback (user_id, username, rating, category, message, context) VALUES ($1, $2, 1, 'absturz', $3, $4)`,
+    [user ? user.id : null, user ? user.username : 'unbekannt', message, context]);
+  console.warn('💥 Absturzbericht:', user ? user.username : 'unbekannt', str(b.message, 200));
+  res.json({ success: true });
+});
+
 // ═══ Live-Gewinne: echte Gewinne aller Spieler ═══════════════════════════════
 const LIVE_GAME_RE = /^[a-z0-9-]{2,30}$/;
 app.post('/api/wins', auth, async (req, res) => {

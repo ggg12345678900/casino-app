@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   HELPERS, TOOLS, LOCATIONS,
-  helperCostN, maxAffordable, nextMilestone, HELPER_MILESTONES, fmt, fmtMoney,
+  helperCostN, maxAffordable, nextMilestone, HELPER_MILESTONES, fmt, fmtMoney, FINGER_LEVELS, FINGER_MIN_LOC,
 } from './economy';
 import { coinRange } from './Views';
 
@@ -72,7 +72,30 @@ function Helpers({ state, derived, onBuy, hl }) {
   );
 }
 
-function Tools({ state, onBuy, hl }) {
+// Goldener Finger: eigene Upgrade-Karte ab dem Mond
+function FingerCard({ state, onBuy }) {
+  if (state.location < FINGER_MIN_LOC - 1) return null;
+  const lvl = state.autoFinger || 0;
+  const next = FINGER_LEVELS[lvl];
+  const locked = state.location < FINGER_MIN_LOC;
+  const can = !locked && next && state.money >= next.cost;
+  const now = lvl > 0 ? FINGER_LEVELS[lvl - 1].every : null;
+  return (
+    <button className={`mg-item mg-fingercard ${can ? 'can' : 'poor'}${locked ? ' locked' : ''}`} onClick={() => can && onBuy()}>
+      <div className="ic">👆</div>
+      <div className="body">
+        <div className="name">Goldener Finger {lvl > 0 && <span className="mg-lvl">Stufe {lvl}/{FINGER_LEVELS.length}</span>}</div>
+        <div className="desc" style={{ color: 'var(--gold)', fontWeight: 700 }}>
+          {locked ? '🔒 Ab dem Mond-Casino' : !next ? `Tippt jede ${String(now).replace('.', ',')} s einen Chip – Maximum!` : lvl === 0 ? `Tippt alle ${next.every} s automatisch einen Chip an` : `Jetzt alle ${String(now).replace('.', ',')} s → dann alle ${String(next.every).replace('.', ',')} s`}
+        </div>
+        <div className="desc">Schwebt übers Spielfeld und schnappt sich zufällige Chips – zählt wie dein Antippen, also auch für Jetons und das Album.</div>
+      </div>
+      {next && <div className="right"><div className="price">{fmtMoney(next.cost)}</div></div>}
+    </button>
+  );
+}
+
+function Tools({ state, onBuy, onBuyFinger, hl }) {
   const available = TOOLS.filter(t => t.loc <= state.location && !state.tools.includes(t.id)).sort((a, b) => a.cost - b.cost);
   const owned = TOOLS.filter(t => state.tools.includes(t.id));
   const lockedCount = TOOLS.filter(t => t.loc > state.location).length;
@@ -80,6 +103,7 @@ function Tools({ state, onBuy, hl }) {
 
   return (
     <>
+      {onBuyFinger && <FingerCard state={state} onBuy={onBuyFinger} />}
       {available.length === 0 && (
         <div style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', padding: 16 }}>Alle Werkzeuge hier gekauft. Zieh weiter, um neue zu entdecken!</div>
       )}
@@ -120,7 +144,7 @@ function Tools({ state, onBuy, hl }) {
   );
 }
 
-export default function Shop({ state, derived, onBuyHelper, onBuyTool, hl = '', showHelpers = true }) {
+export default function Shop({ state, derived, onBuyHelper, onBuyTool, onBuyFinger, hl = '', showHelpers = true }) {
   const [tabSel, setTab] = useState('helpers');
   const tab = showHelpers ? tabSel : 'tools';
   const canHelpers = HELPERS.filter(h => h.loc <= state.location && state.money >= helperCostN(h, state.helpers[h.id] || 0, 1)).length;
@@ -138,7 +162,7 @@ export default function Shop({ state, derived, onBuyHelper, onBuyTool, hl = '', 
       </div>
       {tab === 'helpers'
         ? <Helpers state={state} derived={derived} onBuy={onBuyHelper} hl={hl} />
-        : <Tools state={state} onBuy={onBuyTool} hl={hl} />}
+        : <Tools state={state} onBuy={onBuyTool} onBuyFinger={onBuyFinger} hl={hl} />}
     </div>
   );
 }

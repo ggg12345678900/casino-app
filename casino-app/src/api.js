@@ -181,6 +181,10 @@ export const api = {
     body: JSON.stringify({ game, amount, mult }),
   }).then(r => r.json()),
   liveWins: () => fetch(`${BASE}/wins`, { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()),
+  reportCrash: (data) => fetch(`${BASE}/crash`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
+    body: JSON.stringify(data),
+  }),
   inbox: () => fetch(`${BASE}/inbox`, { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()),
   adm: (path, method = 'GET', body) => fetch(`${BASE}/admin/${path}`, {
     method,
