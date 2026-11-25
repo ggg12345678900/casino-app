@@ -6,6 +6,7 @@ import SearchView from './SearchView';
 import Shop from './Shop';
 import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard, fmtJetons, JetonShop } from './Views';
 import TreeView from './TreeView';
+import TestKit from './TestKit';
 import { TREE, treeOwned, treeCanReach } from './tree';
 import { SLOT_THEMES } from './slotThemes';
 import Slots from './Slots';
@@ -487,6 +488,7 @@ export default function GameApp({ user, onLogout, onAdmin }) {
         </div>
       )}
 
+      {!menu && <TestKit state={state} game={game} />}
       {quest && (quest.guide || qDone) && !state.tutorialSkipped && !menu && !settingsOpen && !feedbackOpen && !charmModal && !moveModal && !game.welcome && !bigWin && (
         <Spotlight targets={tutorialTargets(state, quest, qDone, curTab === 'casino' ? activeGame : null, isMobile)} blocking
           onSkip={(state.quest || 0) < 2 ? () => game.skipTutorial() : null} onSettings={() => setSettingsOpen(true)} onAdmin={onAdmin ? () => { game.saveNow(); onAdmin(); } : null} />

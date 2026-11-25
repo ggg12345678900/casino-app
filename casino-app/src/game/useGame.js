@@ -132,6 +132,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     if (ok) setTimeout(() => saveServer(), 0); // Skill-Kauf sofort sichern
     return ok;
   }, [apply, saveServer]);
+  const setFrenzy = useCallback(() => apply(s => ({ ...s, frenzyUntil: Date.now() + 20000 })), [apply]);
   const addBonusSpins = useCallback((n) => apply(s => E.addBonusSpins(s, n)), [apply]);
   const openChest = useCallback(() => {
     const s = stateRef.current;
@@ -316,7 +317,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   return {
     state, derived: state ? E.derive(state) : null, welcome, announcement,
     jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
-    buyTreeNode, addBonusSpins, openChest,
+    buyTreeNode, addBonusSpins, openChest, setFrenzy,
     pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, buyFinger, setProfile, markSecret, addMiss, buySkin, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }
