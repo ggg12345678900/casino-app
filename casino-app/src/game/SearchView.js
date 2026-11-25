@@ -5,6 +5,7 @@ import {
   SACK_MIN_SEC, SACK_MAX_SEC, JETON_PER_COINS, JETON_COIN_VALUE,
 } from './economy';
 import { sfx } from './sound';
+import { fx, catchAt } from './fx';
 
 const DECO = {
   hinterhof: ['🥫', '🚬', '📰', '🗑️', '🍌', '🧦'],
@@ -41,27 +42,27 @@ function Coin({ item, onPick }) {
   if (!coin && !charm && !item.jeton) return null;
   const style = {
     left: `${item.x}%`, top: `${item.y}%`,
-    '--size': `${charm || !coin ? 46 : coin.size}px`, '--rot': `${item.rot}deg`,
+    '--size': `${charm || !coin ? 46 : coin.size}px`, '--rot': `${item.rot}deg`, '--glint': `${item.glint}s`,
     animationDuration: `${life}s`,
   };
   const pick = (e) => { e.stopPropagation(); onPick(item, e); };
   if (item.jeton) {
     return (
       <button className="mg-coin jeton" style={{ ...style, '--size': '50px' }} onPointerDown={pick} aria-label="Jeton aufheben">
-        <span className="face"><b>J</b><i>+{JETON_COIN_VALUE}</i></span>
+        <span className="shadow" /><span className="body"><span className="face"><b>J</b><i>+{JETON_COIN_VALUE}</i></span></span>
       </button>
     );
   }
   if (charm) {
     return (
       <button className="mg-coin charm" style={style} onPointerDown={pick} aria-label={`${charm.name} aufheben`}>
-        <span>{charm.icon}</span>
+        <span className="ic">{charm.icon}</span>
       </button>
     );
   }
   return (
     <button className={`mg-coin ${coin.kind}${gold ? ' gold' : ''}`} style={style} onPointerDown={pick} aria-label={`${coinLabel(coin)} aufheben`}>
-      <span className="face"><b>{coin.label}</b><i>{coin.unit}</i></span>
+      <span className="shadow" /><span className="body"><span className="face"><b>{coin.label}</b><i>{coin.unit}</i></span></span>
     </button>
   );
 }
@@ -125,6 +126,8 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   const frenzyRef = useRef(derived.frenzy);
   frenzyRef.current = derived.frenzy;
   const comboRef = useRef({ n: 0, last: 0 });
+  const pickEVRef = useRef(derived.pickEV);
+  pickEVRef.current = derived.pickEV;
   const allowSackRef = useRef(allowSack);
   allowSackRef.current = allowSack;
   const [combo, setCombo] = useState(0);
@@ -172,7 +175,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
           const sp = rollSpawn(stateRef.current);
           const { x, y } = freeSpot(list);
           list = [...list, {
-            id: ++uid, x, y, born: now, rot: Math.random() * 60 - 30,
+            id: ++uid, x, y, born: now, rot: Math.random() * 60 - 30, glint: 1.2 + Math.random() * 4,
             coin: sp.coin, gold: sp.gold, charm: sp.type === 'charm' ? sp.charm : null, jeton: sp.type === 'jeton',
             life: sp.type === 'charm' || sp.type === 'jeton' ? CHARM_LIFETIME : sp.gold ? GOLD_LIFETIME : COIN_LIFETIME,
           }];
@@ -196,6 +199,25 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   }, []);
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  // Landung: Staubwölkchen (und Lichtring bei Gold), wenn eine neue Münze aufschlägt
+  const seenRef = useRef(new Set());
+  useEffect(() => {
+    const seen = seenRef.current;
+    const fresh = items.filter(it => !seen.has(it.id));
+    if (!fresh.length) { if (seen.size > 400) seenRef.current = new Set(items.map(i => i.id)); return; }
+    fresh.forEach(it => {
+      seen.add(it.id);
+      if (it.charm) return;
+      setTimeout(() => {
+        const rect = floorRef.current && floorRef.current.getBoundingClientRect();
+        if (!rect || !itemsRef.current.some(o => o.id === it.id)) return;
+        const cx = rect.left + (it.x / 100) * rect.width;
+        const cy = rect.top + (it.y / 100) * rect.height;
+        fx.dust(cx, cy + 10);
+        if (it.gold) fx.ring(cx, cy, { color: '#fde047', r: 70, width: 4, life: 0.5 });
+      }, 290);
+    });
+  }, [items]);
   const pickAtRef = useRef(null);
   // Goldener Finger: tippt automatisch alle paar Sekunden einen zufälligen Chip an
   const [finger, setFinger] = useState({ x: 50, y: 55, tap: 0 });
@@ -240,13 +262,24 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   const pickAt = (item, x, y, auto) => {
     if (!auto) lastTapRef.current = Date.now();
     setItems(cur => cur.filter(o => o.id !== item.id));
+    const fr = floorRef.current.getBoundingClientRect();
+    const cx = fr.left + (item.x / 100) * fr.width;
+    const cy = fr.top + (item.y / 100) * fr.height;
     if (item.charm) {
-      if (onPickCharm(item.charm.id)) { sfx.charm(); onCharm(item.charm); }
+      if (onPickCharm(item.charm.id)) {
+        sfx.charm(); onCharm(item.charm);
+        fx.flash(cx, cy, { r: 260, power: 0.9 });
+        fx.ring(cx, cy, { color: '#fbbf24', r: 160, width: 8 });
+        fx.burst(cx, cy, { kind: 'charm', count: 10, sparks: 24, power: 1.3 });
+      }
       return;
     }
     if (item.jeton) {
       if (onPickJeton && onPickJeton()) {
         sfx.gold();
+        fx.burst(cx, cy, { kind: 'jeton', count: 10, sparks: 10 });
+        const pill = document.querySelector('.mg-money .mg-jpill') || document.querySelector('.mg-money .coin3d');
+        fx.fly(cx, cy, pill, { kind: 'jeton', r: 18, onArrive: () => { catchAt(pill); sfx.clink(); } });
         spawnFloats([{ id: ++uid, kind: 'jeton', x, y, text: `🟣 +${JETON_COIN_VALUE} Jetons` }]);
       }
       return;
@@ -263,13 +296,20 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     if (!r) return;
     if (item.gold) { sfx.gold(); setShake(true); setTimeout(() => setShake(false), 350); } else if (!auto) sfx.coin(c.n); else sfx.tick();
     if (r.levelUp) sfx.levelUp();
-    const list = [{ id: ++uid, kind: item.gold ? 'gold' : 'find', x, y, text: `${item.gold ? '🥇 GOLD! ' : ''}+${fmtMoney(r.money)}` }];
-    const n = item.gold ? 7 : 3;
-    for (let i = 0; i < n; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const dist = 30 + Math.random() * 50;
-      list.push({ id: ++uid, kind: 'chip', x, y, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist - 30, rot: Math.random() * 720 - 360, text: '✨' });
+    // Effekte: Splitter, Funken und die Münze fliegt in den Geldzähler
+    const kind = item.gold ? 'gold' : item.coin.kind;
+    const heat = Math.min(1, c.n / COMBO_MAX);
+    fx.burst(cx, cy, { kind, count: item.gold ? 22 : auto ? 4 : 6 + Math.round(heat * 6), sparks: item.gold ? 26 : auto ? 3 : 5 + Math.round(heat * 10), power: item.gold ? 1.4 : 1 + heat * 0.3 });
+    if (item.gold) { fx.flash(cx, cy, { r: 240 }); fx.ring(cx, cy, { color: '#fde047', r: 150, width: 8 }); }
+    const wallet = document.querySelector('.mg-money .coin3d');
+    const copies = item.gold ? 5 : 1;
+    for (let i = 0; i < copies; i++) {
+      fx.fly(cx, cy, wallet, { kind, r: Math.max(12, item.coin.size * 0.36), delay: i * 0.06, onArrive: i === 0 ? () => { catchAt(wallet); sfx.clink(); } : undefined });
     }
+    // Größere Zahl, wenn die Münze viel mehr wert ist als üblich
+    const ratio = r.money / Math.max(1e-9, pickEVRef.current);
+    const size = item.gold || ratio >= 6 ? ' huge' : ratio >= 2.5 ? ' big' : '';
+    const list = [{ id: ++uid, kind: (item.gold ? 'gold' : 'find') + size, x, y, text: `${item.gold ? '🥇 GOLD! ' : ''}+${fmtMoney(r.money)}` }];
     if (r.album) {
       list.push({ id: ++uid, kind: 'gold', x, y: y - 80, text: `📖 ${r.album.icon} ${r.album.name}${r.album.dup ? ' (doppelt)' : '!'}` });
       if (onAlbum) onAlbum(r.album);
@@ -301,6 +341,11 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     setSack(null);
     const res = onOpenSack();
     if (!res) return;
+    fx.flash(e.clientX, e.clientY, { r: 280, power: 0.9 });
+    fx.ring(e.clientX, e.clientY, { color: '#ffd34d', r: 180, width: 9 });
+    fx.burst(e.clientX, e.clientY, { kind: 'gold', count: 26, sparks: 30, power: 1.5 });
+    const wallet = document.querySelector('.mg-money .coin3d');
+    for (let i = 0; i < 8; i++) fx.fly(e.clientX, e.clientY, wallet, { kind: 'gold', r: 16, delay: i * 0.05, onArrive: i === 7 ? () => { catchAt(wallet); sfx.clink(); } : undefined });
     if (res.kind === 'frenzy') {
       sfx.bigWin();
       spawnFloats([{ id: ++uid, kind: 'gold', x, y, text: '🌧️ GELDREGEN!' }]);
@@ -320,7 +365,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
     <div>
       {showGoal && <GoalBanner state={state} onMove={onMove} hl={hl === 'goal'} />}
 
-      <div ref={floorRef} data-tut="floor" className={`mg-floor floor-${loc.id} cskin-${(state.cosmetics || {}).chip || 'classic'} fskin-${(state.cosmetics || {}).floor || 'default'}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} onPointerDown={missClick}>
+      <div ref={floorRef} data-tut="floor" className={`mg-floor floor-${loc.id} cskin-${(state.cosmetics || {}).chip || 'classic'} fskin-${(state.cosmetics || {}).floor || 'default'}${combo >= 2 ? ' hot' : ''}${shake ? ' shake' : ''}${derived.frenzy ? ' frenzy' : ''}${hl === 'floor' ? ' mg-hl' : ''}`} style={{ '--heat': Math.min(1, combo / COMBO_MAX) }} onPointerDown={missClick}>
         <div className="mg-floor-ambient" />
         {deco.map((d, i) => (
           <div key={i} className="mg-floor-deco" style={{ left: `${d.x}%`, top: `${d.y}%`, transform: `rotate(${d.r}deg)` }}>{d.e}</div>
