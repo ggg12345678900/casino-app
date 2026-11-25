@@ -3,6 +3,7 @@
 //  Reine Funktionen ohne React: (state) → Zahlen. Alles Balancing steht hier.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { treeFx, shiftActive, earlyActive, goldMinuteActive } from './tree';
 export const SAVE_VERSION = 2; // erhöhen = alle Spielstände starten neu
 
 // ─── Münzen & Chips ─────────────────────────────────────────────────────────
@@ -343,7 +344,7 @@ export const QUESTS = [
   // Kapitel 2 in der Eckkneipe: Jetons
   { id: 'jeton1', icon: '🟣', title: 'Sammle deinen ersten Jeton', tip: 'Neu: Jede 25. Münze bringt einen Jeton 🟣', hint: 'Jetons sind die Casino-Währung. Jede angetippte Münze füllt die lila Leiste unter dem Boden – Helfer zählen nicht.', hl: 'jetonbar', guide: false, reward: 0, rewardJ: 25,
     progress: s => ((s.stats.jetonsEarned || 0) >= 1 ? 1 : Math.min(0.99, (s.jetonProgress || 0) / JETON_PER_COINS)) },
-  { id: 'jshop', icon: '🛒', title: 'Kauf ein Freispiel-Paket', tip: 'Im Jeton-Shop gibt es Extras fürs Casino. Hol dir 10 Gratis-Spins!', hint: 'Der Jeton-Shop steht in der Casino-Lobby unter den Spielen.', hl: 'jitem-freepack', guide: true, reward: 5,
+  { id: 'jshop', icon: '🛒', title: 'Kauf ein Freispiel-Paket', tip: 'Im Jeton-Shop gibt es Extras fürs Casino. Hol dir 10 Gratis-Spins!', hint: 'Der Jeton-Shop ist im Tab 🟣 Jetons – gleich neben dem Skilltree.', hl: 'jitem-freepack', guide: true, reward: 5,
     progress: s => ((s.bonusSpins || 0) > 0 || (s.stats.bonusUsed || 0) > 0 ? 1 : 0) },
   { id: 'bonus', icon: '🎁', title: 'Starte deine Gratis-Spins', tip: 'Tippe hier, um deine Gratis-Spins zu starten!', hint: 'Am Automaten der Kneipe.', hl: 'bonus', guide: true, reward: 10,
     progress: s => ((s.stats.bonusUsed || 0) > 0 ? 1 : 0) },
@@ -379,8 +380,15 @@ export const earningsFor = (s, sec) => {
 };
 export const openSack = (s, rng = Math.random, now = Date.now()) => {
   const st = { ...s.stats, sacks: (s.stats.sacks || 0) + 1 };
+  const fx = treeFx(s);
+  const frenzyUntil = now + fx.frenzySec * 1000;
+  // Skilltree „Prall gefüllt“: Geld UND Geldregen
+  if (fx.sackPlus) {
+    const amount = earningsFor(s, 90 + rng() * 90);
+    return { state: earn({ ...s, stats: st, frenzyUntil }, amount), result: { kind: 'both', amount } };
+  }
   if (rng() < 0.55) {
-    return { state: { ...s, stats: st, frenzyUntil: now + FRENZY_SEC * 1000 }, result: { kind: 'frenzy' } };
+    return { state: { ...s, stats: st, frenzyUntil }, result: { kind: 'frenzy' } };
   }
   const amount = earningsFor(s, 90 + rng() * 90);
   return { state: earn({ ...s, stats: st }, amount), result: { kind: 'money', amount } };
@@ -402,21 +410,25 @@ export const spinWheel = (s, rng = Math.random, now = Date.now()) => {
   let r = rng() * total; let index = 0;
   while (r >= WHEEL_PRIZES[index].weight) { r -= WHEEL_PRIZES[index].weight; index++; }
   const prize = WHEEL_PRIZES[index];
-  let next = { ...s, wheelReadyAt: now + WHEEL_COOLDOWN_MS, stats: { ...s.stats, wheelSpins: (s.stats.wheelSpins || 0) + 1 } };
+  const fx = treeFx(s);
+  // Skilltree: schnelleres Rad, Doppel-Dreh (Rad sofort wieder bereit)
+  const again = fx.wheelTwice > 0 && rng() < fx.wheelTwice;
+  const cooldown = again ? 0 : WHEEL_COOLDOWN_MS - fx.wheelFaster * 60000;
+  let next = { ...s, wheelReadyAt: now + cooldown, stats: { ...s.stats, wheelSpins: (s.stats.wheelSpins || 0) + 1 } };
   let text = '';
   const secs = { small: 120, small2: 180, big: 600, jackpot: 3600 }[prize.id];
   if (secs) { const amount = earningsFor(s, secs); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
   if (prize.id === 'jetons') {
     if (jetonsOn(s)) { next = addJetons(next, 10); text = '+10 Jetons 🟣'; } else { const amount = earningsFor(s, 120); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
   }
-  if (prize.id === 'frenzy') { next.frenzyUntil = now + FRENZY_SEC * 1000; text = 'Geldregen! Ab zum Sammeln!'; }
+  if (prize.id === 'frenzy') { next.frenzyUntil = now + fx.frenzySec * 1000; text = 'Geldregen! Ab zum Sammeln!'; }
   if (prize.id === 'boost') { next.boostUntil = now + 5 * 60 * 1000; text = 'Helfer verdienen 5 Minuten doppelt!'; }
   if (prize.id === 'charm') {
     const open = CHARMS.filter(c => (s.charms[c.id] || 0) < c.max && c.odds <= 10000);
     if (open.length) { const c = open[Math.floor(rng() * open.length)]; next.charms = { ...s.charms, [c.id]: (s.charms[c.id] || 0) + 1 }; text = `${c.icon} ${c.name}!`; }
     else { const amount = earningsFor(s, 600); next = earn(next, amount); text = `+${fmtMoney(amount)}`; }
   }
-  return { state: next, index, prize, text };
+  return { state: next, index, prize, text: again ? `${text} · 🎯 Doppel-Dreh – gleich nochmal!` : text, again };
 };
 
 // ─── Zustand ───────────────────────────────────────────────────────────────
@@ -443,6 +455,8 @@ export const newGame = () => ({
   insuranceReadyAt: 0,
   album: {},          // Sammelalbum: id -> Anzahl
   autoFinger: 0,      // Stufe des goldenen Fingers
+  tree: {},           // Skilltree: gekaufte Knoten (id -> true)
+  lossStreak: 0,      // Niederlagen in Folge (Pech-Konto)
   secrets: {},        // Fortschritt geheimer Erfolge
   profile: { avatar: 'cent', title: '' },
   cosmetics: { owned: [], chip: 'classic', floor: 'default' },
@@ -468,6 +482,7 @@ export const migrate = (s) => {
     helpers: s.helpers || {}, tools: s.tools || [], charms: s.charms || {}, achievements: s.achievements || [],
     jetonShop: { ...(s.jetonShop || {}), slotup: { ...((s.jetonShop || {}).slotup || {}) } },
     album: s.album || {},
+    tree: s.tree || {},
     secrets: s.secrets || {},
     profile: { ...base.profile, ...(s.profile || {}) },
     cosmetics: { ...base.cosmetics, ...(s.cosmetics || {}), owned: ((s.cosmetics || {}).owned || []) },
@@ -522,6 +537,12 @@ export const derive = (s, now = Date.now()) => {
     incomePerSec += helperIncome[h.id];
   });
   if (boost) { incomePerSec *= 2; Object.keys(helperIncome).forEach(k => { helperIncome[k] *= 2; }); }
+  // Skilltree: Schichtwechsel (×2) und Frühschicht (×3) – laufen nach der Uhr
+  const tfx = treeFx(s);
+  const shift = shiftActive(tfx, now);
+  const early = earlyActive(tfx, now);
+  const shiftMult = (shift ? 2 : 1) * (early ? 3 : 1);
+  if (shiftMult > 1) { incomePerSec *= shiftMult; Object.keys(helperIncome).forEach(k => { helperIncome[k] *= shiftMult; }); }
 
   const pickMult = toolMult(s, 'pick');
   const pickEV = avg * valueMult * pickMult * (1 + GOLD_CHANCE * (GOLD_MULT - 1));
@@ -540,6 +561,7 @@ export const derive = (s, now = Date.now()) => {
     pickMult, pickEV, manualPerSec: spawnRate * pickEV, frenzy, boost,
     winBonus, maxBet, games, loc,
     freeSpins: FREE_SPINS_BASE + slotLvl * 2, freeMult: FREE_MULT_BASE + slotLvl * 0.5, slotLvl, turbo: !!js.turbo,
+    tree: tfx, shift, early, goldMinute: goldMinuteActive(tfx, now),
   };
 };
 
@@ -591,12 +613,15 @@ export const jackpotPool = (s) => Math.max(s.jackpot || 0, jackpotSeed(s));
 export const jackpotChance = (s, bet) => JACKPOT_CHANCE * Math.min(1, Math.max(0, bet) / vipLimit(s.vip || 0));
 
 // Was erscheint als Nächstes auf dem Boden? (Münze, Goldmünze oder Glücksbringer)
-export const rollSpawn = (s, rng = Math.random) => {
+export const rollSpawn = (s, rng = Math.random, frenzy = false) => {
+  const fx = treeFx(s);
   for (const c of [...CHARMS].reverse()) {
     if ((s.charms[c.id] || 0) >= c.max) continue;
-    if (rng() < 1 / c.odds) return { type: 'charm', charm: c };
+    if (rng() < fx.charmMult / c.odds) return { type: 'charm', charm: c };
   }
-  if (jetonsOn(s) && rng() < JETON_COIN_CHANCE) return { type: 'jeton' };
+  if (jetonsOn(s) && rng() < JETON_COIN_CHANCE * fx.jetonCoinMult * (frenzy && fx.jetonRain ? 2.5 : 1)) return { type: 'jeton' };
+  if (fx.chestChance && rng() < fx.chestChance) return { type: 'chest' };
+  if (fx.cloverChance && rng() < fx.cloverChance) return { type: 'clover' };
   const ids = LOCATIONS[s.location].coins;
   let r = rng() * COIN_WEIGHTS.reduce((a, b) => a + b, 0);
   let idx = 0;
@@ -625,16 +650,24 @@ export const tick = (s, dtSec) => {
 
 // Eine Münze vom Boden aufheben
 export const comboMult = (combo) => 1 + Math.min(combo, COMBO_MAX) * COMBO_STEP;
-export const pickup = (s, coinId, gold = false, combo = 0, rng = Math.random) => {
+// opts.mult: Extra-Faktor (Turm, Serie, Fieber); opts.helper: vom Helfer im Feld aufgehoben
+export const pickup = (s, coinId, gold = false, combo = 0, rng = Math.random, opts = {}) => {
   const d = derive(s);
+  const fx = d.tree;
   const coin = coinById(coinId);
   if (!coin) return null;
-  const money = coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) * comboMult(combo);
+  const money = coin.v * d.valueMult * d.pickMult * (gold ? GOLD_MULT : 1) * comboMult(combo) * (opts.mult || 1);
   const { skills, ups } = addXp(s.skills, 'suchen', 1);
   let next = earn({ ...s, skills }, money);
-  const prog = (s.jetonProgress || 0) + (!jetonsOn(s) ? 0 : combo >= COMBO_MAX ? 2 : 1);
-  const gainedJ = Math.floor(prog / JETON_PER_COINS);
-  next.jetonProgress = prog % JETON_PER_COINS;
+  const bar = fx.jetonBar;
+  const fills = jetonsOn(s) && (!opts.helper || fx.apprentice);
+  const prog = (s.jetonProgress || 0) + (!fills ? 0 : combo >= COMBO_MAX ? 2 : 1);
+  let gainedJ = Math.floor(prog / bar);
+  next.jetonProgress = prog % bar;
+  // Skilltree: Doppel-Jeton und Combo-Kasse
+  if (gainedJ && fx.doubleJeton && rng() < fx.doubleJeton) gainedJ *= 2;
+  const comboJ = !opts.helper && fx.comboJetonEvery && combo > 0 && combo % fx.comboJetonEvery === 0 ? 1 : 0;
+  gainedJ += comboJ;
   if (gainedJ) next = addJetons(next, gainedJ);
   next.stats = {
     ...next.stats, clicks: s.stats.clicks + 1, finds: s.stats.finds + 1, goldChips: s.stats.goldChips + (gold ? 1 : 0),
@@ -642,16 +675,19 @@ export const pickup = (s, coinId, gold = false, combo = 0, rng = Math.random) =>
   };
   // Seltenes Album-Stück?
   let albumFind = null;
-  if (rng() < ALBUM_CHANCE) {
+  if (rng() < ALBUM_CHANCE * fx.albumMult) {
     const set = ALBUM[LOCATIONS[s.location].id] || [];
-    const [id, icon, name] = set[Math.floor(rng() * set.length)];
+    // Album-Kompass: zuerst die fehlenden Karten
+    const missing = fx.compass ? set.filter(([x]) => !((next.album || {})[x] > 0)) : [];
+    const pool = missing.length ? missing : set;
+    const [id, icon, name] = pool[Math.floor(rng() * pool.length)];
     const had = (next.album || {})[id] || 0;
     next = { ...next, album: { ...(next.album || {}), [id]: had + 1 } };
     const dupJ = had > 0 && jetonsOn(next) ? ALBUM_DUP_JETONS : 0;
     if (dupJ) next = addJetons(next, dupJ);
     albumFind = { id, icon, name, dup: had > 0, jetons: dupJ, setDone: had === 0 && set.every(([x]) => (next.album[x] || 0) > 0) };
   }
-  return { state: next, result: { money, gold, jetons: gainedJ, album: albumFind, levelUp: ups > 0 ? skills.suchen.level : null } };
+  return { state: next, result: { money, gold, jetons: gainedJ, comboJeton: comboJ, album: albumFind, levelUp: ups > 0 ? skills.suchen.level : null } };
 };
 
 // Einen Glücksbringer vom Boden aufheben
@@ -768,13 +804,15 @@ export const jetonItemLevel = (s, item) => {
   if (item.perSlot) return (js.slotup || {})[LOCATIONS[s.location].id] || 0;
   return js[item.id] || 0;
 };
+// Preis mit Skilltree-Rabatt (Stammkunde/Ehrengast)
+export const jetonItemCost = (s, item, lvl) => Math.max(1, Math.round(item.cost(lvl) * treeFx(s).shopDiscount));
 export const buyJetonItem = (s, id, now = Date.now()) => {
   const item = JETON_ITEMS.find(x => x.id === id);
   if (!item) return null;
   const lvl = jetonItemLevel(s, item);
   if (item.max && lvl >= item.max) return null;
   if (item.blocked && item.blocked(s, now)) return null;
-  const cost = item.cost(lvl);
+  const cost = jetonItemCost(s, item, lvl);
   if ((s.jetons || 0) < cost) return null;
   const next = { ...s, jetons: s.jetons - cost, jetonShop: { ...(s.jetonShop || {}) } };
   if (id === 'freepack') next.bonusSpins = (s.bonusSpins || 0) + BONUS_PACK;
@@ -792,6 +830,38 @@ export const recordJetonBet = (s, didWin, amount, multiplier, bet) => {
   }
   return { state: { ...s, jetonPot: (s.jetonPot || JETON_POT_SEED) + bet * 0.1, stats: st }, pot: 0 };
 };
+
+// ─── Skilltree-Effekte nach einer Casino-Runde ──────────────────────────
+// roll: vorher ausgewürfelte Zufallszahlen {a, b}, damit der State-Updater eindeutig bleibt
+export const treeAfterBet = (s, didWin, amount, multiplier, bet, roll, now = Date.now()) => {
+  const fx = treeFx(s);
+  const events = [];
+  let next = { ...s, lossStreak: didWin ? 0 : (s.lossStreak || 0) + 1 };
+  const bonusWin = (extra, text) => {
+    next = earn(next, extra);
+    next.stats = { ...next.stats, gambleWon: (next.stats.gambleWon || 0) + extra, gambleProfit: (next.stats.gambleProfit || 0) + extra };
+    events.push({ icon: text[0], text: `${text[1]} +${fmtMoney(extra)}` });
+  };
+  if (didWin && amount > 0 && fx.badLuck && (s.lossStreak || 0) >= 3) bonusWin(amount * fx.badLuck, ['📉', 'Pech-Konto zahlt aus:']);
+  if (didWin && amount > 0 && goldMinuteActive(fx, now)) bonusWin(amount, ['🌟', 'Goldene Minute:']);
+  if (!didWin && amount > 0 && fx.refund && roll.a < fx.refund) {
+    next = { ...next, money: next.money + amount };
+    events.push({ icon: '🪙', text: `Zweite Chance: ${fmtMoney(amount)} zurück` });
+  }
+  if (fx.tip && roll.b < fx.tip && jetonsOn(next)) { next = addJetons(next, 1); events.push({ icon: '🤵', text: 'Trinkgeld vom Croupier: +1 Jeton' }); }
+  if (didWin && multiplier >= 10 && fx.bigWinJetons && jetonsOn(next)) { next = addJetons(next, fx.bigWinJetons); events.push({ icon: '💎', text: `Big-Win-Bonus: +${fx.bigWinJetons} Jetons` }); }
+  if (fx.houseGift && (next.stats.bets || 0) > 0 && next.stats.bets % 50 === 0) {
+    next = { ...next, bonusSpins: (next.bonusSpins || 0) + 5 };
+    events.push({ icon: '🎁', text: 'Stammgast: 5 Gratis-Spins vom Haus' });
+  }
+  return { state: next, events };
+};
+// Truhe (Skilltree): 10–30 Jetons
+export const openChest = (s, rng = Math.random) => {
+  const n = 10 + Math.floor(rng() * 21);
+  return { state: addJetons(s, n), jetons: n };
+};
+export const addBonusSpins = (s, n) => ({ ...s, bonusSpins: (s.bonusSpins || 0) + n });
 
 // ─── Profil: Avatare und Titel (freigeschaltet über Erfolge) ──────────────
 const hasAch = (s, id) => (s.achievements || []).includes(id);
@@ -935,7 +1005,7 @@ export const ADMIN_ACTION_TEXT = (a) => ({
 export const offlineProgress = (s, now = Date.now()) => {
   const sec = Math.min(Math.max(0, (now - (s.savedAt || now)) / 1000), OFFLINE_CAP_SEC);
   const away = Math.max(0, (now - (s.savedAt || now)) / 1000);
-  const earned = derive(s).incomePerSec * OFFLINE_RATE * sec;
+  const earned = derive(s).incomePerSec * (treeFx(s).offlineRate || OFFLINE_RATE) * sec;
   return { seconds: sec, away, earned, state: earn(s, earned) };
 };
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonsOn, ALBUM, ALBUM_TOTAL, albumPieces, albumSets, ALBUM_SET_BONUS, ALBUM_CHANCE, TIERS, AVATARS, TITLES, avatarUnlocked, titleUnlocked, avatarIcon, titleName, achievementName, CHIP_SKINS, FLOOR_SKINS } from './economy';
+import { LOCATIONS, CHARMS, TOOLS, HELPERS, ACHIEVEMENTS, ACHIEVEMENT_BONUS, WHEEL_PRIZES, vipCost, vipName, vipTierIndex, vipLimit, vipAffordable, jackpotPool, jackpotChance, coinById, fmt, fmtMoney, fmtTime, JETON_ITEMS, jetonItemLevel, jetonItemCost, jetonsOn, ALBUM, ALBUM_TOTAL, albumPieces, albumSets, ALBUM_SET_BONUS, ALBUM_CHANCE, TIERS, AVATARS, TITLES, avatarUnlocked, titleUnlocked, avatarIcon, titleName, achievementName, CHIP_SKINS, FLOOR_SKINS } from './economy';
 import { sfx } from './sound';
 import { SLOT_THEMES } from './slotThemes';
 
@@ -33,7 +33,7 @@ export function JetonShop({ state, onBuy, onBuySkin }) {
       <div className="cs-jshop-head">
         <div>
           <div className="mg-label" style={{ marginBottom: 2 }}>🟣 Jeton-Shop</div>
-          <div className="cs-jshop-sub">Jetons gibt's fürs Antippen (alle 25 Münzen 1), für große Gewinne, den Jackpot und am Glücksrad.</div>
+          <div className="cs-jshop-sub">Jetons gibt's fürs Antippen (Jeton-Leiste), für große Gewinne, den Jackpot und am Glücksrad. Mehr Möglichkeiten im 🌳 Skilltree.</div>
         </div>
         <div className="cs-jbal">{fmtJetons(j)}</div>
       </div>
@@ -41,7 +41,7 @@ export function JetonShop({ state, onBuy, onBuySkin }) {
         {JETON_ITEMS.map(it => {
           const lvl = jetonItemLevel(state, it);
           const maxed = it.max && lvl >= it.max;
-          const cost = it.cost(lvl);
+          const cost = jetonItemCost(state, it, lvl);
           const block = it.blocked ? it.blocked(state, now) : null;
           const can = !maxed && !block && j >= cost;
           return (
@@ -186,6 +186,7 @@ function LiveFeed({ maxBet, games, me }) {
     next();
     return () => clearTimeout(t);
   }, [maxBet, games]);
+  if (!ONLINE_FEED) return <div className="cs-feed"><div className="ad-muted" style={{ padding: 8 }}>📡 Live-Gewinne gibt es nur in der Online-Version – hier spielst du offline.</div></div>;
   if (rows === null) return <div className="cs-feed"><div className="ad-muted">Lade…</div></div>;
   if (rows.length === 0) return <div className="cs-feed"><div className="ad-muted" style={{ padding: 8 }}>Noch keine Gewinne – hol dir den ersten Platz im Feed! 🎰</div></div>;
   return (
@@ -285,7 +286,7 @@ export function VipCard({ state, derived, onBuy, compact }) {
   );
 }
 
-export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeton, onBuySkin, hl = '', jackpot, showExtras = true, me }) {
+export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onOpenJetons, hl = '', jackpot, showExtras = true, me }) {
   const firstLoc = (g) => LOCATIONS.findIndex(l => l.games.includes(g));
   const jp = jackpot ? jackpot.pool : jackpotPool(state);
   const online = jackpot && jackpot.online;
@@ -345,7 +346,13 @@ export function CasinoView({ state, derived, onPick, onSpin, onBuyVip, onBuyJeto
         })}
       </div>
 
-      {onBuyJeton && <div style={{ marginTop: 18 }}><JetonShop state={state} onBuy={onBuyJeton} onBuySkin={onBuySkin} /></div>}
+      {onOpenJetons && (
+        <button className="cs-jlink" onClick={onOpenJetons}>
+          <span className="ic">🟣</span>
+          <span className="tx"><b>Jeton-Shop & Skilltree</b><small>Gratis-Spins, Glückssträhne, High Roller – und 100 Skills</small></span>
+          <span className="bal">{fmtJetons(state.jetons || 0)}</span>
+        </button>
+      )}
 
       {online && jackpot.wins && jackpot.wins.length > 0 && (
         <div className="mg-panel" style={{ marginTop: 18 }}>

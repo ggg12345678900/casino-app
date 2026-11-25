@@ -431,6 +431,9 @@ app.post('/api/save', auth, async (req, res) => {
   // Jackpots und das Glücksrad. Gewinne am High-Roller-Automaten zählen extra.
   const st = save.stats || {};
   const num = (v) => (Number.isFinite(v) && v > 0 ? v : 0);
+  // Skilltree: höchstens 100 Knoten
+  if (save.tree && (typeof save.tree !== 'object' || Object.keys(save.tree).length > 100))
+    return res.status(400).json({ error: 'Spielstand unplausibel' });
   // Album: höchstens so viele Karten, wie es gibt
   if (save.album && (typeof save.album !== 'object' || Object.keys(save.album).length > 80))
     return res.status(400).json({ error: 'Spielstand unplausibel' });
@@ -439,7 +442,8 @@ app.post('/api/save', auth, async (req, res) => {
     return res.status(400).json({ error: 'Ungültige Jetons' });
   const jEarned = num(st.jetonsEarned);
   const jWon = num(st.jetonsWon);
-  const jMax = num(st.finds) * 0.2 + num(st.bets) + num(st.wheelSpins) * 10 + num(st.jackpots) * 25 + 100;
+  // Skilltree (Doppel-Jeton, Combo-Kasse, Truhen, Trinkgeld …) erhöht die Ausbeute – daher großzügig
+  const jMax = num(st.finds) * 0.5 + num(st.bets) * 1.5 + num(st.wheelSpins) * 10 + num(st.jackpots) * 25 + 100;
   if (!trusted && (jEarned > jMax || jWon > Math.max(5000, jEarned * 50) || jetons > jEarned + jWon + 1))
     return res.status(400).json({ error: 'Spielstand unplausibel' });
 
@@ -468,7 +472,7 @@ app.post('/api/save', auth, async (req, res) => {
     const st2 = save.stats || {};
     const dt = Math.max(5, sinceSec);
     const counterJump = (k, perSec, free) => cnt(st2, k) > (hasPrev ? cnt(prevStats, k) : 0) + dt * perSec + free;
-    if (counterJump('finds', 25, 200) || counterJump('bets', 20, 200) || counterJump('wheelSpins', 0.5, 20) || counterJump('maxCombo', 20, 50) || counterJump('jackpots', 0.01, 3)) {
+    if (counterJump('finds', 60, 300) || counterJump('bets', 20, 200) || counterJump('wheelSpins', 0.5, 20) || counterJump('maxCombo', 20, 50) || counterJump('jackpots', 0.01, 3)) {
       console.warn(`⚠️ Spielstand abgelehnt (Zähler zu schnell): ${req.user.username}`);
       return res.status(400).json({ error: 'Spielstand unplausibel' });
     }
