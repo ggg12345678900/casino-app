@@ -1027,6 +1027,18 @@ export const fmt = (n, dec = 2) => {
   return dot(v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0)) + (de ? ' ' : '') + list[i];
 };
 export const fmtMoney = (n) => fmt(n) + ' €';
+// Sehr kurz (für Chips und kleine Knöpfe): max. 3 Stellen + Kürzel ohne Leerzeichen, z. B. „429Qua“
+export const fmtShort = (n) => {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  const de = numberFormat === 'de';
+  const dot = (x) => (de ? x.replace('.', ',') : x);
+  if (n < 1000) return dot(String(+n.toPrecision(3)));
+  const list = SUFFIX[numberFormat];
+  const i = Math.min(list.length - 1, Math.floor(Math.log10(n) / 3));
+  const v = n / Math.pow(1000, i);
+  if (v >= 1000) return dot(n.toExponential(1)).replace('e+', 'e');
+  return dot(String(+v.toPrecision(3))) + list[i];
+};
 export const fmtTime = (sec) => {
   sec = Math.floor(sec);
   const h = Math.floor(sec / 3600); const m = Math.floor((sec % 3600) / 60); const s = sec % 60;

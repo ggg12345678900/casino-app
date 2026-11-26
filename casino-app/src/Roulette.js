@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { fmtShort } from './game/economy';
 import UpgradePanel from './UpgradePanel';
 
 const NUMBERS = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
@@ -11,12 +12,8 @@ const chipValuesFor = (maxBet) => {
   const scale = Math.pow(10, Math.floor(Math.log10(Math.max(maxBet, 0.05) / 500)));
   return CHIP_STEPS.map(v => +(v * scale).toPrecision(3));
 };
-const short = (n) => {
-  if (n >= 1e9) return +(n / 1e9).toPrecision(3) + 'Mrd';
-  if (n >= 1e6) return +(n / 1e6).toPrecision(3) + 'M';
-  if (n >= 1e3) return +(n / 1e3).toPrecision(3) + 'K';
-  return String(+n.toPrecision(3));
-};
+// Kurze Beschriftung für Chips (passt auch bei riesigen Einsätzen auf den Chip)
+const short = (n) => fmtShort(n);
 const SLICE_DEG = 360 / NUMBERS.length;
 
 const checkWin = (betKey, num) => {
@@ -322,7 +319,7 @@ function Roulette({ balance, setBalance, addResult, maxBet = 50, winBonus = 0, p
                   backgroundColor: CHIP_COLORS[i],
                   border: `3px solid ${selectedChip === v ? '#FFD700' : 'transparent'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', color: 'white',
+                  cursor: 'pointer', fontWeight: 'bold', fontSize: short(v).length > 4 ? '9px' : '11px', color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', lineHeight: 1,
                   boxShadow: selectedChip === v ? '0 0 10px #FFD700' : 'none',
                   flexShrink: 0, transition: 'all 0.15s'
                 }}>{short(v)}</div>
