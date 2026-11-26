@@ -46,7 +46,12 @@ function ensure() {
   host().appendChild(canvas);
   g = canvas.getContext('2d');
   const resize = () => {
-    dpr = Math.min(2, window.devicePixelRatio || 1);
+    // Funken brauchen keine Retina-Schärfe: Pixelzahl begrenzen (Touch-Geräte stärker) – spart viel Grafikarbeit
+    const area = window.innerWidth * window.innerHeight;
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const maxPx = coarse ? 1.2e6 : 2.5e6;
+    dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(maxPx / Math.max(1, area))));
+    dirty = null;
     canvas.width = Math.round(window.innerWidth * dpr);
     canvas.height = Math.round(window.innerHeight * dpr);
   };
@@ -63,34 +68,60 @@ function start() {
 
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
+// Münz-Bilder werden einmal pro Farbe vorgezeichnet und dann nur noch skaliert (viel schneller als Verläufe pro Bild)
+const SPRITE_R = 32;
+const sprites = new Map();
+function coinSprite(pal) {
+  const key = pal.join('|');
+  let c = sprites.get(key);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = SPRITE_R * 2;
+  const x = c.getContext('2d');
+  const r = SPRITE_R;
+  const grd = x.createRadialGradient(r - r * 0.35, r - r * 0.4, r * 0.1, r, r, r);
+  grd.addColorStop(0, pal[0]); grd.addColorStop(0.5, pal[1]); grd.addColorStop(1, pal[2]);
+  x.fillStyle = grd;
+  x.beginPath(); x.arc(r, r, r - 0.5, 0, Math.PI * 2); x.fill();
+  x.globalAlpha = 0.55; x.fillStyle = '#fff';
+  x.beginPath(); x.ellipse(r - r * 0.3, r - r * 0.35, r * 0.28, r * 0.16, -0.5, 0, Math.PI * 2); x.fill();
+  sprites.set(key, c);
+  return c;
+}
+
+// Nur der Bereich, in dem zuletzt gezeichnet wurde, wird gelöscht
+let dirty = null;
+let box = null;
+const grow = (x, y, r) => {
+  if (!box) box = [x - r, y - r, x + r, y + r];
+  else { if (x - r < box[0]) box[0] = x - r; if (y - r < box[1]) box[1] = y - r; if (x + r > box[2]) box[2] = x + r; if (y + r > box[3]) box[3] = y + r; }
+};
+
 function drawCoin(x, y, r, spin, pal, alpha = 1) {
   // spin: Winkel um die senkrechte Achse → Breite schrumpft, die Kante wird sichtbar
   const w = Math.max(0.12, Math.abs(Math.cos(spin)));
-  g.save();
   g.globalAlpha = alpha;
-  g.translate(x, y);
-  // Kante (Dicke)
   g.fillStyle = pal[2];
-  g.beginPath(); g.ellipse(r * 0.12 * Math.sign(Math.sin(spin) || 1), 0, r * w, r, 0, 0, Math.PI * 2); g.fill();
-  // Fläche
-  const grd = g.createRadialGradient(-r * 0.35 * w, -r * 0.4, r * 0.1, 0, 0, r);
-  grd.addColorStop(0, pal[0]); grd.addColorStop(0.5, pal[1]); grd.addColorStop(1, pal[2]);
-  g.fillStyle = grd;
-  g.beginPath(); g.ellipse(0, 0, r * w, r, 0, 0, Math.PI * 2); g.fill();
-  // Glanzlicht
-  g.globalAlpha = alpha * 0.55 * w;
-  g.fillStyle = '#fff';
-  g.beginPath(); g.ellipse(-r * 0.3 * w, -r * 0.35, r * 0.28 * w, r * 0.16, -0.5, 0, Math.PI * 2); g.fill();
-  g.restore();
+  g.beginPath(); g.ellipse(x + r * 0.12 * Math.sign(Math.sin(spin) || 1), y, r * w, r, 0, 0, Math.PI * 2); g.fill();
+  g.drawImage(coinSprite(pal), x - r * w, y - r, r * 2 * w, r * 2);
+  grow(x, y, r * 1.2);
 }
+
+// Automatische Qualität: stockt das Gerät, gibt es weniger Partikel
+let frameAvg = 16;
+let quality = 1;
+export const fxQuality = () => quality;
 
 function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  frameAvg = frameAvg * 0.92 + Math.min(100, dt * 1000) * 0.08;
+  quality = frameAvg > 30 ? 0.4 : frameAvg > 22 ? 0.7 : 1;
   const W = window.innerWidth;
   const H = window.innerHeight;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, W, H);
+  if (dirty) g.clearRect(dirty[0], dirty[1], dirty[2] - dirty[0], dirty[3] - dirty[1]);
+  box = null;
 
   // Blitze (Goldmünze)
   flashes = flashes.filter(f => (f.t += dt) < f.life);
@@ -99,8 +130,10 @@ function tick(now) {
     const grd = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
     grd.addColorStop(0, `rgba(255,248,210,${a})`);
     grd.addColorStop(1, 'rgba(255,220,120,0)');
+    g.globalAlpha = 1;
     g.fillStyle = grd;
     g.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2);
+    grow(f.x, f.y, f.r);
   }
 
   // Druckwellen
@@ -108,15 +141,14 @@ function tick(now) {
   for (const r of rings) {
     const p = r.t / r.life;
     const e = 1 - Math.pow(1 - p, 3);
-    g.save();
     g.globalAlpha = (1 - p) * 0.9;
     g.strokeStyle = r.color;
     g.lineWidth = r.width * (1 - p) + 1;
     g.beginPath(); g.ellipse(r.x, r.y, r.r * e, r.r * e * 0.62, 0, 0, Math.PI * 2); g.stroke();
-    g.restore();
+    grow(r.x, r.y, r.r * e + r.width);
   }
 
-  // Splitter, Funken, Staub
+  // Splitter, Funken, Staub – erst bewegen, dann je Sorte gesammelt zeichnen
   parts = parts.filter(p => (p.t += dt) < p.life);
   for (const p of parts) {
     p.vy += p.grav * dt;
@@ -124,46 +156,52 @@ function tick(now) {
     p.x += p.vx * dt; p.y += p.vy * dt;
     if (p.floor != null && p.y > p.floor && p.vy > 0) { p.y = p.floor; p.vy *= -0.38; p.vx *= 0.7; p.vr *= 0.6; }
     p.rot += p.vr * dt;
-    const fade = Math.min(1, (p.life - p.t) / (p.life * 0.4));
-    if (p.kind === 'spark') {
-      g.save();
-      g.globalCompositeOperation = 'lighter';
-      g.globalAlpha = fade;
-      g.strokeStyle = p.color;
-      g.lineWidth = p.size;
-      g.lineCap = 'round';
-      g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035); g.stroke();
-      g.restore();
-    } else if (p.kind === 'dust') {
-      g.save();
-      g.globalAlpha = fade * 0.35;
+    p.fade = Math.min(1, (p.life - p.t) / (p.life * 0.4));
+  }
+  for (const p of parts) {
+    if (p.kind === 'dust') {
+      g.globalAlpha = p.fade * 0.35;
       g.fillStyle = p.color;
-      const s = p.size * (1 + p.t * 2.5);
-      g.beginPath(); g.ellipse(p.x, p.y, s, s * 0.55, 0, 0, Math.PI * 2); g.fill();
-      g.restore();
-    } else {
+      const sz = p.size * (1 + p.t * 2.5);
+      g.beginPath(); g.ellipse(p.x, p.y, sz, sz * 0.55, 0, 0, Math.PI * 2); g.fill();
+      grow(p.x, p.y, sz);
+    } else if (p.kind !== 'spark') {
       // Metallsplitter: kleine Scheibe, die sich überschlägt
-      g.save();
-      g.globalAlpha = fade;
-      g.translate(p.x, p.y);
-      g.rotate(p.rot * 0.3);
       const sy = Math.max(0.15, Math.abs(Math.cos(p.rot)));
+      const a = p.rot * 0.3;
+      const cs = Math.cos(a); const sn = Math.sin(a);
+      g.setTransform(dpr * cs, dpr * sn, -dpr * sn, dpr * cs, dpr * p.x, dpr * p.y);
+      g.globalAlpha = p.fade;
       g.fillStyle = Math.cos(p.rot) > 0 ? p.color : p.dark;
       g.beginPath(); g.ellipse(0, 0, p.size, p.size * sy, 0, 0, Math.PI * 2); g.fill();
-      g.restore();
+      grow(p.x, p.y, p.size + 2);
     }
   }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.globalCompositeOperation = 'lighter';
+  g.lineCap = 'round';
+  for (const p of parts) {
+    if (p.kind !== 'spark') continue;
+    g.globalAlpha = p.fade;
+    g.strokeStyle = p.color;
+    g.lineWidth = p.size;
+    g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035); g.stroke();
+    grow(p.x, p.y, Math.abs(p.vx * 0.035) + Math.abs(p.vy * 0.035) + p.size + 2);
+  }
+  g.globalCompositeOperation = 'source-over';
 
-  // Münzen, die zum Zähler fliegen
+  // Münzen, die zum Zähler fliegen (Ziel-Position nur einmal pro Bild abfragen)
+  const targets = new Map();
+  const targetPos = (el) => {
+    if (!targets.has(el)) { const rr = el.getBoundingClientRect(); targets.set(el, [rr.left + rr.width / 2, rr.top + rr.height / 2]); }
+    return targets.get(el);
+  };
   flyers = flyers.filter(f => {
     f.t += dt;
     if (f.t < f.delay) return true;
     const p = Math.min(1, (f.t - f.delay) / f.dur);
     let tx = f.tx; let ty = f.ty;
-    if (f.target && f.target.isConnected) {
-      const rr = f.target.getBoundingClientRect();
-      tx = rr.left + rr.width / 2; ty = rr.top + rr.height / 2;
-    }
+    if (f.target && f.target.isConnected) [tx, ty] = targetPos(f.target);
     const e = easeInOut(p);
     // Bogen: erst hoch, dann zum Ziel
     const cx = (f.x + tx) / 2 + f.bend;
@@ -172,15 +210,18 @@ function tick(now) {
     const y = (1 - e) * (1 - e) * f.y + 2 * (1 - e) * e * cy + e * e * ty;
     const pop = p < 0.15 ? 1 + p / 0.15 * 0.35 : 1.35 - (p - 0.15) / 0.85 * 0.75;
     drawCoin(x, y, f.r * pop, f.spin + p * f.turns, f.pal, p > 0.9 ? (1 - p) * 10 : 1);
-    if (!f.lowfx && Math.random() < 0.6) {
+    if (!f.lowfx && Math.random() < 0.6 * quality) {
       parts.push({ kind: 'spark', x, y, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, grav: 0, drag: 0.9, rot: 0, vr: 0, t: 0, life: 0.25, size: 2, color: f.pal[0] });
     }
     if (p >= 1) { if (f.onArrive) f.onArrive(); return false; }
     return true;
   });
+  g.globalAlpha = 1;
 
-  if (parts.length || flyers.length || rings.length || flashes.length) raf = requestAnimationFrame(tick);
-  else { raf = 0; g.clearRect(0, 0, W, H); }
+  // Nächstes Bild: alten und neuen Bereich löschen (mit Rand für Kantenglättung)
+  dirty = box ? [Math.max(0, box[0] - 4), Math.max(0, box[1] - 4), Math.min(W, box[2] + 4), Math.min(H, box[3] + 4)] : null;
+  if (parts.length || flyers.length || rings.length || flashes.length || dirty) raf = requestAnimationFrame(tick);
+  else raf = 0;
 }
 
 export const fx = {
@@ -189,6 +230,7 @@ export const fx = {
     if (!ensure() || low()) return;
     const pal = paletteOf(kind);
     if (parts.length > 260) parts.splice(0, parts.length - 200);
+    count = Math.round(count * quality); sparks = Math.round(sparks * quality);
     for (let i = 0; i < count; i++) {
       const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
       const v = (180 + Math.random() * 260) * power;
