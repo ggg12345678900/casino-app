@@ -4,7 +4,10 @@ import useGame from './useGame';
 import { ADMIN_ACTION_TEXT, fingerEvery, LOCATIONS, fmtMoney, fmtTime, fmt, HELPERS, nextMilestone, OFFLINE_CAP_SEC, QUESTS, questDone, isUnlocked, jetonsOn, HIGHROLLER_BETS, TOOLS, helperCostN, unlocksAfter, UNLOCK_INFO } from './economy';
 import SearchView from './SearchView';
 import Shop from './Shop';
-import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard, fmtJetons } from './Views';
+import { LocationsView, CasinoView, CollectionView, LeaderboardView, StatsView, GAME_INFO, coinRange, VipCard, fmtJetons, JetonShop } from './Views';
+import TreeView from './TreeView';
+import TestKit from './TestKit';
+import { TREE, treeOwned, treeCanReach } from './tree';
 import { SLOT_THEMES } from './slotThemes';
 import Slots from './Slots';
 import Feedback from './Feedback';
@@ -159,7 +162,12 @@ function tutorialTargets(state, quest, done, activeGame, isMobile) {
   }
   if (h === 'floor' || h === 'goal') chain.push({ id: 'nav-search', tip: 'Zurück zum Sammeln 🪙' });
   if (h === 'bonus') chain.push({ id: `game-slots-${LOCATIONS[state.location].id}`, tip: 'Öffne den Automaten – dort warten deine Gratis-Spins' });
-  if (h.startsWith('game-') || h === 'wheel' || h.startsWith('jitem-') || h === 'bonus') {
+  if (h.startsWith('jitem-')) {
+    chain.push({ id: 'jtab-shop', tip: 'Wechsle zum Jeton-Shop 🛍️' });
+    chain.push({ id: 'nav-jetons', tip: 'Hier sind deine Jetons: Shop und Skilltree 🟣' });
+    return chain;
+  }
+  if (h.startsWith('game-') || h === 'wheel' || h === 'bonus') {
     chain.push({ id: 'game-back', tip: 'Zurück zur Casino-Lobby' });
     chain.push({ id: 'nav-casino', tip: 'Ab ins Casino! 🎰' });
   }
@@ -191,12 +199,14 @@ export default function GameApp({ user, onLogout, onAdmin }) {
     onJackpotNews: (w) => { sfx.win(); toast({ kind: 'ach', icon: '🎉', title: 'JACKPOT GEKNACKT', text: `${w.username} hat ${fmtMoney(w.amount)} bei ${GAME_INFO[w.game]?.name || 'einem Spiel'} geknackt!` }); },
     onJackpotCooldown: (min) => toast({ icon: '⏳', title: 'JACKPOT GESPERRT', text: `Du hast vor Kurzem schon geknackt. Wieder möglich in ${min} min.` }),
     onAdmin: (a) => { const t = ADMIN_ACTION_TEXT(a); if (t) { sfx.achievement(); toast({ kind: 'new', icon: a.type === 'message' ? '📢' : '🛠️', title: 'NACHRICHT VOM ADMIN', text: t }); } },
+    onTreeEvent: (ev) => { sfx.win(); toast({ icon: ev.icon, title: 'SKILLTREE', text: ev.text }); },
     onInsurance: (amt) => { sfx.win(); toast({ icon: '🛡️', title: 'VERSICHERUNG', text: `Verlust von ${fmtMoney(amt)} erstattet. Wieder bereit in 1 Stunde.` }); },
     onJetonJackpot: (pot) => { sfx.bigWin(); setConfetti(c => c + 1); toast({ kind: 'ach', icon: '💎', title: 'JETON-JACKPOT!', text: `+${fmtJetons(pot)} am High-Roller-Automaten` }); },
     onJackpot: (w) => { sfx.bigWin(); setTimeout(() => sfx.bigWin(), 900); setConfetti(c => c + 1); setBigWin({ ...w, jackpot: true, multiplier: 0 }); },
   });
   const [tab, setTab] = useState('search');
   const [activeGame, setActiveGame] = useState(null);
+  const [jetTab, setJetTab] = useState('tree');
   const [charmModal, setCharmModal] = useState(null);
   const [moveModal, setMoveModal] = useState(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -270,7 +280,9 @@ export default function GameApp({ user, onLogout, onAdmin }) {
   const quest = (state.quest || 0) < QUESTS.length ? QUESTS[state.quest || 0] : null;
   const qDone = quest ? questDone(state) : false;
   const hl = quest && !qDone ? resolveHl(quest.hl, state) : '';
-  const casinoHl = hl === 'wheel' || hl.startsWith('game-') || hl.startsWith('jitem-') || hl === 'bonus';
+  const casinoHl = hl === 'wheel' || hl.startsWith('game-') || hl === 'bonus';
+  const jetonHl = hl.startsWith('jitem-');
+  const treeCan = un.jetons ? TREE.filter(n => !treeOwned(state, n.id) && treeCanReach(state, n) && (state.jetons || 0) >= n.cost).length : 0;
   const shopHl = hl.startsWith('tool-') || hl.startsWith('helper-');
   const wheelReady = un.wheel && (state.wheelReadyAt || 0) <= Date.now();
   const canBuyCount = un.tools ? (TOOL_COUNT(state) + (un.helpers ? HELPER_COUNT(state) : 0)) : 0;
@@ -280,6 +292,7 @@ export default function GameApp({ user, onLogout, onAdmin }) {
     { id: 'search', label: '🪙 Sammeln', short: 'Sammeln', icon: '🪙', show: true, hl: (hl === 'floor' || hl === 'goal' || (shopHl && !isMobile)) },
     { id: 'shop', label: '🛒 Shop', short: 'Shop', icon: '🛒', show: isMobile && un.tools, badge: canBuyCount > 0 ? canBuyCount : null, hl: shopHl },
     { id: 'casino', label: '🎰 Casino', short: 'Casino', icon: '🎰', show: un.casino, badge: wheelReady ? '🎡' : null, hl: casinoHl },
+    { id: 'jetons', label: '🟣 Jetons', short: 'Jetons', icon: '🟣', show: un.jetons, badge: treeCan > 0 ? treeCan : null, hl: jetonHl },
     { id: 'locations', label: '🗺️ Orte', short: 'Orte', icon: '🗺️', show: un.locations, badge: canMove ? '!' : null },
     ...(isMobile
       ? [{ id: 'more', label: '☰ Mehr', short: 'Mehr', icon: '☰', show: un.extras }]
@@ -294,6 +307,21 @@ export default function GameApp({ user, onLogout, onAdmin }) {
   const renderTab = () => {
     switch (curTab) {
       case 'locations': return <LocationsView state={state} onMove={move} />;
+      case 'jetons': {
+        const jt = jetonHl ? 'shop' : jetTab;
+        return (
+          <div>
+            <div className="mg-subtabs">
+              {[['tree', '🌳 Skilltree'], ['shop', '🛍️ Shop & Designs']].map(([id, l]) => (
+                <button key={id} data-tut={`jtab-${id}`} className={`${jt === id ? 'active' : ''}${id === 'shop' && jetonHl && jt !== 'shop' ? ' mg-hl' : ''}`} onClick={() => { sfx.click(); setJetTab(id); }}>{l}</button>
+              ))}
+            </div>
+            {jt === 'tree'
+              ? <TreeView state={state} onBuy={(id) => game.buyTreeNode(id)} />
+              : <JetonShop state={state} onBuy={buyJeton} onBuySkin={(k, id) => { if (game.buySkin(k, id)) sfx.buy(); else sfx.nope(); }} />}
+          </div>
+        );
+      }
       case 'shop': return <Shop state={state} derived={derived} onBuyHelper={buyHelper} onBuyTool={buyTool} onBuyFinger={buyFinger} hl={hl} showHelpers={un.helpers} />;
       case 'more': return (
         <div>
@@ -342,14 +370,15 @@ export default function GameApp({ user, onLogout, onAdmin }) {
             </div>
           );
         }
-        return <CasinoView onBuySkin={(k, id) => { if (game.buySkin(k, id)) sfx.buy(); else sfx.nope(); }} state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onBuyJeton={un.jetons ? buyJeton : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} me={user.username} />;
+        return <CasinoView state={state} derived={derived} onPick={(g) => { sfx.click(); setActiveGame(g); window.scrollTo({ top: 0 }); }} onSpin={game.spinWheel} onBuyVip={buyVip} onOpenJetons={un.jetons ? () => goTab('jetons') : null} hl={hl} jackpot={game.jackpot} showExtras={un.wheel} me={user.username} />;
       }
       case 'collection': return <CollectionView state={state} user={user} onProfile={game.setProfile} />;
       case 'leaderboard': return <LeaderboardView user={user} />;
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
       default: {
         const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
-          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={fingerEvery(state)} onMiss={game.addMiss} onSecret={(k) => game.markSecret(k)} />;
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={fingerEvery(state)} onMiss={game.addMiss} onSecret={(k) => game.markSecret(k)}
+          onChest={game.openChest} onClover={game.addBonusSpins} helperIcon={(HELPERS.filter(h => (state.helpers[h.id] || 0) > 0).pop() || { icon: '🧹' }).icon} />;
         if (isMobile || !un.tools) return search;
         return (
           <div className="mg-split">
@@ -459,6 +488,7 @@ export default function GameApp({ user, onLogout, onAdmin }) {
         </div>
       )}
 
+      {!menu && <TestKit state={state} game={game} />}
       {quest && (quest.guide || qDone) && !state.tutorialSkipped && !menu && !settingsOpen && !feedbackOpen && !charmModal && !moveModal && !game.welcome && !bigWin && (
         <Spotlight targets={tutorialTargets(state, quest, qDone, curTab === 'casino' ? activeGame : null, isMobile)} blocking
           onSkip={(state.quest || 0) < 2 ? () => game.skipTutorial() : null} onSettings={() => setSettingsOpen(true)} onAdmin={onAdmin ? () => { game.saveNow(); onAdmin(); } : null} />

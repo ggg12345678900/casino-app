@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, hasToken } from '../api';
 import * as E from './economy';
+import * as T from './tree';
 
 const LOCAL_KEY = (userId) => `mogul_save_${userId}`;
 const TICK_MS = 100;
@@ -20,13 +21,13 @@ const writeLocal = (userId, s) => {
  * Hält den kompletten Spielstand, lässt die Zeit laufen und speichert.
  * Events (Funde, Glücksbringer, Level-Ups) gehen über onEvent an die UI.
  */
-export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot, onAdmin } = {}) {
+export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot, onAdmin, onTreeEvent } = {}) {
   const [state, setState] = useState(null);
   const [welcome, setWelcome] = useState(null); // { seconds, earned }
   const stateRef = useRef(null);
   stateRef.current = state;
   const cbRef = useRef({});
-  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot, onAdmin };
+  cbRef.current = { onAchievement, onBigWin, onJackpot, onJackpotNews, onJackpotCooldown, onInsurance, onJetonJackpot, onAdmin, onTreeEvent };
   const [globalJp, setGlobalJp] = useState({ pool: null, wins: [] });
   const pendingRef = useRef(0);       // noch nicht gemeldete Jackpot-Einzahlungen
   const lastWinRef = useRef(null);    // höchste bekannte Gewinn-ID
@@ -91,10 +92,10 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
 
   // ── Aktionen ─────────────────────────────────────────────────────────
   // pickup() rechnet synchron mit dem aktuellen Stand, damit die UI das Ergebnis sofort anzeigen kann
-  const pickup = useCallback((coinId, gold, combo = 0) => {
+  const pickup = useCallback((coinId, gold, combo = 0, opts = {}) => {
     const s = stateRef.current;
     if (!s) return null;
-    const out = E.pickup(s, coinId, gold, combo);
+    const out = E.pickup(s, coinId, gold, combo, Math.random, opts);
     if (!out) return null;
     const { state: next, result } = out;
     // Zwischenzeitliche Zeit-Ticks nicht verlieren: nur die Differenz anwenden
@@ -126,6 +127,21 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   const buySkin = useCallback((kind, id) => apply(s => E.buySkin(s, kind, id)), [apply]);
   const pickJeton = useCallback(() => apply(s => E.pickJeton(s)), [apply]);
   const buyJeton = useCallback((id) => apply(s => E.buyJetonItem(s, id)), [apply]);
+  const buyTreeNode = useCallback((id) => {
+    const ok = apply(s => T.buyTreeNode(s, id));
+    if (ok) setTimeout(() => saveServer(), 0); // Skill-Kauf sofort sichern
+    return ok;
+  }, [apply, saveServer]);
+  const setFrenzy = useCallback(() => apply(s => ({ ...s, frenzyUntil: Date.now() + 20000 })), [apply]);
+  const addBonusSpins = useCallback((n) => apply(s => E.addBonusSpins(s, n)), [apply]);
+  const openChest = useCallback(() => {
+    const s = stateRef.current;
+    if (!s) return 0;
+    const out = E.openChest(s);
+    stateRef.current = out.state;
+    setState(out.state);
+    return out.jetons;
+  }, []);
   const useBonusSpins = useCallback(() => {
     const n = (stateRef.current && stateRef.current.bonusSpins) || 0;
     if (n > 0) apply(s => ({ ...s, bonusSpins: 0, stats: { ...s.stats, bonusUsed: (s.stats.bonusUsed || 0) + 1 } }));
@@ -175,8 +191,13 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
     const now = Date.now();
     const insured = !!s0 && !didWin && amount > 0 && bet > 0 && !!(s0.jetonShop || {}).insurance
       && (s0.insuranceReadyAt || 0) <= now && bet >= E.derive(s0).maxBet * 0.5;
+    // Skilltree (Zweite Chance, Pech-Konto, Trinkgeld …): Zufall vorher auswürfeln
+    const roll = { a: Math.random(), b: Math.random() };
+    const treeEvents = s0 ? E.treeAfterBet(E.recordBet(s0, didWin, amount, multiplier, bet, false), didWin, amount, multiplier, bet, roll, now).events : [];
+    if (treeEvents.length && cbRef.current.onTreeEvent) setTimeout(() => treeEvents.forEach(ev => cbRef.current.onTreeEvent(ev)), 0);
     setState(s => {
       let next = E.recordBet(s, didWin, amount, multiplier, bet, localHit);
+      next = E.treeAfterBet(next, didWin, amount, multiplier, bet, roll, now).state;
       if (insured) next = { ...next, money: next.money + amount, insuranceReadyAt: now + E.INSURANCE_COOLDOWN_MS };
       stateRef.current = next;
       return next;
@@ -296,6 +317,7 @@ export default function useGame(user, { onAchievement, onBigWin, onJackpot, onJa
   return {
     state, derived: state ? E.derive(state) : null, welcome, announcement,
     jackpot: state ? { online: ONLINE, pool: ONLINE ? (globalJp.pool ?? E.JACKPOT_SEED_ONLINE) : E.jackpotPool(state), wins: globalJp.wins } : null, dismissWelcome: () => setWelcome(null),
+    buyTreeNode, addBonusSpins, openChest, setFrenzy,
     pickup, pickCharm, claimQuest, skipTutorial, pickJeton, buyJeton, buyFinger, setProfile, markSecret, addMiss, buySkin, useBonusSpins, setJetons, addJetonResult, buyVip, openSack, spinWheel, buyHelper, buyTool, moveLocation, setBalance, addResult, resetGame, saveNow: saveServer,
   };
 }

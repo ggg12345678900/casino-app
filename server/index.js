@@ -1,3 +1,5 @@
+// Hinweis: Alte Endpunkte der ersten Casino-Version (update-stats, daily, idle, challenges, prestige, …)
+// wurden entfernt – über update-stats konnte man sich beliebiges Guthaben setzen.
 const path = require('path');
 // Lokal: server/.env und die von `neon deploy` erzeugte ../.env.local. Auf Render kommen die Werte aus dem Dashboard.
 require('dotenv').config({ path: [path.join(__dirname, '.env'), path.join(__dirname, '..', '.env.local')], quiet: true });
@@ -11,8 +13,29 @@ const app = express();
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET) { console.error('❌ JWT_SECRET fehlt in .env!'); process.exit(1); }
 
+app.disable('x-powered-by');
+app.set('trust proxy', 1); // Render steht vor dem Server – sonst wäre req.ip immer der Proxy
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '150kb' }));
+
+// ─── Einfache Bremse gegen Massen-Anfragen (im Speicher, pro Schlüssel) ─────
+const hits = new Map();
+const tooMany = (key, max, windowMs) => {
+  const now = Date.now();
+  const h = hits.get(key);
+  if (!h || now - h.start > windowMs) { hits.set(key, { start: now, n: 1 }); return false; }
+  h.n += 1;
+  return h.n > max;
+};
+setInterval(() => { const now = Date.now(); for (const [k, h] of hits) if (now - h.start > 3600000) hits.delete(k); }, 600000).unref();
+
+// Benutzernamen: 3–20 Zeichen, nur Buchstaben, Zahlen, _ . - (keine Verwechslung mit dem Admin)
+const NAME_RE = /^[A-Za-z0-9ÄÖÜäöüß_.-]{3,20}$/;
+const badName = (n) => {
+  if (typeof n !== 'string' || !NAME_RE.test(n)) return 'Name: 3–20 Zeichen, nur Buchstaben, Zahlen, _ . -';
+  if (/adm[i1l!]n|m[o0]d(erator)?$|^system|^support/i.test(n)) return 'Dieser Benutzername ist nicht erlaubt';
+  return null;
+};
 
 if (!process.env.DATABASE_URL) { console.error('❌ DATABASE_URL fehlt!'); process.exit(1); }
 
@@ -188,17 +211,22 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Register
 app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
+  // Höchstens 10 neue Accounts pro Stunde und Internet-Anschluss (gezählt werden nur erfolgreiche)
+  const regKey = `reg:${req.ip}`; const reg = hits.get(regKey);
+  if (reg && Date.now() - reg.start < 3600000 && reg.n >= 10) return res.status(429).json({ error: 'Zu viele neue Accounts – bitte später nochmal.' });
   if (!username || !password) return res.status(400).json({ error: 'Felder fehlen' });
-  if (username.length < 3) return res.status(400).json({ error: 'Name zu kurz (min. 3)' });
-  if (password.length < 4) return res.status(400).json({ error: 'Passwort zu kurz (min. 4)' });
-  if (username.toLowerCase() === 'admin') return res.status(400).json({ error: 'Dieser Benutzername ist nicht erlaubt' });
-  const hash = bcrypt.hashSync(password, 10);
+  const nameErr = badName(username);
+  if (nameErr) return res.status(400).json({ error: nameErr });
+  if (typeof password !== 'string' || password.length < 4) return res.status(400).json({ error: 'Passwort zu kurz (min. 4)' });
+  if (password.length > 200) return res.status(400).json({ error: 'Passwort zu lang' });
+  const hash = await bcrypt.hash(password, 10);
   try {
     const result = await pool.query(
       `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id`,
       [username, hash]
     );
+    tooMany(regKey, 10, 3600000);
     const token = jwt.sign({ id: result.rows[0].id, username, is_admin: 0 }, SECRET, { expiresIn: '7d' });
     res.json({ token, username, balance: 1000, is_admin: 0, id: result.rows[0].id });
   } catch (e) {
@@ -210,11 +238,20 @@ app.post('/api/register', async (req, res) => {
 
 // Login
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
+  if (typeof username !== 'string' || typeof password !== 'string' || username.length > 40 || password.length > 200)
+    return res.status(400).json({ error: 'Falscher Benutzername oder Passwort' });
+  // Gegen Passwort-Raten: max. 10 Fehlversuche pro Name und 30 pro Gerät in 15 Minuten
+  const kName = `loginfail:${username.toLowerCase()}`; const kIp = `loginfail-ip:${req.ip}`;
+  const blocked = (k, max) => { const h = hits.get(k); return h && Date.now() - h.start < 900000 && h.n >= max; };
+  if (blocked(kName, 10) || blocked(kIp, 30)) return res.status(429).json({ error: 'Zu viele Fehlversuche – bitte in 15 Minuten nochmal.' });
   const result = await pool.query(`SELECT * FROM users WHERE username = $1`, [username]);
   const user = result.rows[0];
-  if (!user || !bcrypt.compareSync(password, user.password))
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    tooMany(kName, 10, 900000); tooMany(kIp, 30, 900000);
     return res.status(400).json({ error: 'Falscher Benutzername oder Passwort' });
+  }
+  hits.delete(kName);
   if (user.banned) return res.status(403).json({ error: 'Dieser Account ist gesperrt.' });
   await pool.query(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = $1`, [user.id]);
   const token = jwt.sign({ id: user.id, username: user.username, is_admin: user.is_admin }, SECRET, { expiresIn: '7d' });
@@ -273,7 +310,6 @@ const maxBetCosts = (g) => MB_BASE.map(c => Math.round(c * (MB_MULT[g]||1)));
 const WR_BASE = [100, 500, 2500, 12000, 60000];
 const WR_MULT = { dice:1, mines:2, plinko:5, crash:15, roulette:50, chicken:150, pump:500, blackjack:1500 };
 const winrateCosts = (g) => WR_BASE.map(c => Math.round(c * (WR_MULT[g]||1)));
-const prestigeCostFn = (count) => Math.round(50000 * Math.pow(10, count));
 
 // Unlock game
 app.post('/api/unlock-game', auth, async (req, res) => {
@@ -340,274 +376,6 @@ app.post('/api/upgrade-winrate', auth, async (req, res) => {
   res.json({ balance: newBalance, winrate_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
 });
 
-const GLOBAL_START_BALANCE = [1000, 2000, 5000, 10000, 25000, 50000];
-const GLOBAL_DAILY_BONUS   = [100, 200, 500, 1000, 2500, 5000];
-
-// Prestige
-app.post('/api/prestige', auth, async (req, res) => {
-  const r = await pool.query(
-    `SELECT balance, unlocked_games, prestige_count, COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id=$1`, [req.user.id]
-  );
-  const u = r.rows[0];
-  const unlocked = JSON.parse(u.unlocked_games || '["dice"]');
-  if (unlocked.length < 3) return res.status(400).json({ error: 'Mindestens 3 Spiele nötig' });
-  const cost = prestigeCostFn(u.prestige_count);
-  if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
-  const newPrestige = u.prestige_count + 1;
-  const gLevels = JSON.parse(u.global_upgrade_levels || '{}');
-  const startBalLevel = gLevels['start_balance'] || 0;
-  const startBal = GLOBAL_START_BALANCE[startBalLevel];
-  await pool.query(`
-    UPDATE users SET
-      balance = $1,
-      unlocked_games = '["dice"]',
-      max_bet_levels = '{}',
-      winrate_levels = '{}',
-      idle_levels = '{}',
-      idle_last_claim = NOW(),
-      prestige_count = $2
-    WHERE id = $3
-  `, [startBal, newPrestige, req.user.id]);
-  res.json({ prestige_count: newPrestige, balance: startBal, unlocked_games: '["dice"]', max_bet_levels: '{}', winrate_levels: '{}' });
-});
-
-// Update stats
-app.post('/api/update-stats', auth, async (req, res) => {
-  const { didWin, amount, newBalance, game, bet, multiplier } = req.body;
-  await pool.query(`
-    UPDATE users SET
-      balance = $1,
-      total_bets = total_bets + 1,
-      total_wins = total_wins + $2,
-      total_losses = total_losses + $3,
-      total_won = total_won + $4,
-      total_lost = total_lost + $5,
-      biggest_win = CASE WHEN $6 > biggest_win THEN $6 ELSE biggest_win END
-    WHERE id = $7`,
-    [newBalance, didWin ? 1 : 0, didWin ? 0 : 1, didWin ? amount : 0, didWin ? 0 : amount,
-     didWin ? amount : 0, req.user.id]
-  );
-  await pool.query(
-    `INSERT INTO game_history (user_id, game, bet, result, did_win, multiplier)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [req.user.id, game || 'unknown', bet || 0, amount, didWin ? 1 : 0, multiplier || 1]
-  );
-
-  // Challenge Tracking
-  // bet100 - 100 Einsätze machen
-  await pool.query(`
-    INSERT INTO challenges (user_id, challenge_id, progress)
-    VALUES ($1, 'bet100', 1)
-    ON CONFLICT (user_id, challenge_id)
-    DO UPDATE SET
-      progress = CASE WHEN challenges.completed = 0 THEN challenges.progress + 1 ELSE challenges.progress END,
-      completed = CASE WHEN challenges.completed = 0 AND challenges.progress + 1 >= 100 THEN 1 ELSE challenges.completed END`,
-    [req.user.id]
-  );
-
-  if (didWin) {
-    // win50 - 50 Spiele gewinnen
-    await pool.query(`
-      INSERT INTO challenges (user_id, challenge_id, progress)
-      VALUES ($1, 'win50', 1)
-      ON CONFLICT (user_id, challenge_id)
-      DO UPDATE SET
-        progress = CASE WHEN challenges.completed = 0 THEN challenges.progress + 1 ELSE challenges.progress END,
-        completed = CASE WHEN challenges.completed = 0 AND challenges.progress + 1 >= 50 THEN 1 ELSE challenges.completed END`,
-      [req.user.id]
-    );
-
-    // bigwin - 10x Multiplier
-    if (multiplier && parseFloat(multiplier) >= 10) {
-      await pool.query(`
-        INSERT INTO challenges (user_id, challenge_id, progress, completed)
-        VALUES ($1, 'bigwin', 1, 1)
-        ON CONFLICT (user_id, challenge_id)
-        DO UPDATE SET progress = 1, completed = 1
-        WHERE challenges.completed = 0`,
-        [req.user.id]
-      );
-    }
-
-    // win5 - 5x hintereinander gewinnen
-    await pool.query(`
-      INSERT INTO challenges (user_id, challenge_id, progress)
-      VALUES ($1, 'win5', 1)
-      ON CONFLICT (user_id, challenge_id)
-      DO UPDATE SET
-        progress = CASE WHEN challenges.completed = 0 THEN challenges.progress + 1 ELSE challenges.progress END,
-        completed = CASE WHEN challenges.completed = 0 AND challenges.progress + 1 >= 5 THEN 1 ELSE challenges.completed END`,
-      [req.user.id]
-    );
-  } else {
-    // win5 zurücksetzen bei Verlust - nur wenn noch nicht abgeschlossen
-    await pool.query(`
-      INSERT INTO challenges (user_id, challenge_id, progress)
-      VALUES ($1, 'win5', 0)
-      ON CONFLICT (user_id, challenge_id)
-      DO UPDATE SET progress = CASE WHEN challenges.completed = 0 THEN 0 ELSE challenges.progress END`,
-      [req.user.id]
-    );
-  }
-
-  res.json({ success: true });
-})
-// Game history
-app.get('/api/history', auth, async (req, res) => {
-  const result = await pool.query(
-    `SELECT * FROM game_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
-    [req.user.id]
-  );
-  res.json(result.rows);
-});
-
-// Daily bonus
-app.post('/api/daily', auth, async (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
-  const result = await pool.query(
-    `SELECT last_daily, balance, COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id = $1`,
-    [req.user.id]
-  );
-  const user = result.rows[0];
-  if (user.last_daily === today)
-    return res.status(400).json({ error: 'Heute bereits abgeholt!' });
-  const gLevels = JSON.parse(user.global_upgrade_levels || '{}');
-  const dailyLevel = gLevels['daily_bonus'] || 0;
-  const bonus = GLOBAL_DAILY_BONUS[dailyLevel];
-  await pool.query(`UPDATE users SET balance = balance + $1, last_daily = $2 WHERE id = $3`,
-    [bonus, today, req.user.id]);
-  res.json({ success: true, bonus, newBalance: user.balance + bonus });
-});
-
-// Globale Upgrades
-const GLOBAL_UPGRADE_DEFS = {
-  global_mult:   { maxLevel: 5, costs: [5000, 25000, 150000, 1000000, 8000000] },
-  start_balance: { maxLevel: 5, costs: [2000, 15000, 100000, 750000, 5000000] },
-  auto_speed:    { maxLevel: 5, costs: [3000, 20000, 120000, 800000, 6000000] },
-  daily_bonus:   { maxLevel: 5, costs: [1000, 8000, 60000, 500000, 4000000] },
-};
-
-app.post('/api/upgrade-global', auth, async (req, res) => {
-  const { upgradeId } = req.body;
-  const def = GLOBAL_UPGRADE_DEFS[upgradeId];
-  if (!def) return res.status(400).json({ error: 'Unbekanntes Upgrade' });
-  const r = await pool.query(
-    `SELECT balance, COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels FROM users WHERE id=$1`,
-    [req.user.id]
-  );
-  const u = r.rows[0];
-  const levels = JSON.parse(u.global_upgrade_levels || '{}');
-  const currentLevel = levels[upgradeId] || 0;
-  if (currentLevel >= def.maxLevel) return res.status(400).json({ error: 'Bereits auf Maximum' });
-  const cost = def.costs[currentLevel];
-  if (u.balance < cost) return res.status(400).json({ error: 'Nicht genug Guthaben' });
-  levels[upgradeId] = currentLevel + 1;
-  const newBalance = parseFloat((u.balance - cost).toFixed(2));
-  await pool.query(
-    `UPDATE users SET balance=$1, global_upgrade_levels=$2 WHERE id=$3`,
-    [newBalance, JSON.stringify(levels), req.user.id]
-  );
-  res.json({ balance: newBalance, global_upgrade_levels: JSON.stringify(levels), newLevel: currentLevel + 1 });
-});
-
-// ─── Idle-Business (passives Einkommen) ──────────────────────────────────────
-// Gespiegelt aus casino-app/src/progression.js
-const IDLE_BUSINESSES = {
-  slot:   { baseCost: 500,       income: 1 },
-  table:  { baseCost: 6000,      income: 8 },
-  bar:    { baseCost: 70000,     income: 60 },
-  hotel:  { baseCost: 800000,    income: 450 },
-  yacht:  { baseCost: 10000000,  income: 3500 },
-  island: { baseCost: 150000000, income: 30000 },
-};
-const IDLE_COST_GROWTH = 1.15;
-const IDLE_OFFLINE_CAP_SEC = 8 * 3600;
-const idleCost = (id, owned) => Math.round(IDLE_BUSINESSES[id].baseCost * Math.pow(IDLE_COST_GROWTH, owned));
-
-// Einkommen pro Sekunde inkl. Prestige- und Global-Multiplikator
-const idleRate = (u) => {
-  const levels = JSON.parse(u.idle_levels || '{}');
-  const g = JSON.parse(u.global_upgrade_levels || '{}');
-  const base = Object.entries(IDLE_BUSINESSES).reduce((s, [id, b]) => s + (levels[id] || 0) * b.income, 0);
-  return base * Math.pow(2, u.prestige_count || 0) * (1 + (g.global_mult || 0) * 0.03);
-};
-
-// Liest den User gesperrt (FOR UPDATE) und berechnet die offenen Einnahmen
-const loadIdle = async (client, userId) => {
-  const r = await client.query(
-    `SELECT balance, COALESCE(prestige_count, 0) AS prestige_count,
-       COALESCE(idle_levels, '{}') AS idle_levels,
-       COALESCE(global_upgrade_levels, '{}') AS global_upgrade_levels,
-       COALESCE(EXTRACT(EPOCH FROM (NOW() - idle_last_claim)), 0) AS elapsed
-     FROM users WHERE id = $1 FOR UPDATE`, [userId]);
-  const u = r.rows[0];
-  if (!u) return null;
-  const rate = idleRate(u);
-  const seconds = Math.min(Math.max(parseFloat(u.elapsed) || 0, 0), IDLE_OFFLINE_CAP_SEC);
-  return { u, rate, pending: parseFloat((rate * seconds).toFixed(2)), seconds };
-};
-
-const withTx = async (fn) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const out = await fn(client);
-    await client.query('COMMIT');
-    return out;
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
-  }
-};
-
-app.get('/api/idle', auth, async (req, res) => {
-  try {
-    const out = await withTx(async (c) => loadIdle(c, req.user.id));
-    if (!out) return res.status(404).json({ error: 'User nicht gefunden' });
-    res.json({ idle_levels: out.u.idle_levels, rate: out.rate, pending: out.pending, seconds: out.seconds, cap: IDLE_OFFLINE_CAP_SEC });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
-});
-
-app.post('/api/idle/claim', auth, async (req, res) => {
-  try {
-    const out = await withTx(async (c) => {
-      const d = await loadIdle(c, req.user.id);
-      if (!d) return { status: 404, body: { error: 'User nicht gefunden' } };
-      const newBalance = parseFloat((d.u.balance + d.pending).toFixed(2));
-      await c.query(`UPDATE users SET balance = $1, idle_last_claim = NOW() WHERE id = $2`, [newBalance, req.user.id]);
-      return { body: { balance: newBalance, claimed: d.pending, rate: d.rate } };
-    });
-    res.status(out.status || 200).json(out.body);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
-});
-
-app.post('/api/idle/buy', auth, async (req, res) => {
-  const { businessId } = req.body;
-  if (!IDLE_BUSINESSES[businessId]) return res.status(400).json({ error: 'Unbekanntes Business' });
-  try {
-    const out = await withTx(async (c) => {
-      const d = await loadIdle(c, req.user.id);
-      if (!d) return { status: 404, body: { error: 'User nicht gefunden' } };
-      // Offene Einnahmen zuerst gutschreiben, dann kaufen (Rate ändert sich)
-      const levels = JSON.parse(d.u.idle_levels || '{}');
-      const owned = levels[businessId] || 0;
-      const cost = idleCost(businessId, owned);
-      const available = d.u.balance + d.pending;
-      if (available < cost) return { status: 400, body: { error: 'Nicht genug Guthaben' } };
-      levels[businessId] = owned + 1;
-      const newBalance = parseFloat((available - cost).toFixed(2));
-      await c.query(
-        `UPDATE users SET balance = $1, idle_levels = $2, idle_last_claim = NOW() WHERE id = $3`,
-        [newBalance, JSON.stringify(levels), req.user.id]);
-      const rate = idleRate({ ...d.u, idle_levels: JSON.stringify(levels) });
-      return { body: { balance: newBalance, idle_levels: JSON.stringify(levels), rate, claimed: d.pending } };
-    });
-    res.status(out.status || 200).json(out.body);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Serverfehler' }); }
-});
-
 // ─── Casino-Mogul: Spielstand ────────────────────────────────────────────────
 // Ortskosten gespiegelt aus casino-app/src/game/economy.js (für Plausibilitäts-Check)
 const MOGUL_LOCATION_COSTS = [0, 40, 3e5, 3e8, 6e9, 3e11, 1.5e16, 1e17, 2e21, 4e26, 8e27];
@@ -616,6 +384,7 @@ const MOGUL_LOCATION_COSTS = [0, 40, 3e5, 3e8, 6e9, 3e11, 1.5e16, 1e17, 2e21, 4e
 const MOGUL_LOCATION_COSTS_OLD = [0, 25, 1e4, 8e6, 4.8e9, 3e12, 4e15, 1e17, 2e21, 4e26, 8e27];
 const MOGUL_MIN_COSTS = MOGUL_LOCATION_COSTS.map((c, i) => Math.min(c, MOGUL_LOCATION_COSTS_OLD[i]));
 const MOGUL_MIN_SAVE_INTERVAL_MS = 3000;
+const ALBUM_CARDS = 44; // gespiegelt aus economy.js (ALBUM_TOTAL)
 // Wachstums-Grenze gegen gefälschte Spielstände. Ehrliche Spieler wachsen laut Simulation
 // in 30 s höchstens ≈ ×9 (Glücksrad-Jackpot); erlaubt sind ×20 pro 30 s, die Grenze verdoppelt
 // sich zusätzlich alle 3 Minuten seit dem letzten Speichern (Offline-Pausen, Neustarts).
@@ -662,12 +431,19 @@ app.post('/api/save', auth, async (req, res) => {
   // Jackpots und das Glücksrad. Gewinne am High-Roller-Automaten zählen extra.
   const st = save.stats || {};
   const num = (v) => (Number.isFinite(v) && v > 0 ? v : 0);
+  // Skilltree: höchstens 100 Knoten
+  if (save.tree && (typeof save.tree !== 'object' || Object.keys(save.tree).length > 100))
+    return res.status(400).json({ error: 'Spielstand unplausibel' });
+  // Album: höchstens so viele Karten, wie es gibt
+  if (save.album && (typeof save.album !== 'object' || Object.keys(save.album).length > 80))
+    return res.status(400).json({ error: 'Spielstand unplausibel' });
   const jetons = save.jetons === undefined ? 0 : save.jetons;
   if (typeof jetons !== 'number' || !Number.isFinite(jetons) || jetons < 0)
     return res.status(400).json({ error: 'Ungültige Jetons' });
   const jEarned = num(st.jetonsEarned);
   const jWon = num(st.jetonsWon);
-  const jMax = num(st.finds) * 0.2 + num(st.bets) + num(st.wheelSpins) * 10 + num(st.jackpots) * 25 + 100;
+  // Skilltree (Doppel-Jeton, Combo-Kasse, Truhen, Trinkgeld …) erhöht die Ausbeute – daher großzügig
+  const jMax = num(st.finds) * 0.5 + num(st.bets) * 1.5 + num(st.wheelSpins) * 10 + num(st.jackpots) * 25 + 100;
   if (!trusted && (jEarned > jMax || jWon > Math.max(5000, jEarned * 50) || jetons > jEarned + jWon + 1))
     return res.status(400).json({ error: 'Spielstand unplausibel' });
 
@@ -691,6 +467,15 @@ app.post('/api/save', auth, async (req, res) => {
     const sinceSec = hasPrev ? parseFloat(p.since) / 1000 : Math.min(600, parseFloat(p.age) || 0);
     const tooFast = earned > growthLimit(prevEarned, sinceSec)
       || gambleWon > Math.max(growthLimit(prevGamble, sinceSec), earned * 30 + GROWTH_FREE);
+    // Zähler (Münzen, Wetten, Glücksrad, Combo) können nur so schnell steigen, wie man tippen/spielen kann
+    const cnt = (o, k) => Math.max(0, Number(o && o[k]) || 0);
+    const st2 = save.stats || {};
+    const dt = Math.max(5, sinceSec);
+    const counterJump = (k, perSec, free) => cnt(st2, k) > (hasPrev ? cnt(prevStats, k) : 0) + dt * perSec + free;
+    if (counterJump('finds', 60, 300) || counterJump('bets', 20, 200) || counterJump('wheelSpins', 0.5, 20) || counterJump('maxCombo', 20, 50) || counterJump('jackpots', 0.01, 3)) {
+      console.warn(`⚠️ Spielstand abgelehnt (Zähler zu schnell): ${req.user.username}`);
+      return res.status(400).json({ error: 'Spielstand unplausibel' });
+    }
     if (tooFast) {
       console.warn(`⚠️ Spielstand abgelehnt (zu schnelles Wachstum): ${req.user.username} ${prevEarned} -> ${earned} in ${Math.round(sinceSec)} s`);
       return res.status(400).json({ error: 'Spielstand unplausibel (zu schnelles Wachstum)' });
@@ -712,18 +497,26 @@ app.post('/api/save', auth, async (req, res) => {
 app.get('/api/mogul-leaderboard', auth, async (req, res) => {
   // Weitere Ranglisten: Werte kommen aus dem gespeicherten Spielstand
   const EXTRA = {
-    bigwin: (sv) => Number(sv.stats && sv.stats.biggestWin) || 0,
+    // Größter Gewinn kann nie größer sein als alle Casino-Gewinne zusammen (gefälschte Werte zählen nicht)
+    bigwin: (sv) => Math.min(Number(sv.stats && sv.stats.biggestWin) || 0, Number(sv.stats && sv.stats.gambleWon) || 0),
     jackpots: (sv) => Number(sv.stats && sv.stats.jackpots) || 0,
     jetons: (sv) => Number(sv.stats && sv.stats.jetonsEarned) || 0,
-    album: (sv) => Object.values(sv.album || {}).filter(n => n > 0).length,
+    album: (sv) => Math.min(ALBUM_CARDS, Object.values(sv.album || {}).filter(n => n > 0).length),
   };
   if (EXTRA[req.query.by]) {
     const pick = EXTRA[req.query.by];
     const all = await pool.query(
       `SELECT id, username, mogul_location AS location, mogul_earned AS earned, COALESCE(mogul_max_combo, 0) AS max_combo, mogul_avatar AS avatar, mogul_title AS title, save_data
        FROM users WHERE is_admin = 0 AND save_data IS NOT NULL AND COALESCE(lb_hidden, FALSE) = FALSE`);
+    // Jackpots zählt der Server selbst (Tabelle jackpot_wins) – nicht der Spielstand
+    const jpCount = new Map();
+    if (req.query.by === 'jackpots') {
+      (await pool.query(`SELECT user_id, COUNT(*)::int AS n FROM jackpot_wins GROUP BY user_id`)).rows.forEach(r => jpCount.set(r.user_id, r.n));
+    }
     const rows = all.rows.map(r => {
-      let v = 0; try { v = pick(JSON.parse(r.save_data)); } catch {}
+      let v = 0;
+      if (req.query.by === 'jackpots') v = jpCount.get(r.id) || 0;
+      else { try { v = pick(JSON.parse(r.save_data)); } catch {} }
       return { id: r.id, username: r.username, location: r.location, earned: r.earned, max_combo: r.max_combo, avatar: r.avatar, title: r.title, value: Number.isFinite(v) ? v : 0 };
     }).filter(r => r.value > 0).sort((x, y) => y.value - x.value || y.earned - x.earned);
     const idx = rows.findIndex(r => r.id === req.user.id);
@@ -834,6 +627,7 @@ app.get('/api/jackpot', auth, async (req, res) => {
 app.post('/api/jackpot/contribute', auth, async (req, res) => {
   const amount = Number(req.body && req.body.amount);
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Ungültiger Betrag' });
+  if (tooMany(`jpc:${req.user.id}`, 6, 30000)) return res.status(429).json({ error: 'Zu schnell' });
   // Plausibilität: niemand kann mehr einzahlen, als er insgesamt verdient hat
   const u = await pool.query(`SELECT COALESCE(mogul_earned, 0) AS earned FROM users WHERE id = $1`, [req.user.id]);
   const cap = Math.max(50, (u.rows[0] ? u.rows[0].earned : 0) * 0.05);
@@ -846,6 +640,12 @@ app.post('/api/jackpot/claim', auth, async (req, res) => {
   const game = typeof req.body?.game === 'string' ? req.body.game.slice(0, 40) : 'casino';
   const maxBet = Number(req.body && req.body.maxBet);
   if (!Number.isFinite(maxBet) || maxBet <= 0) return res.status(400).json({ error: 'Ungültig' });
+  if (tooMany(`jpclaim:${req.user.id}`, 3, 600000)) return res.json({ won: false });
+  // Nur wer gerade wirklich spielt (Spielstand in den letzten 3 Minuten gespeichert, schon gewettet) kann gewinnen
+  const act = await pool.query(`SELECT save_data, COALESCE(banned, FALSE) AS banned, (save_at > NOW() - INTERVAL '3 minutes') AS active FROM users WHERE id = $1`, [req.user.id]);
+  let betsSoFar = 0;
+  try { betsSoFar = Number(JSON.parse(act.rows[0].save_data).stats.bets) || 0; } catch {}
+  if (!act.rows[0] || act.rows[0].banned || !act.rows[0].active || betsSoFar < 10) return res.json({ won: false });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -879,56 +679,12 @@ app.post('/api/jackpot/claim', auth, async (req, res) => {
   }
 });
 
-// Leaderboard
-app.get('/api/leaderboard', auth, async (req, res) => {
-  const result = await pool.query(
-    `SELECT username, balance, total_bets, total_wins, total_losses, total_won, biggest_win,
-     COALESCE(prestige_count, 0) AS prestige_count
-     FROM users WHERE is_admin = 0 ORDER BY prestige_count DESC, balance DESC LIMIT 20`
-  );
-  res.json(result.rows);
-});
-
-// Challenges
-const CHALLENGES_DEF = [
-  { id: 'win5', label: '5x hintereinander gewinnen', target: 5, reward: 200 },
-  { id: 'bet100', label: '100 Einsätze machen', target: 100, reward: 500 },
-  { id: 'win50', label: '50 Spiele gewinnen', target: 50, reward: 300 },
-  { id: 'bigwin', label: '10x Multiplier erreichen', target: 1, reward: 250 },
-];
-
-app.get('/api/challenges', auth, async (req, res) => {
-  const result = await pool.query(`SELECT * FROM challenges WHERE user_id = $1`, [req.user.id]);
-  const rows = result.rows;
-  const challenges = CHALLENGES_DEF.map(def => {
-    const progress = rows.find(r => r.challenge_id === def.id);
-    return { ...def, progress: progress?.progress || 0, completed: progress?.completed || 0, claimed: progress?.claimed || 0 };
-  });
-  res.json(challenges);
-});
-
-app.post('/api/challenges/claim', auth, async (req, res) => {
-  const { challengeId } = req.body;
-  const def = CHALLENGES_DEF.find(c => c.id === challengeId);
-  if (!def) return res.status(400).json({ error: 'Challenge nicht gefunden' });
-  const result = await pool.query(
-    `SELECT * FROM challenges WHERE user_id = $1 AND challenge_id = $2`,
-    [req.user.id, challengeId]
-  );
-  const row = result.rows[0];
-  if (!row || !row.completed || row.claimed)
-    return res.status(400).json({ error: 'Nicht verfügbar' });
-  await pool.query(`UPDATE challenges SET claimed = 1 WHERE user_id = $1 AND challenge_id = $2`,
-    [req.user.id, challengeId]);
-  await pool.query(`UPDATE users SET balance = balance + $1 WHERE id = $2`, [def.reward, req.user.id]);
-  res.json({ success: true, reward: def.reward });
-});
-
 // Benutzername ändern
 app.post('/api/change-username', auth, async (req, res) => {
-  const { newUsername } = req.body;
-  if (!newUsername || newUsername.length < 3)
-    return res.status(400).json({ error: 'Name zu kurz (min. 3)' });
+  const { newUsername } = req.body || {};
+  const nameErr = badName(newUsername);
+  if (nameErr) return res.status(400).json({ error: nameErr });
+  if (req.user.is_admin) return res.status(400).json({ error: 'Den Admin-Namen kann man nicht ändern' });
   try {
     await pool.query(`UPDATE users SET username = $1 WHERE id = $2`, [newUsername, req.user.id]);
     res.json({ success: true });
@@ -945,7 +701,7 @@ app.post('/api/change-password', auth, async (req, res) => {
   if (typeof newPassword !== 'string' || newPassword.length < 4)
     return res.status(400).json({ error: 'Passwort zu kurz (min. 4)' });
   if (newPassword.length > 200) return res.status(400).json({ error: 'Passwort zu lang' });
-  const hash = bcrypt.hashSync(newPassword, 10);
+  const hash = await bcrypt.hash(newPassword, 10);
   await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [hash, req.user.id]);
   res.json({ success: true });
 });
@@ -989,7 +745,7 @@ app.post('/api/crash', async (req, res) => {
   const n = (crashCounter.get(key) || 0) + 1;
   crashCounter.set(key, n);
   if (crashCounter.size > 5000) crashCounter.clear();
-  if (n > 10) return res.json({ success: true, skipped: true });
+  if (n > 10 || tooMany('crash:all', 200, 3600000)) return res.json({ success: true, skipped: true });
   const b = req.body || {};
   const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
   const message = `💥 ${str(b.message, 500) || 'Unbekannter Fehler'}\n\n${str(b.stack, 2000)}\n\n${str(b.extra, 1500)}`;
@@ -1011,8 +767,10 @@ app.post('/api/wins', auth, async (req, res) => {
   // höchstens ein Eintrag alle 3 Sekunden pro Spieler
   const last = await pool.query(`SELECT 1 FROM live_wins WHERE user_id = $1 AND created_at > NOW() - INTERVAL '3 seconds' LIMIT 1`, [req.user.id]);
   if (last.rows.length) return res.json({ success: true, skipped: true });
-  const u = await pool.query(`SELECT username, COALESCE(banned, FALSE) AS banned, COALESCE(lb_hidden, FALSE) AS hidden, is_admin FROM users WHERE id = $1`, [req.user.id]);
+  const u = await pool.query(`SELECT username, COALESCE(banned, FALSE) AS banned, COALESCE(lb_hidden, FALSE) AS hidden, is_admin, COALESCE(mogul_earned, 0) AS earned FROM users WHERE id = $1`, [req.user.id]);
   if (!u.rows[0] || u.rows[0].banned || u.rows[0].hidden || u.rows[0].is_admin) return res.json({ success: true, skipped: true });
+  // Ein einzelner Gewinn kann nicht absurd höher sein als alles, was der Spieler je verdient hat
+  if (amount > Math.max(1e4, u.rows[0].earned * 50)) return res.json({ success: true, skipped: true });
   await pool.query(`INSERT INTO live_wins (user_id, username, game, amount, mult) VALUES ($1, $2, $3, $4, $5)`,
     [req.user.id, u.rows[0].username, b.game, amount, mult]);
   if (Math.random() < 0.05) await pool.query(`DELETE FROM live_wins WHERE id < (SELECT COALESCE(MAX(id), 0) - 500 FROM live_wins)`);
