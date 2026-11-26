@@ -61,7 +61,8 @@ function QuestTracker({ state, onClaim }) {
 
 // Geldanzeige rollt weich zum echten Wert und hüpft bei Gewinnen
 function MoneyCounter({ value }) {
-  const [shown, setShown] = useState(value);
+  // Zählt weich hoch, rendert aber nur, wenn sich die angezeigte Zahl wirklich ändert
+  const [text, setText] = useState(() => fmtMoney(value));
   const [bump, setBump] = useState(0);
   const shownRef = useRef(value);
   const lastRef = useRef(value);
@@ -74,13 +75,14 @@ function MoneyCounter({ value }) {
       const diff = value - cur;
       const next = Math.abs(diff) < Math.max(0.005, Math.abs(value) * 1e-6) ? value : cur + diff * 0.25;
       shownRef.current = next;
-      setShown(next);
+      const t = fmtMoney(next);
+      setText(old => (old === t ? old : t));
       if (next !== value) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [value]);
-  return <span key={bump} className={`amount${bump ? ' bump' : ''}`}>{fmtMoney(shown)}</span>;
+  return <span key={bump} className={`amount${bump ? ' bump' : ''}`}>{text}</span>;
 }
 
 function Confetti({ burst }) {

@@ -34,7 +34,7 @@
 
 /* Header */
 .mg-header { display: flex; align-items: center; gap: 16px; padding: 10px 20px; position: sticky; top: 0; z-index: 40;
-  background: linear-gradient(180deg, rgba(36,22,80,.96), rgba(22,12,52,.96)); border-bottom: 3px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,.45); backdrop-filter: blur(6px); }
+  background: linear-gradient(180deg, rgba(36,22,80,.96), rgba(22,12,52,.96)); border-bottom: 3px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,.45); }
 .mg-logo { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .mg-logo .hat { font-size: 30px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)); animation: mgWobble 4s ease-in-out infinite; }
 .mg-logo .word { font-family: var(--f-display); font-size: 26px; line-height: 1; background: linear-gradient(180deg, #fff6c9 0%, #ffd34d 45%, #ff9d1c 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -94,7 +94,7 @@
 .mg-floor-hint { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; z-index: 2; }
 .mg-floor-hint .txt { font-family: var(--f-display); color: #fff; font-size: 24px; text-shadow: 0 3px 0 rgba(0,0,0,.6); }
 .mg-floor-hint .sub { color: rgba(255,255,255,.75); font-size: 14px; margin-top: 4px; font-weight: 700; text-shadow: 0 2px 4px #000; }
-.mg-floor-loc, .mg-floor-auto { position: absolute; top: 12px; z-index: 4; font-size: 12px; font-weight: 800; color: #fff; background: rgba(10,5,30,.6); padding: 5px 12px; border-radius: 20px; pointer-events: none; border: 1px solid rgba(255,255,255,.15); backdrop-filter: blur(3px); }
+.mg-floor-loc, .mg-floor-auto { position: absolute; top: 12px; z-index: 4; font-size: 12px; font-weight: 800; color: #fff; background: rgba(10,5,30,.78); padding: 5px 12px; border-radius: 20px; pointer-events: none; border: 1px solid rgba(255,255,255,.15); }
 .mg-floor-loc { left: 14px; }
 .mg-floor-auto { right: 14px; }
 .mg-combo { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); z-index: 6; pointer-events: none; text-align: center; }
@@ -704,7 +704,7 @@
 /* ─── Handy ─────────────────────────────────────────────────────────────── */
 .mg-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: space-around; gap: 2px;
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(28,16,64,.97), rgba(14,8,34,.99)); border-top: 3px solid var(--border);
-  box-shadow: 0 -6px 20px rgba(0,0,0,.45); backdrop-filter: blur(6px); }
+  box-shadow: 0 -6px 20px rgba(0,0,0,.45); }
 .mg-bn { position: relative; flex: 1; max-width: 96px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border: none; border-radius: 14px;
   background: transparent; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .mg-bn .i { font-size: 24px; line-height: 1.1; transition: transform .15s; }
@@ -1074,9 +1074,9 @@
 .mg-fever-banner { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; text-align: center; padding: 8px; font-family: var(--f-display); font-size: 15px; color: #fff;
   background: linear-gradient(90deg, #be123c, #f97316, #be123c); background-size: 200% 100%; animation: mgShine 1.5s linear infinite; pointer-events: none; }
 .mg-floor-pills { position: absolute; top: 48px; left: 14px; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; width: max-content; max-width: 92%; }
-.mg-fpill { font-size: 12px; font-weight: 900; padding: 4px 10px; border-radius: 999px; color: #fff; border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(3px); }
-.mg-fpill.shift, .mg-fpill.early { background: rgba(14,116,144,.75); }
-.mg-fpill.midas { background: rgba(161,98,7,.8); }
+.mg-fpill { font-size: 12px; font-weight: 900; padding: 4px 10px; border-radius: 999px; color: #fff; border: 1px solid rgba(255,255,255,.25); }
+.mg-fpill.shift, .mg-fpill.early { background: rgba(14,116,144,.9); }
+.mg-fpill.midas { background: rgba(161,98,7,.92); }
 .mg-float.fever { color: #fda4af; text-shadow: 0 0 14px #f43f5e, 0 3px 0 rgba(0,0,0,.7); }
 .mg-floor.swipe { touch-action: none; }
 
@@ -1088,3 +1088,33 @@
 .mg-testkit button { border: 1px solid #155e75; background: #123447; color: #e0f7ff; border-radius: 10px; padding: 8px 10px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: left; }
 .mg-testkit .row { display: flex; gap: 4px; }
 .mg-testkit .row button { flex: 1; padding: 8px 2px; text-align: center; font-size: 12px; }
+
+/* ═══ Leistung: Dauer-Animationen nur über transform/opacity ═══════════════
+   (die Grafikkarte verschiebt fertige Ebenen, statt große Flächen jedes Bild neu zu malen) */
+@keyframes mgSweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes mgSweepPause { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
+/* Glanz über kaufbaren Shop-Karten */
+.mg-item { overflow: hidden; }
+.mg-item.can::before { background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.14) 50%, transparent 65%); background-size: auto; animation: mgSweepPause 2.8s linear infinite; }
+/* Casino-Kacheln: Schatten am Symbol statt Filter über die ganze Kachel, Glanz verschiebt sich */
+.cs-game .art { filter: none; overflow: hidden; text-shadow: 0 6px 0 rgba(0,0,0,.35); }
+.cs-game .art::after { background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,.18) 50%, transparent 60%); background-size: auto; animation: mgSweepPause 4s linear infinite; pointer-events: none; }
+/* Lichtstreifen über dem Spielfeld (Stadt-Casino, Monaco) */
+.floor-casino .mg-floor-ambient, .floor-monaco .mg-floor-ambient { background-size: auto; animation: mgSweep 7s linear infinite; will-change: transform; }
+.floor-monaco .mg-floor-ambient { animation-duration: 9s; }
+/* Spielhallen-Gitter: Ebene verschieben statt Hintergrund neu malen */
+@keyframes mgGridMove { from { transform: perspective(200px) rotateX(50deg) translateY(0); } to { transform: perspective(200px) rotateX(50deg) translateY(40px); } }
+.floor-spielhalle::before { bottom: -40px; height: calc(60% + 40px); animation: mgGridMove 2.5s linear infinite; will-change: transform; }
+/* Streifen-Banner (Geldregen, Freispiele) */
+@keyframes mgStripeMove { from { transform: translateX(-51px); } to { transform: translateX(0); } }
+.mg-frenzy-banner, .sl-free { animation: none; overflow: hidden; isolation: isolate; }
+.mg-frenzy-banner::before, .sl-free::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 51px); z-index: -1; pointer-events: none;
+  background: repeating-linear-gradient(45deg, #ffd34d 0 18px, #ffbf1f 18px 36px); background-size: 51px 51px; animation: mgStripeMove .8s linear infinite; will-change: transform; }
+.sl-free { position: relative; }
+/* Fieber-Banner */
+.mg-fever-banner { animation: none; overflow: hidden; isolation: isolate; }
+.mg-fever-banner::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, transparent, rgba(255,200,120,.45), transparent); animation: mgSweep 1.5s linear infinite; }
+/* Skilltree: kaufbare Knoten pulsieren über Größe statt über einen neu gemalten Schatten */
+@keyframes tvCanPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+.tv-node.can { animation: tvCanPulse 1.6s ease-in-out infinite; box-shadow: 0 0 14px color-mix(in srgb, var(--bc) 55%, transparent); }
+.tv-node.can.sel { animation: none; }

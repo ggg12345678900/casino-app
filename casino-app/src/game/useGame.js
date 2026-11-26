@@ -4,7 +4,7 @@ import * as E from './economy';
 import * as T from './tree';
 
 const LOCAL_KEY = (userId) => `mogul_save_${userId}`;
-const TICK_MS = 100;
+const TICK_MS = 250; // 4× pro Sekunde – spart viel Rechenzeit auf Handys
 // Online: gemeinsamer Jackpot über den Server. Demo: eigener Topf im Browser.
 const ONLINE = process.env.REACT_APP_DEMO !== 'true';
 const LOCAL_SAVE_MS = 5000;

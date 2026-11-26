@@ -153,7 +153,17 @@ export const treeCanReach = (s, n) => (n.reqAll ? n.reqAll.every(id => treeOwned
 const lvl = (s, key) => TREE.reduce((a, n) => (n.key === key && treeOwned(s, n.id) ? a + 1 : a), 0);
 
 // Alle Effekte auf einen Blick (für Spiel-Logik und Anzeige)
+const fxCache = new WeakMap();
+const EMPTY_TREE = {};
 export const treeFx = (s) => {
+  const key = (s && s.tree) || EMPTY_TREE;
+  const hit = fxCache.get(key);
+  if (hit) return hit;
+  const out = treeFxCalc(s);
+  fxCache.set(key, out);
+  return out;
+};
+const treeFxCalc = (s) => {
   const L = (k) => lvl(s, k);
   const reihe = L('reihe');
   const turm = L('turm');
