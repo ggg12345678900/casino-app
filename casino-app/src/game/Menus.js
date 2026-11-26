@@ -98,6 +98,10 @@ export function SettingsModal({ onClose, user, onLogout, onFeedback, onReset, on
             <Toggle on={s.lowFx} onChange={v => updateSettings({ lowFx: v })} />
           </div>
           <div className="mg-set-row">
+            <span>🧹 Helfer im Feld<small>Aus: Finger und Feld-Helfer klauen dir keine Münzen mehr – gut für lange Combos. Einkommen läuft weiter.</small></span>
+            <Toggle on={s.fieldHelpers !== false} onChange={v => updateSettings({ fieldHelpers: v })} />
+          </div>
+          <div className="mg-set-row">
             <span>🔢 Zahlen</span>
             <div className="mg-seg">
               {[['de', '1,25 Mio'], ['short', '1.25M']].map(([k, l]) => (

@@ -377,7 +377,7 @@ export default function GameApp({ user, onLogout, onAdmin }) {
       case 'stats': return <StatsView state={state} onReset={() => { game.resetGame(); setTab('search'); }} />;
       default: {
         const search = <SearchView state={state} derived={derived} onPickup={game.pickup} onPickCharm={game.pickCharm} onOpenSack={game.openSack} onMove={move} onCharm={onCharm} hl={hl}
-          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={fingerEvery(state)} onMiss={game.addMiss} onSecret={(k) => game.markSecret(k)}
+          showGoal={un.locations} showExtras={un.extras} allowSack={un.tools} onPickJeton={game.pickJeton} showJetons={un.jetons} onAlbum={onAlbum} fingerEvery={settings.fieldHelpers ? fingerEvery(state) : 0} fieldHelpers={settings.fieldHelpers} onMiss={game.addMiss} onSecret={(k) => game.markSecret(k)}
           onChest={game.openChest} onClover={game.addBonusSpins} helperIcon={(HELPERS.filter(h => (state.helpers[h.id] || 0) > 0).pop() || { icon: '🧹' }).icon} />;
         if (isMobile || !un.tools) return search;
         return (
