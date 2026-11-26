@@ -132,7 +132,7 @@ function Skill({ id, skill }) {
   );
 }
 
-export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum, fingerEvery = 0, onMiss, onSecret, onChest, onClover, helperIcon = '🧹' }) {
+export default function SearchView({ state, derived, onPickup, onPickCharm, onOpenSack, onMove, onCharm, hl = '', showGoal = true, showExtras = true, allowSack = true, onPickJeton, showJetons = false, onAlbum, fingerEvery = 0, onMiss, onSecret, onChest, onClover, helperIcon = '🧹', fieldHelpers = true }) {
   const [items, setItems] = useState([]);
   const [floats, setFloats] = useState([]);
   const floorRef = useRef(null);
@@ -326,7 +326,7 @@ export default function SearchView({ state, derived, onPickup, onPickCharm, onOp
   }, [fingerEvery]);
 
   // Helfer im Feld (Skilltree): laufen herum und schnappen sich Münzen
-  const walkers = tf.walkers;
+  const walkers = fieldHelpers ? tf.walkers : 0; // Einstellung: Helfer im Feld aus
   const walkEvery = tf.walkEvery;
   const [walkPos, setWalkPos] = useState([]);
   useEffect(() => {

@@ -35,12 +35,15 @@ let last = 0;
 const reduced = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const low = () => getSettings().lowFx || reduced();
 
+// Die Canvas hängt im Spiel-Container (.mg), damit Fenster und Menüs darüber liegen
+const host = () => document.querySelector('.mg') || document.body;
 function ensure() {
-  if (canvas || typeof document === 'undefined') return !!canvas;
+  if (typeof document === 'undefined') return false;
+  if (canvas) { if (canvas.parentNode !== host()) host().appendChild(canvas); return true; }
   canvas = document.createElement('canvas');
   canvas.className = 'mg-fx';
   canvas.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(canvas);
+  host().appendChild(canvas);
   g = canvas.getContext('2d');
   const resize = () => {
     dpr = Math.min(2, window.devicePixelRatio || 1);

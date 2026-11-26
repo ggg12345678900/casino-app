@@ -2,7 +2,7 @@
 import { setNumberFormat } from './economy';
 
 const KEY = 'mogul_settings';
-const DEFAULTS = { sfx: 0.8, music: 0.4, vibrate: true, lowFx: false, numbers: 'de' };
+const DEFAULTS = { sfx: 0.8, music: 0.4, vibrate: true, lowFx: false, numbers: 'de', fieldHelpers: true };
 let current = { ...DEFAULTS };
 try {
   const raw = JSON.parse(localStorage.getItem(KEY));
